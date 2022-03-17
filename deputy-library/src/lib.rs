@@ -1,8 +1,10 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+use serde::{Deserialize, Serialize};
+
+pub mod repository;
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub struct PackageMetadata {
+    name: String,
+    version: String,
+    checksum: String,
 }

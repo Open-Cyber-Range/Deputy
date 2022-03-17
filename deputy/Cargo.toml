@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 deputy-library = { path = "../deputy-library" }
+fancy-regex = "0.8.0"
+anyhow = "1.0.56"
+serial_test = "0.6.0"

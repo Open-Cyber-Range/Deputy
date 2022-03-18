@@ -32,7 +32,7 @@ fn generate_package_path(package_name: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
-fn create_a_or_find_package_file(
+fn create_or_find_package_file(
     repository: &Repository,
     package_name: &str,
 ) -> Result<(File, PathBuf)> {
@@ -104,7 +104,7 @@ pub fn update_index_repository(
     repository: &Repository,
     package_metadata: &PackageMetadata,
 ) -> Result<()> {
-    let (file, file_path) = create_a_or_find_package_file(repository, &package_metadata.name)?;
+    let (file, file_path) = create_or_find_package_file(repository, &package_metadata.name)?;
 
     write_metadata_to_a_file(&file, package_metadata)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
@@ -121,7 +121,7 @@ mod tests {
     };
 
     use crate::{
-        repository::{create_a_or_find_package_file, update_index_repository},
+        repository::{create_or_find_package_file, update_index_repository},
         PackageMetadata,
     };
 
@@ -192,8 +192,7 @@ mod tests {
     fn correct_file_is_created() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
         let expected_file_path: PathBuf = ["my", "-t", "my-test"].iter().collect();
-        let (file, relative_repository_path) =
-            create_a_or_find_package_file(&repository, "my-test")?;
+        let (file, relative_repository_path) = create_or_find_package_file(&repository, "my-test")?;
 
         assert!(root_directory.path().is_dir());
         assert!(file.metadata().unwrap().is_file());

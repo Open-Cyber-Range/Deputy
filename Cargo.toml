@@ -3,5 +3,6 @@
 members = [
     "deputy",
     "deputy-package-server",
-    "deputy-library"
+    "deputy-package-server-routes",
+    "deputy-library",
 ]

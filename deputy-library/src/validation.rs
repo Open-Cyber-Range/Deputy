@@ -83,7 +83,6 @@ pub fn package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     file.read_to_string(&mut contents)?;
 
     let deserialized_toml: Config = toml::from_str(&*contents)?;
-
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_type(deserialized_toml.content)?;
@@ -95,14 +94,26 @@ mod tests {
     use super::*;
     use anyhow::Ok;
     use std::io::Write;
-    use tempfile::TempDir;
+    use tempfile::{Builder, NamedTempFile};
 
-    fn create_correct_package_toml() -> Result<TempDir> {
-        let temp_dir = TempDir::new()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+    fn create_temp_file() -> Result<NamedTempFile> {
+        let file = Builder::new()
+            .prefix("package")
+            .suffix(".toml")
+            .tempfile()?;
+        Ok(file)
+    }
 
-        let mut file = File::create(&file_path)?;
+    fn deserialize_toml(file: &NamedTempFile) -> Result<Config> {
+        let mut contents = String::new();
+        let mut read_file = File::open(file.path())?;
+        read_file.read_to_string(&mut contents)?;
+        let deserialized_toml: Config = toml::from_str(&*contents)?;
+        Ok(deserialized_toml)
+    }
+
+    fn create_correct_package_toml() -> Result<NamedTempFile> {
+        let mut file = create_temp_file()?;
         file.write_all(
             br#"
 
@@ -117,47 +128,29 @@ type = "vm"
 sub_type = "packer"
 "#,
         )?;
-        let mut file = File::open(&file_path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-
-        Ok(temp_dir)
+        Ok(file)
     }
 
-    fn create_incorrect_package_toml() -> Result<(TempDir, Config)> {
-        let temp_dir = TempDir::new()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
-
-        let mut file = File::create(&file_path)?;
+    fn create_incorrect_package_toml() -> Result<(NamedTempFile, Config)> {
+        let mut file = create_temp_file()?;
         file.write_all(
-            br##"
-
+            br#"
 [package]
 name = "package for testing"
-description = "#veryPackage @emailcon proposal"
+description = "veryPackage @emailcon proposal"
 version = "version 23"
 
 [content]
 type = "vm"
 sub_type = "packer"
-"##,
+"#,
         )?;
-
-        let mut file = File::open(&file_path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        let deserialized_toml: Config = toml::from_str(&*contents)?;
-
-        Ok((temp_dir, deserialized_toml))
+        let deserialized_toml = deserialize_toml(&file)?;
+        Ok((file, deserialized_toml))
     }
 
-    fn create_incorrect_type_package_toml() -> Result<(TempDir, Config)> {
-        let temp_dir = TempDir::new()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
-
-        let mut file = File::create(&file_path)?;
+    fn create_incorrect_type_package_toml() -> Result<(NamedTempFile, Config)> {
+        let mut file = create_temp_file()?;
         file.write_all(
             br##"
 
@@ -171,21 +164,12 @@ type = "virtuelle machine"
 sub_type = "packer"
 "##,
         )?;
-
-        let mut file = File::open(&file_path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        let deserialized_toml: Config = toml::from_str(&*contents)?;
-
-        Ok((temp_dir, deserialized_toml))
+        let deserialized_toml = deserialize_toml(&file)?;
+        Ok((file, deserialized_toml))
     }
 
-    fn create_incorrect_subtype_package_toml() -> Result<(TempDir, Config)> {
-        let temp_dir = TempDir::new()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
-
-        let mut file = File::create(&file_path)?;
+    fn create_incorrect_subtype_package_toml() -> Result<(NamedTempFile, Config)> {
+        let mut file = create_temp_file()?;
         file.write_all(
             br##"
 
@@ -199,48 +183,35 @@ type = "vm"
 sub_type = "something_wrong"
 "##,
         )?;
-
-        let mut file = File::open(&file_path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        let deserialized_toml: Config = toml::from_str(&*contents)?;
-
-        Ok((temp_dir, deserialized_toml))
+        let deserialized_toml = deserialize_toml(&file)?;
+        Ok((file, deserialized_toml))
     }
 
     #[test]
     fn positive_result_all_fields_correct() -> Result<()> {
-        let temp_dir = create_correct_package_toml()?;
-
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+        let file = create_correct_package_toml()?;
+        let file_path = file.path();
 
         assert!(package_toml(&file_path).is_ok());
-        temp_dir.close()?;
+        file.close()?;
         Ok(())
     }
 
     #[test]
     fn negative_result_name_field() -> Result<()> {
-        let (temp_dir, deserialized_toml) = create_incorrect_package_toml()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+        let (file, deserialized_toml) = create_incorrect_package_toml()?;
 
         assert!(validate_name(deserialized_toml.package.name).is_err());
-        temp_dir.close()?;
+        file.close()?;
         Ok(())
     }
 
     #[test]
     fn negative_result_version_field() -> Result<()> {
-        std::panic::set_hook(Box::new(|_| {}));
-
-        let (temp_dir, deserialized_toml) = create_incorrect_package_toml()?;
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+        let (file, deserialized_toml) = create_incorrect_package_toml()?;
 
         assert!(validate_version(deserialized_toml.package.version).is_err());
-        temp_dir.close()?;
+        file.close()?;
         Ok(())
     }
 
@@ -248,23 +219,19 @@ sub_type = "something_wrong"
     #[should_panic]
     fn negative_result_content_type_field() {
         std::panic::set_hook(Box::new(|_| {}));
-
-        let (temp_dir, deserialized_toml) = create_incorrect_type_package_toml().unwrap();
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+        let (file, deserialized_toml) = create_incorrect_type_package_toml().unwrap();
 
         assert!(validate_type(deserialized_toml.content).is_err());
+        file.close().unwrap();
     }
 
     #[test]
     #[should_panic]
     fn negative_result_content_subtype_field() {
         std::panic::set_hook(Box::new(|_| {}));
-
-        let (temp_dir, deserialized_toml) = create_incorrect_subtype_package_toml().unwrap();
-        let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml");
+        let (file, deserialized_toml) = create_incorrect_subtype_package_toml().unwrap();
 
         assert!(validate_type(deserialized_toml.content).is_err());
+        file.close().unwrap();
     }
 }

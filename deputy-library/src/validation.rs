@@ -41,31 +41,29 @@ enum SubType {
     PACKER,
 }
 
-const VALID_VM_TYPES: &'static [&'static SubType] = &[&SubType::PACKER];
+const VALID_VM_TYPES: &[&SubType] = &[&SubType::PACKER];
 
 fn validate_name(name: String) -> Result<()> {
     let name_re = Regex::new(r#"^[a-zA-Z0-9_-]+$"#)?;
     let name_result = name_re.is_match(&name)?;
-    if name_result {
-        Ok(())
-    } else {
-        Err(anyhow!(
+
+    if !name_result {
+        return Err(anyhow!(
             "Name {:?} must be one word of alphanumeric, `-`, or `_` characters.",
             name
-        ))
-    }
+        ));
+    };
+    Ok(())
 }
 
 fn validate_version(version: String) -> Result<()> {
     match Version::parse(&version.as_str()) {
-        Ok(_) => return Ok(()),
-        Err(_) => {
-            return Err(anyhow!(
-                "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",
-                version
-            ))
-        }
-    };
+        Ok(_) => Ok(()),
+        Err(_) => Err(anyhow!(
+            "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",
+            version
+        )),
+    }
 }
 
 fn validate_type(content: Content) -> Result<()> {
@@ -95,14 +93,14 @@ pub fn package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Ok;
     use std::io::Write;
     use tempfile::TempDir;
 
-    #[test]
-    fn positive_result_all_fields_correct() -> Result<()> {
+    fn create_correct_package_toml() -> Result<TempDir> {
         let temp_dir = TempDir::new()?;
         let mut file_path = temp_dir.path().to_path_buf();
-        file_path.push("package.toml".to_string());
+        file_path.push("package.toml");
 
         let mut file = File::create(&file_path)?;
         file.write_all(
@@ -119,19 +117,154 @@ type = "vm"
 sub_type = "packer"
 "#,
         )?;
-
         let mut file = File::open(&file_path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
 
+        Ok(temp_dir)
+    }
+
+    fn create_incorrect_package_toml() -> Result<(TempDir, Config)> {
+        let temp_dir = TempDir::new()?;
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        let mut file = File::create(&file_path)?;
+        file.write_all(
+            br##"
+
+[package]
+name = "package for testing"
+description = "#veryPackage @emailcon proposal"
+version = "version 23"
+
+[content]
+type = "vm"
+sub_type = "packer"
+"##,
+        )?;
+
+        let mut file = File::open(&file_path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
         let deserialized_toml: Config = toml::from_str(&*contents)?;
 
-        assert!(validate_name(deserialized_toml.package.name).is_ok());
-        assert!(validate_version(deserialized_toml.package.version).is_ok());
-        assert!(validate_type(deserialized_toml.content).is_ok());
+        Ok((temp_dir, deserialized_toml))
+    }
+
+    fn create_incorrect_type_package_toml() -> Result<(TempDir, Config)> {
+        let temp_dir = TempDir::new()?;
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        let mut file = File::create(&file_path)?;
+        file.write_all(
+            br##"
+
+[package]
+name = "package"
+description = "Package description"
+version = "1.0.0"
+
+[content]
+type = "virtuelle machine"
+sub_type = "packer"
+"##,
+        )?;
+
+        let mut file = File::open(&file_path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        let deserialized_toml: Config = toml::from_str(&*contents)?;
+
+        Ok((temp_dir, deserialized_toml))
+    }
+
+    fn create_incorrect_subtype_package_toml() -> Result<(TempDir, Config)> {
+        let temp_dir = TempDir::new()?;
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        let mut file = File::create(&file_path)?;
+        file.write_all(
+            br##"
+
+[package]
+name = "package"
+description = "Package description"
+version = "1.0.0"
+
+[content]
+type = "vm"
+sub_type = "something_wrong"
+"##,
+        )?;
+
+        let mut file = File::open(&file_path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        let deserialized_toml: Config = toml::from_str(&*contents)?;
+
+        Ok((temp_dir, deserialized_toml))
+    }
+
+    #[test]
+    fn positive_result_all_fields_correct() -> Result<()> {
+        let temp_dir = create_correct_package_toml()?;
+
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
 
         assert!(package_toml(&file_path).is_ok());
         temp_dir.close()?;
         Ok(())
+    }
+
+    #[test]
+    fn negative_result_name_field() -> Result<()> {
+        let (temp_dir, deserialized_toml) = create_incorrect_package_toml()?;
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        assert!(validate_name(deserialized_toml.package.name).is_err());
+        temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_version_field() -> Result<()> {
+        std::panic::set_hook(Box::new(|_| {}));
+
+        let (temp_dir, deserialized_toml) = create_incorrect_package_toml()?;
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        assert!(validate_version(deserialized_toml.package.version).is_err());
+        temp_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    #[should_panic]
+    fn negative_result_content_type_field() {
+        std::panic::set_hook(Box::new(|_| {}));
+
+        let (temp_dir, deserialized_toml) = create_incorrect_type_package_toml().unwrap();
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        assert!(validate_type(deserialized_toml.content).is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn negative_result_content_subtype_field() {
+        std::panic::set_hook(Box::new(|_| {}));
+
+        let (temp_dir, deserialized_toml) = create_incorrect_subtype_package_toml().unwrap();
+        let mut file_path = temp_dir.path().to_path_buf();
+        file_path.push("package.toml");
+
+        assert!(validate_type(deserialized_toml.content).is_err());
     }
 }

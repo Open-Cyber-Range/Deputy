@@ -5,5 +5,3 @@ Cargo.lock
 
 # Miscellaneous
 dist
-deputy/src/package.txt
-deputy/src/package.toml

@@ -96,12 +96,14 @@ mod tests {
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
 
-    fn create_temp_file() -> Result<NamedTempFile> {
-        let file = Builder::new()
+    fn create_temp_file(toml_content: &[u8]) -> Result<(NamedTempFile, Config)> {
+        let mut file = Builder::new()
             .prefix("package")
             .suffix(".toml")
             .tempfile()?;
-        Ok(file)
+        file.write_all(toml_content)?;
+        let deserialized_toml = deserialize_toml(&file)?;
+        Ok((file, deserialized_toml))
     }
 
     fn deserialize_toml(file: &NamedTempFile) -> Result<Config> {
@@ -112,95 +114,41 @@ mod tests {
         Ok(deserialized_toml)
     }
 
-    fn create_correct_package_toml() -> Result<NamedTempFile> {
-        let mut file = create_temp_file()?;
-        file.write_all(
-            br#"
-
+    fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Config)> {
+        let toml_content = br#"
 [package]
-name = "test_package_1-0-4"
-description = "This package does nothing at all, and we spent 300 manhours on it..."
-version = "1.0.4"
-authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
-
-[content]
-type = "vm"
-sub_type = "packer"
-"#,
-        )?;
-        Ok(file)
-    }
-
-    fn create_incorrect_package_toml() -> Result<(NamedTempFile, Config)> {
-        let mut file = create_temp_file()?;
-        file.write_all(
-            br#"
-[package]
-name = "package for testing"
-description = "veryPackage @emailcon proposal"
+name = "this is incorrect formatting"
+description = "description"
 version = "version 23"
-
 [content]
 type = "vm"
 sub_type = "packer"
-"#,
-        )?;
-        let deserialized_toml = deserialize_toml(&file)?;
-        Ok((file, deserialized_toml))
-    }
-
-    fn create_incorrect_type_package_toml() -> Result<(NamedTempFile, Config)> {
-        let mut file = create_temp_file()?;
-        file.write_all(
-            br##"
-
-[package]
-name = "package"
-description = "Package description"
-version = "1.0.0"
-
-[content]
-type = "virtuelle machine"
-sub_type = "packer"
-"##,
-        )?;
-        let deserialized_toml = deserialize_toml(&file)?;
-        Ok((file, deserialized_toml))
-    }
-
-    fn create_incorrect_subtype_package_toml() -> Result<(NamedTempFile, Config)> {
-        let mut file = create_temp_file()?;
-        file.write_all(
-            br##"
-
-[package]
-name = "package"
-description = "Package description"
-version = "1.0.0"
-
-[content]
-type = "vm"
-sub_type = "something_wrong"
-"##,
-        )?;
-        let deserialized_toml = deserialize_toml(&file)?;
+"#;
+        let (file, deserialized_toml) = create_temp_file(toml_content)?;
         Ok((file, deserialized_toml))
     }
 
     #[test]
     fn positive_result_all_fields_correct() -> Result<()> {
-        let file = create_correct_package_toml()?;
-        let file_path = file.path();
-
-        assert!(package_toml(&file_path).is_ok());
+        let toml_content = br#"
+[package]
+name = "test_package_1-0-4"
+description = "This package does nothing at all, and we spent 300 manhours on it..."
+version = "1.0.4"
+authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
+[content]
+type = "vm"
+sub_type = "packer"
+"#;
+        let (file, _deserialized_toml) = create_temp_file(toml_content)?;
+        assert!(package_toml(&file.path()).is_ok());
         file.close()?;
         Ok(())
     }
 
     #[test]
     fn negative_result_name_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_package_toml()?;
-
+        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
         assert!(validate_name(deserialized_toml.package.name).is_err());
         file.close()?;
         Ok(())
@@ -208,8 +156,7 @@ sub_type = "something_wrong"
 
     #[test]
     fn negative_result_version_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_package_toml()?;
-
+        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
         assert!(validate_version(deserialized_toml.package.version).is_err());
         file.close()?;
         Ok(())
@@ -219,8 +166,16 @@ sub_type = "something_wrong"
     #[should_panic]
     fn negative_result_content_type_field() {
         std::panic::set_hook(Box::new(|_| {}));
-        let (file, deserialized_toml) = create_incorrect_type_package_toml().unwrap();
-
+        let toml_content = br#"
+[package]
+name = "package"
+description = "Package description"
+version = "1.0.0"
+[content]
+type = "virtuelle machine"
+sub_type = "packer"
+"#;
+        let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
         assert!(validate_type(deserialized_toml.content).is_err());
         file.close().unwrap();
     }
@@ -229,8 +184,16 @@ sub_type = "something_wrong"
     #[should_panic]
     fn negative_result_content_subtype_field() {
         std::panic::set_hook(Box::new(|_| {}));
-        let (file, deserialized_toml) = create_incorrect_subtype_package_toml().unwrap();
-
+        let toml_content = br#"
+[package]
+name = "package"
+description = "Package description"
+version = "1.0.0"
+[content]
+type = "vm"
+sub_type = "something_wrong"
+"#;
+        let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
         assert!(validate_type(deserialized_toml.content).is_err());
         file.close().unwrap();
     }

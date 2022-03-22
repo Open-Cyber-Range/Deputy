@@ -68,17 +68,15 @@ fn validate_version(version: String) -> Result<()> {
     };
 }
 
-fn validate_type(content_type: Content) -> Result<()> {
-    return match VALID_VM_TYPES.contains(&&content_type.sub_type) {
-        true => Ok(()),
-        false => {
-            return Err(anyhow!(
-                "Given sub-type {:?} is not supported. Supported types are: {:?}",
-                content_type.sub_type,
-                VALID_VM_TYPES
-            ))
-        }
+fn validate_type(content: Content) -> Result<()> {
+    let is_valid = match content.content_type {
+        ContentType::VM => VALID_VM_TYPES.contains(&&content.sub_type),
     };
+
+    if !is_valid {
+        return Err(anyhow!("Sub-type mismatch with the type"));
+    }
+    Ok(())
 }
 
 pub fn package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
@@ -137,5 +135,3 @@ sub_type = "packer"
         Ok(())
     }
 }
-
-

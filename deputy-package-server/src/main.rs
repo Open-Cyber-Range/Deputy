@@ -1,5 +1,7 @@
+mod routes;
+
+use crate::routes::basic::{status, version};
 use actix_web::{web::scope, App, HttpServer};
-use deputy_package_server_routes::basic::{status, version};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

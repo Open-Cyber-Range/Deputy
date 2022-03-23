@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 actix-web = "4"
 deputy-library = { path = "../deputy-library" }
-deputy-package-server-routes = { path = "../deputy-package-server-routes" }
+semver = "1"

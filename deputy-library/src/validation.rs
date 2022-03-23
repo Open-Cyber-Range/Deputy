@@ -5,8 +5,14 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use fancy_regex::Regex;
+use lazy_static::lazy_static;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+
+lazy_static! {
+    static ref VALID_NAME: Regex = Regex::new(r#"^[a-zA-Z0-9_-]+$"#).unwrap();
+    static ref VALID_VM_TYPES: &'static [&'static SubType] = &[&SubType::Packer];
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 struct Config {
@@ -38,16 +44,11 @@ enum ContentType {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 enum SubType {
     #[serde(alias = "packer")]
-    PACKER,
+    Packer,
 }
 
-const VALID_VM_TYPES: &[&SubType] = &[&SubType::PACKER];
-
 fn validate_name(name: String) -> Result<()> {
-    let name_re = Regex::new(r#"^[a-zA-Z0-9_-]+$"#)?;
-    let name_result = name_re.is_match(&name)?;
-
-    if !name_result {
+    if !VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
             "Name {:?} must be one word of alphanumeric, `-`, or `_` characters.",
             name
@@ -57,7 +58,7 @@ fn validate_name(name: String) -> Result<()> {
 }
 
 fn validate_version(version: String) -> Result<()> {
-    match Version::parse(&version.as_str()) {
+    match Version::parse(version.as_str()) {
         Ok(_) => Ok(()),
         Err(_) => Err(anyhow!(
             "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",

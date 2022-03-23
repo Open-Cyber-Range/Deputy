@@ -14,4 +14,5 @@ tempfile = "3"
 fancy-regex = "0.8.0"
 toml = "0.5.8"
 semver = "1.0.6"
+lazy_static = "1"
 

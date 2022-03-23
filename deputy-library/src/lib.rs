@@ -8,4 +8,4 @@ pub struct PackageMetadata {
     name: String,
     version: String,
     checksum: String,
-}   
+}

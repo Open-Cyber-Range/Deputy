@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub mod constants;
+mod constants;
 pub mod repository;
 pub mod validation;
 

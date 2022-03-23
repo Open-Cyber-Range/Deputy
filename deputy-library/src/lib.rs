@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+mod constants;
 pub mod repository;
+pub mod validation;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct PackageMetadata {

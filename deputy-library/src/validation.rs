@@ -3,16 +3,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use crate::constants;
 use anyhow::{anyhow, Result};
-use fancy_regex::Regex;
-use lazy_static::lazy_static;
 use semver::Version;
 use serde::{Deserialize, Serialize};
-
-lazy_static! {
-    static ref VALID_NAME: Regex = Regex::new(r#"^[a-zA-Z0-9_-]+$"#).unwrap();
-    static ref VALID_VM_TYPES: &'static [&'static SubType] = &[&SubType::Packer];
-}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 struct Config {
@@ -42,13 +36,13 @@ enum ContentType {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-enum SubType {
+pub enum SubType {
     #[serde(alias = "packer")]
     Packer,
 }
 
 fn validate_name(name: String) -> Result<()> {
-    if !VALID_NAME.is_match(&name)? {
+    if !constants::VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
             "Name {:?} must be one word of alphanumeric, `-`, or `_` characters.",
             name
@@ -69,7 +63,7 @@ fn validate_version(version: String) -> Result<()> {
 
 fn validate_type(content: Content) -> Result<()> {
     let is_valid = match content.content_type {
-        ContentType::VM => VALID_VM_TYPES.contains(&&content.sub_type),
+        ContentType::VM => constants::VALID_VM_TYPES.contains(&&content.sub_type),
     };
 
     if !is_valid {

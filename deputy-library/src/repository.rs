@@ -122,7 +122,7 @@ mod tests {
 
     use crate::{
         repository::{create_a_or_find_package_file, update_index_repository},
-        PackageMetadata,
+        test::TEST_PACKAGE_METADATA,
     };
 
     use super::{
@@ -208,13 +208,7 @@ mod tests {
         file_path.push("test-file");
 
         let file = File::create(&file_path)?;
-        let package_metadata = PackageMetadata {
-            checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c"
-                .to_string(),
-            version: "0.1.0".to_string(),
-            name: "some-package-name".to_string(),
-        };
-        write_metadata_to_a_file(&file, &package_metadata)?;
+        write_metadata_to_a_file(&file, &TEST_PACKAGE_METADATA)?;
         let read_file = File::open(file_path)?;
         let line = std::io::BufReader::new(read_file).lines().next().unwrap()?;
 
@@ -230,13 +224,7 @@ mod tests {
         let root = repository.path().parent().unwrap();
         File::create(&root.join("test"))?;
 
-        let package_metadata = PackageMetadata {
-            checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c"
-                .to_string(),
-            version: "0.1.0".to_string(),
-            name: "some-package-name".to_string(),
-        };
-        create_a_package_commit(&repository, Path::new("test"), &package_metadata)?;
+        create_a_package_commit(&repository, Path::new("test"), &TEST_PACKAGE_METADATA)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 
@@ -253,13 +241,7 @@ mod tests {
         let (temporary_directory, repository) = initialize_test_repository();
         let root = repository.path().parent().unwrap();
 
-        let package_metadata = PackageMetadata {
-            checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c"
-                .to_string(),
-            version: "0.1.0".to_string(),
-            name: "some-package-name".to_string(),
-        };
-        update_index_repository(&repository, &package_metadata)?;
+        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 

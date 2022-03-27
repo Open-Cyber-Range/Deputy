@@ -7,5 +7,10 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
-deputy-library = { path = "../deputy-library" }
+anyhow = "1"
+deputy-library = { path = "../deputy-library", default-features = false }
 semver = "1"
+
+[features]
+default = ["test"]
+test = ["deputy-library/test"]

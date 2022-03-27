@@ -146,8 +146,8 @@ mod tests {
     #[test]
     fn metadata_is_parsed_from_bytes() -> Result<()> {
         let bytes = TEST_METADATA_BYTES.clone();
-        let reference: &[u8] = &bytes;
-        let metadata = PackageMetadata::try_from(reference)?;
+
+        let metadata = PackageMetadata::try_from(&bytes as &[u8])?;
         insta::assert_debug_snapshot!(metadata);
         Ok(())
     }
@@ -164,8 +164,8 @@ mod tests {
     #[test]
     fn file_is_parsed_from_byte() -> Result<()> {
         let bytes = TEST_FILE_BYTES.clone();
-        let reference: &[u8] = &bytes;
-        let package_file = PackageFile::try_from(reference)?.0;
+
+        let package_file = PackageFile::try_from(&bytes as &[u8])?.0;
         assert_eq!(package_file.metadata()?.len(), 17);
         Ok(())
     }
@@ -182,8 +182,7 @@ mod tests {
     #[test]
     fn package_is_parsed_from_bytes() -> Result<()> {
         let bytes = TEST_PACKAGE_BYTES.clone();
-        let reference: &[u8] = &bytes;
-        let package = Package::try_from(reference)?;
+        let package = Package::try_from(&bytes as &[u8])?;
 
         assert_eq!(package.file.metadata()?.len(), 14);
         insta::assert_debug_snapshot!(package.metadata);

@@ -6,20 +6,25 @@ use std::{
     ops::Deref,
 };
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
 }
 
-pub struct PackageFile<'a>(&'a File);
+pub struct PackageFile(pub File);
 
-impl<'a> Deref for PackageFile<'a> {
+pub struct Package {
+    pub metadata: PackageMetadata,
+    pub file: PackageFile,
+}
+
+impl Deref for PackageFile {
     type Target = File;
 
     fn deref(&self) -> &Self::Target {
-        self.0
+        &self.0
     }
 }
 
@@ -39,7 +44,7 @@ impl TryFrom<&PackageMetadata> for Vec<u8> {
     }
 }
 
-impl<'a> TryFrom<PackageFile<'a>> for Vec<u8> {
+impl TryFrom<PackageFile> for Vec<u8> {
     type Error = anyhow::Error;
 
     fn try_from(package_file: PackageFile) -> Result<Self> {
@@ -57,23 +62,27 @@ impl<'a> TryFrom<PackageFile<'a>> for Vec<u8> {
     }
 }
 
-pub fn package_to_bytes(package_metadata: &PackageMetadata, file: &File) -> Result<Vec<u8>> {
-    let mut payload: Vec<u8> = Vec::new();
-    let package_file = PackageFile(file);
+impl<'a> TryFrom<Package> for Vec<u8> {
+    type Error = anyhow::Error;
 
-    let metadata_bytes = Vec::try_from(package_metadata)?;
-    payload.extend(metadata_bytes);
-    let file_bytes = Vec::try_from(package_file)?;
-    payload.extend(file_bytes);
+    fn try_from(package: Package) -> Result<Self> {
+        let mut payload: Vec<u8> = Vec::new();
+        let package_file = package.file;
 
-    Ok(payload)
+        let metadata_bytes = Vec::try_from(&package.metadata)?;
+        payload.extend(metadata_bytes);
+        let file_bytes = Vec::try_from(package_file)?;
+        payload.extend(file_bytes);
+
+        Ok(payload)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        package::{package_to_bytes, PackageFile, PackageMetadata},
-        test::{create_readable_temporary_file, TEST_PACKAGE_METADATA},
+        package::{PackageFile, PackageMetadata},
+        test::{create_readable_temporary_file, create_test_package, TEST_PACKAGE_METADATA},
     };
     use anyhow::Result;
 
@@ -89,7 +98,7 @@ mod tests {
     #[test]
     fn file_is_converted_to_bytes() -> Result<()> {
         let temporary_file = create_readable_temporary_file("Some content\n")?;
-        let metadata_bytes = Vec::try_from(PackageFile(&temporary_file))?;
+        let metadata_bytes = Vec::try_from(PackageFile(temporary_file))?;
 
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
@@ -97,8 +106,8 @@ mod tests {
 
     #[test]
     fn package_is_converted_to_bytes() -> Result<()> {
-        let temporary_file = create_readable_temporary_file("Some content\n")?;
-        let package_bytes = package_to_bytes(&TEST_PACKAGE_METADATA, &temporary_file)?;
+        let package = create_test_package()?;
+        let package_bytes = Vec::try_from(package)?;
         insta::assert_debug_snapshot!(package_bytes);
 
         Ok(())

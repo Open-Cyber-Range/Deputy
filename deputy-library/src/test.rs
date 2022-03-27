@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::Write;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use tempfile::Builder;
 
-use crate::package::PackageMetadata;
+use crate::package::{Package, PackageFile, PackageMetadata};
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
@@ -18,4 +18,14 @@ pub fn create_readable_temporary_file(content: &str) -> Result<File> {
     let mut temporary_file = Builder::new().append(true).tempfile()?;
     write!(&mut temporary_file, "{}", content)?;
     Ok(File::open(temporary_file.path())?)
+}
+
+pub fn create_test_package() -> Result<Package> {
+    let temporary_file = create_readable_temporary_file("some content \n")?;
+    let file = PackageFile(temporary_file);
+
+    Ok(Package {
+        metadata: TEST_PACKAGE_METADATA.clone(),
+        file,
+    })
 }

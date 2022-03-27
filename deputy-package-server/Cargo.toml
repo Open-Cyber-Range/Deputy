@@ -9,6 +9,8 @@ edition = "2021"
 actix-web = "4"
 anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
+env_logger = "0.9"
+log = "0.4"
 semver = "1"
 
 [features]

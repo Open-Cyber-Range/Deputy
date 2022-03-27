@@ -4,7 +4,7 @@ use std::io::Write;
 use anyhow::Result;
 use tempfile::Builder;
 
-use crate::PackageMetadata;
+use crate::package::PackageMetadata;
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {

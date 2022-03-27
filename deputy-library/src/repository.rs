@@ -1,12 +1,11 @@
+use crate::package::PackageMetadata;
+use anyhow::{Error, Ok, Result};
+use git2::{build::CheckoutBuilder, Repository};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
-
-use super::PackageMetadata;
-use anyhow::{Error, Ok, Result};
-use git2::{build::CheckoutBuilder, Repository};
 
 static HEAD_REF: &str = "HEAD";
 #[cfg(windows)]
@@ -21,11 +20,11 @@ fn generate_package_path(package_name: &str) -> Result<PathBuf> {
         2 => path.push("2"),
         3 => {
             path.push("3");
-            path.push(package_name[0..1].to_string());
+            path.push(&package_name[0..1]);
         }
         _ => {
-            path.push(package_name[0..2].to_string());
-            path.push(package_name[2..4].to_string());
+            path.push(&package_name[0..2]);
+            path.push(&package_name[2..4]);
         }
     };
     path.push(package_name);

@@ -161,35 +161,14 @@ mod tests {
             create_a_or_find_package_file, get_or_create_repository, initialize_repository,
             update_index_repository, RepositoryConfiguration,
         },
-        test::TEST_PACKAGE_METADATA,
+        test::{initialize_test_repository, TEST_PACKAGE_METADATA},
     };
 
     use super::{
         create_a_package_commit, generate_package_path, write_metadata_to_a_file, HEAD_REF,
     };
     use anyhow::Result;
-    use git2::{Repository, RepositoryInitOptions};
     use tempfile::TempDir;
-
-    fn initialize_test_repository() -> (TempDir, Repository) {
-        let td = TempDir::new().unwrap();
-        let mut opts = RepositoryInitOptions::new();
-        opts.initial_head("master");
-        let repo = Repository::init_opts(td.path(), &opts).unwrap();
-        {
-            let mut config = repo.config().unwrap();
-            config.set_str("user.name", "name").unwrap();
-            config.set_str("user.email", "email").unwrap();
-            let mut index = repo.index().unwrap();
-            let id = index.write_tree().unwrap();
-
-            let tree = repo.find_tree(id).unwrap();
-            let sig = repo.signature().unwrap();
-            repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
-                .unwrap();
-        }
-        (td, repo)
-    }
 
     #[test]
     fn correct_package_path_for_single_character_names() -> Result<()> {

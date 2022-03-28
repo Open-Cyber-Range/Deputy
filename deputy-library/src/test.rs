@@ -1,8 +1,8 @@
+use anyhow::{Ok, Result};
+use git2::{Repository, RepositoryInitOptions};
 use std::fs::File;
 use std::io::Write;
-
-use anyhow::{Ok, Result};
-use tempfile::Builder;
+use tempfile::{Builder, TempDir};
 
 use crate::package::{Package, PackageFile, PackageMetadata};
 
@@ -47,4 +47,24 @@ pub fn create_test_package() -> Result<Package> {
         metadata: TEST_PACKAGE_METADATA.clone(),
         file,
     })
+}
+
+pub fn initialize_test_repository() -> (TempDir, Repository) {
+    let td = TempDir::new().unwrap();
+    let mut opts = RepositoryInitOptions::new();
+    opts.initial_head("master");
+    let repo = Repository::init_opts(td.path(), &opts).unwrap();
+    {
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "name").unwrap();
+        config.set_str("user.email", "email").unwrap();
+        let mut index = repo.index().unwrap();
+        let id = index.write_tree().unwrap();
+
+        let tree = repo.find_tree(id).unwrap();
+        let sig = repo.signature().unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
+            .unwrap();
+    }
+    (td, repo)
 }

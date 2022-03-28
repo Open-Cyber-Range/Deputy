@@ -123,7 +123,7 @@ mod tests {
 
         create(&dir_str)?;
 
-        let temp_extract_dir = extract_archive(Path::new(&archive_path)); // use this to test 
+        let temp_extract_dir = extract_archive(Path::new(&archive_path));
         let temp_extract_dir = temp_extract_dir.path().join("/target").exists();
 
         assert!(target_dir);

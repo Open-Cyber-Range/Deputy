@@ -1,18 +1,40 @@
-mod routes;
+use actix_web::{
+    web::{scope, Data},
+    App, HttpServer,
+};
+use anyhow::{Ok, Result};
+use deputy_package_server::{
+    configuration::read_configuration,
+    routes::{
+        basic::{status, version},
+        package::add_package,
+    },
+    AppState,
+};
 
-use crate::routes::basic::{status, version};
-use actix_web::{web::scope, App, HttpServer};
-use routes::package::add_package;
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn real_main() -> Result<()> {
     env_logger::init();
-    HttpServer::new(|| {
+    let configuration = read_configuration(std::env::args().collect())?;
+    let port = configuration.port;
+    let hostname = configuration.host.clone();
+
+    HttpServer::new(move || {
         App::new()
+            .app_data(Data::new(AppState {
+                configuration: configuration.clone(),
+            }))
             .service(scope("/").service(status).service(version))
             .service(scope("/api/v1/").service(add_package))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((hostname, port))?
     .run()
-    .await
+    .await?;
+    Ok(())
+}
+
+#[actix_web::main]
+async fn main() {
+    if let Err(error) = real_main().await {
+        println!("Failed to start the app due to: {:}", error);
+    };
 }

@@ -41,7 +41,9 @@ pub fn create(src_dir: &str) -> Result<()> {
     walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
 
     zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), src_dir, file)?;
-    println!("Created archive: {:?}", destination_file_str);
+
+    let archive_size = std::fs::metadata(destination_file)?.len();
+    println!("Created archive: {:?} ({} bytes)", destination_file_str, archive_size);
     Ok(())
 }
 
@@ -64,7 +66,6 @@ where
         let name = path.strip_prefix(Path::new(prefix)).unwrap();
 
         if path.is_file() {
-            println!("adding file {:?} as {:?} ...", path, name);
             zip.start_file(name.to_string_lossy(), options)?;
             let mut f = File::open(path)?;
 
@@ -72,7 +73,6 @@ where
             zip.write_all(&*buffer)?;
             buffer.clear();
         } else if !name.as_os_str().is_empty() {
-            println!("adding dir {:?} as {:?} ...", path, name);
             zip.add_directory(name.to_string_lossy(), options)?;
         }
     }
@@ -184,7 +184,6 @@ sub_type = "packer"
     }
 
     fn extract_archive(zip_path: &Path) -> TempDir {
-        println!("{:?}",&zip_path);
         let file = fs::File::open(&zip_path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
 
@@ -203,23 +202,10 @@ sub_type = "packer"
             let filename = file.enclosed_name().unwrap();
             let mut outpath = PathBuf::from(extraction_dir_str);
             outpath.push(filename);
-            {
-                let comment = file.comment();
-                if !comment.is_empty() {
-                    println!("File {} comment: {}", i, comment);
-                }
-            }
 
             if (*file.name()).ends_with('/') {
-                println!("File {} extracted to \"{}\"", i, outpath.display());
                 fs::create_dir_all(&outpath).unwrap();
             } else {
-                println!(
-                    "File {} extracted to \"{}\" ({} bytes)",
-                    i,
-                    outpath.display(),
-                    file.size()
-                );
                 if let Some(p) = outpath.parent() {
                     if !p.exists() {
                         fs::create_dir_all(&p).unwrap();

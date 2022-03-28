@@ -10,4 +10,5 @@ Configuration {
         username: "some-username",
         email: "some@email.com",
     },
+    package_folder: "/tmp/packages",
 }

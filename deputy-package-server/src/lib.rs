@@ -1,8 +1,11 @@
-use configuration::Configuration;
+use git2::Repository;
 
 pub mod configuration;
 pub mod routes;
+#[cfg(feature = "test")]
+pub mod test;
 
 pub struct AppState {
-    pub configuration: Configuration,
+    pub repository: Repository,
+    pub package_folder: String,
 }

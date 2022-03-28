@@ -10,7 +10,9 @@ actix-web = "4"
 anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"
+git2 = "0.14"
 log = "0.4"
+rand = "0.8"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"

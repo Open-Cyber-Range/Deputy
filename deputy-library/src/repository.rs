@@ -119,19 +119,16 @@ pub fn update_index_repository(
     Ok(())
 }
 
-fn initialize_repository(repository_configuration: RepositoryConfiguration) -> Result<Repository> {
+fn initialize_repository(repository_configuration: &RepositoryConfiguration) -> Result<Repository> {
     let mut opts = RepositoryInitOptions::new();
-    let repository_path = repository_configuration.folder;
-    let username = repository_configuration.username;
-    let email = repository_configuration.email;
 
     opts.initial_head("master");
-    let path = Path::new(&repository_path);
+    let path = Path::new(&repository_configuration.folder);
     let repository = Repository::init_opts(path, &opts)?;
     {
         let mut config = repository.config()?;
-        config.set_str("user.name", &username)?;
-        config.set_str("user.email", &email)?;
+        config.set_str("user.name", &repository_configuration.username)?;
+        config.set_str("user.email", &repository_configuration.email)?;
         let mut index = repository.index()?;
         let id = index.write_tree()?;
 
@@ -143,7 +140,7 @@ fn initialize_repository(repository_configuration: RepositoryConfiguration) -> R
 }
 
 pub fn get_or_create_repository(
-    repository_configuration: RepositoryConfiguration,
+    repository_configuration: &RepositoryConfiguration,
 ) -> Result<Repository> {
     if let Result::Ok(repository) = Repository::open(repository_configuration.clone().folder) {
         return Ok(repository);
@@ -270,7 +267,7 @@ mod tests {
             email: String::from("some-email"),
         };
 
-        let repository = get_or_create_repository(repository_configuration)?;
+        let repository = get_or_create_repository(&repository_configuration)?;
         let configuration = repository.config().unwrap();
         let name = configuration.get_entry("user.name").unwrap();
         let email = configuration.get_entry("user.email").unwrap();
@@ -291,7 +288,7 @@ mod tests {
             email: String::from("some-email"),
         };
 
-        let repository = get_or_create_repository(repository_configuration)?;
+        let repository = get_or_create_repository(&repository_configuration)?;
         let configuration = repository.config().unwrap();
         let name = configuration.get_entry("user.name").unwrap();
         let email = configuration.get_entry("user.email").unwrap();
@@ -315,7 +312,7 @@ mod tests {
             username: String::from("some-username"),
             email: String::from("some-email"),
         };
-        let repository = initialize_repository(repository_configuration)?;
+        let repository = initialize_repository(&repository_configuration)?;
 
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;

@@ -68,3 +68,8 @@ pub fn initialize_test_repository() -> (TempDir, Repository) {
     }
     (td, repo)
 }
+
+pub fn get_last_commit_message(repo: &Repository) -> String {
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    head.message().unwrap().to_string()
+}

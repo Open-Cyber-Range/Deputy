@@ -1,0 +1,23 @@
+---
+source: deputy-library/src/package.rs
+expression: file_content
+---
+[
+    13,
+    0,
+    0,
+    0,
+    83,
+    111,
+    109,
+    101,
+    32,
+    99,
+    111,
+    110,
+    116,
+    101,
+    110,
+    116,
+    10,
+]

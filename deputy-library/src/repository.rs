@@ -39,7 +39,7 @@ fn generate_package_path(package_name: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
-fn create_a_or_find_package_file(
+fn create_or_find_package_file(
     repository: &Repository,
     package_name: &str,
 ) -> Result<(File, PathBuf)> {
@@ -65,14 +65,14 @@ fn create_a_or_find_package_file(
     ))
 }
 
-fn write_metadata_to_a_file(mut file: &File, package_metadata: &PackageMetadata) -> Result<()> {
+fn write_metadata_to_file(mut file: &File, package_metadata: &PackageMetadata) -> Result<()> {
     let mut metadata_string = serde_json::to_string(package_metadata)?;
     metadata_string.push_str(LINE_ENDING);
     file.write_all(metadata_string.as_bytes())?;
     Ok(())
 }
 
-fn create_a_package_commit(
+fn create_package_commit(
     repository: &Repository,
     file_path: &Path,
     package_metadata: &PackageMetadata,
@@ -111,11 +111,11 @@ pub fn update_index_repository(
     repository: &Repository,
     package_metadata: &PackageMetadata,
 ) -> Result<()> {
-    let (file, file_path) = create_a_or_find_package_file(repository, &package_metadata.name)?;
+    let (file, file_path) = create_or_find_package_file(repository, &package_metadata.name)?;
 
-    write_metadata_to_a_file(&file, package_metadata)
+    write_metadata_to_file(&file, package_metadata)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
-    create_a_package_commit(repository, &file_path, package_metadata)?;
+    create_package_commit(repository, &file_path, package_metadata)?;
     Ok(())
 }
 
@@ -158,15 +158,13 @@ mod tests {
 
     use crate::{
         repository::{
-            create_a_or_find_package_file, get_or_create_repository, initialize_repository,
+            create_or_find_package_file, get_or_create_repository, initialize_repository,
             update_index_repository, RepositoryConfiguration,
         },
         test::{initialize_test_repository, TEST_PACKAGE_METADATA},
     };
 
-    use super::{
-        create_a_package_commit, generate_package_path, write_metadata_to_a_file, HEAD_REF,
-    };
+    use super::{create_package_commit, generate_package_path, write_metadata_to_file, HEAD_REF};
     use anyhow::Result;
     use tempfile::TempDir;
 
@@ -210,8 +208,7 @@ mod tests {
     fn correct_file_is_created() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
         let expected_file_path: PathBuf = ["my", "-t", "my-test"].iter().collect();
-        let (file, relative_repository_path) =
-            create_a_or_find_package_file(&repository, "my-test")?;
+        let (file, relative_repository_path) = create_or_find_package_file(&repository, "my-test")?;
 
         assert!(root_directory.path().is_dir());
         assert!(file.metadata().unwrap().is_file());
@@ -226,7 +223,7 @@ mod tests {
         file_path.push("test-file");
 
         let file = File::create(&file_path)?;
-        write_metadata_to_a_file(&file, &TEST_PACKAGE_METADATA)?;
+        write_metadata_to_file(&file, &TEST_PACKAGE_METADATA)?;
         let read_file = File::open(file_path)?;
         let line = std::io::BufReader::new(read_file).lines().next().unwrap()?;
 
@@ -307,7 +304,7 @@ mod tests {
         let root = repository.path().parent().unwrap();
         File::create(&root.join("test"))?;
 
-        create_a_package_commit(&repository, Path::new("test"), &TEST_PACKAGE_METADATA)?;
+        create_package_commit(&repository, Path::new("test"), &TEST_PACKAGE_METADATA)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 

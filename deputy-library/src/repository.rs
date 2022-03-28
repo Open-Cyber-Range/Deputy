@@ -1,6 +1,7 @@
 use crate::package::PackageMetadata;
 use anyhow::{Error, Ok, Result};
-use git2::{build::CheckoutBuilder, Repository};
+use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
     io::Write,
@@ -12,6 +13,13 @@ static HEAD_REF: &str = "HEAD";
 static LINE_ENDING: &str = "\r\n";
 #[cfg(not(windows))]
 static LINE_ENDING: &str = "\n";
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepositoryConfiguration {
+    pub folder: String,
+    pub username: String,
+    pub email: String,
+}
 
 fn generate_package_path(package_name: &str) -> Result<PathBuf> {
     let mut path = PathBuf::new();
@@ -111,6 +119,38 @@ pub fn update_index_repository(
     Ok(())
 }
 
+fn initialize_repository(repository_configuration: RepositoryConfiguration) -> Result<Repository> {
+    let mut opts = RepositoryInitOptions::new();
+    let repository_path = repository_configuration.folder;
+    let username = repository_configuration.username;
+    let email = repository_configuration.email;
+
+    opts.initial_head("master");
+    let path = Path::new(&repository_path);
+    let repository = Repository::init_opts(path, &opts)?;
+    {
+        let mut config = repository.config()?;
+        config.set_str("user.name", &username)?;
+        config.set_str("user.email", &email)?;
+        let mut index = repository.index()?;
+        let id = index.write_tree()?;
+
+        let tree = repository.find_tree(id)?;
+        let sig = repository.signature()?;
+        repository.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])?;
+    }
+    Ok(repository)
+}
+
+pub fn get_or_create_repository(
+    repository_configuration: RepositoryConfiguration,
+) -> Result<Repository> {
+    if let Result::Ok(repository) = Repository::open(repository_configuration.clone().folder) {
+        return Ok(repository);
+    }
+    initialize_repository(repository_configuration)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -120,7 +160,10 @@ mod tests {
     };
 
     use crate::{
-        repository::{create_a_or_find_package_file, update_index_repository},
+        repository::{
+            create_a_or_find_package_file, get_or_create_repository, initialize_repository,
+            update_index_repository, RepositoryConfiguration,
+        },
         test::TEST_PACKAGE_METADATA,
     };
 
@@ -214,6 +257,71 @@ mod tests {
         let expected_string = "{\"name\":\"some-package-name\",\"version\":\"0.1.0\",\"checksum\":\"d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c\"}";
         assert_eq!(expected_string, line);
         temporary_dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn repository_is_created_when_none_exists() -> Result<()> {
+        let temporary_directory = TempDir::new()?;
+        let path = temporary_directory.path().to_str().unwrap().to_owned();
+        let repository_configuration = RepositoryConfiguration {
+            folder: path,
+            username: String::from("some-username"),
+            email: String::from("some-email"),
+        };
+
+        let repository = get_or_create_repository(repository_configuration)?;
+        let configuration = repository.config().unwrap();
+        let name = configuration.get_entry("user.name").unwrap();
+        let email = configuration.get_entry("user.email").unwrap();
+
+        assert_eq!(name.value().unwrap(), "some-username");
+        assert_eq!(email.value().unwrap(), "some-email");
+        temporary_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn repository_is_returned_when_one_exists() -> Result<()> {
+        let (root_directory, test_repository) = initialize_test_repository();
+        let path = root_directory.path().to_str().unwrap().to_owned();
+        let repository_configuration = RepositoryConfiguration {
+            folder: path,
+            username: String::from("some-username"),
+            email: String::from("some-email"),
+        };
+
+        let repository = get_or_create_repository(repository_configuration)?;
+        let configuration = repository.config().unwrap();
+        let name = configuration.get_entry("user.name").unwrap();
+        let email = configuration.get_entry("user.email").unwrap();
+
+        let test_configuration = test_repository.config().unwrap();
+        let test_name = test_configuration.get_entry("user.name").unwrap();
+        let test_email = test_configuration.get_entry("user.email").unwrap();
+
+        assert_eq!(name.value().unwrap(), test_name.value().unwrap());
+        assert_eq!(email.value().unwrap(), test_email.value().unwrap());
+        root_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn repository_is_initialized() -> Result<()> {
+        let temporary_directory = TempDir::new()?;
+        let path = temporary_directory.path().to_str().unwrap().to_owned();
+        let repository_configuration = RepositoryConfiguration {
+            folder: path,
+            username: String::from("some-username"),
+            email: String::from("some-email"),
+        };
+        let repository = initialize_repository(repository_configuration)?;
+
+        let head_id = repository.refname_to_id(HEAD_REF)?;
+        let parent = repository.find_commit(head_id)?;
+
+        assert_eq!("initial", parent.message().unwrap());
+        temporary_directory.close()?;
         Ok(())
     }
 

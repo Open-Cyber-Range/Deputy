@@ -1,0 +1,9 @@
+---
+source: deputy-library/src/package.rs
+expression: "PackageMetadata::get_latest_metadata(&test_package.metadata.name,\n        &repository)?"
+---
+PackageMetadata {
+    name: "some-package-name",
+    version: "4.0.0",
+    checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c",
+}

@@ -7,7 +7,7 @@ use std::iter::Iterator;
 use std::path::{Path, PathBuf};
 use zip::{result::ZipError, write::FileOptions, CompressionMethod};
 
-pub fn create(src_dir: &str) -> Result<()> {
+pub fn create_vm_package(src_dir: &str) -> Result<()> {
     let toml_path = src_dir.to_string() + "/package.toml";
 
     if !Path::new(src_dir).is_dir() {
@@ -104,7 +104,7 @@ mod tests {
         let package_name = dir_str.split('/').last().unwrap().to_owned() + ".package";
         let archive_path = "../target/package/".to_string() + &package_name;
         
-        create(dir_str)?;
+        create_vm_package(dir_str)?;
 
         assert!(Path::new(&archive_path).is_file());
 
@@ -121,7 +121,7 @@ mod tests {
         let package_name = dir_str.split('/').last().unwrap().to_owned() + ".package";
         let archive_path = "../target/package/".to_string() + &package_name;
 
-        create(&dir_str)?;
+        create_vm_package(&dir_str)?;
 
         let temp_extract_dir = extract_archive(Path::new(&archive_path));
         let temp_extract_dir = temp_extract_dir.path().join("/target").exists();

@@ -72,7 +72,7 @@ fn validate_type(content: Content) -> Result<()> {
     Ok(())
 }
 
-pub fn package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
+pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -136,7 +136,7 @@ type = "vm"
 sub_type = "packer"
 "#;
         let (file, _deserialized_toml) = create_temp_file(toml_content)?;
-        assert!(package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(&file.path()).is_ok());
         file.close()?;
         Ok(())
     }

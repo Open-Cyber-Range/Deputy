@@ -26,8 +26,9 @@ pub async fn add_package(package_bytes: Bytes, app_state: Data<AppState>) -> Htt
                         }
                     },
                     Ok(false) => {
-                        error!("The package is not the latest version");
-                        HttpResponse::BadRequest().body("The package is not the latest version")
+                        error!("Package version on the server is either same or later");
+                        HttpResponse::BadRequest()
+                            .body("Package version on the server is either same or later")
                     }
                     Err(error) => {
                         error!("Failed to validate versioning: {:}", error);
@@ -43,7 +44,7 @@ pub async fn add_package(package_bytes: Bytes, app_state: Data<AppState>) -> Htt
         }
         Err(error) => {
             error!("Failed to parse package body: {:?}", error);
-            HttpResponse::UnprocessableEntity().body("Failed to parse bytes")
+            HttpResponse::UnprocessableEntity().body("Failed to parse package bytes")
         }
     }
 }

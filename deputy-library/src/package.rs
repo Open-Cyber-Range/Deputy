@@ -1,6 +1,7 @@
-use crate::repository::update_index_repository;
-use anyhow::{Ok, Result};
+use crate::repository::{find_metadata_by_package_name, update_index_repository};
+use anyhow::{anyhow, Ok, Result};
 use git2::Repository;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -14,6 +15,22 @@ pub struct PackageMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
+}
+
+impl PackageMetadata {
+    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<PackageMetadata> {
+        let metadata_list = find_metadata_by_package_name(repository, name)?;
+        let latest_metadata = metadata_list
+            .iter()
+            .max_by(|a, b| a.version.cmp(&b.version))
+            .ok_or_else(|| anyhow!("No metadata found"))?;
+        Ok(latest_metadata.clone())
+    }
+
+    pub fn is_latest_version(&self, repository: &Repository) -> Result<bool> {
+        let current_latest_version = PackageMetadata::get_latest_metadata(&self.name, repository)?;
+        Ok(self.version.parse::<Version>()? > current_latest_version.version.parse::<Version>()?)
+    }
 }
 
 #[derive(Debug)]
@@ -156,14 +173,11 @@ impl TryFrom<&[u8]> for Package {
 mod tests {
     use std::{fs::File, io::Read, path::PathBuf};
 
-    use super::Package;
-    use crate::{
-        package::{PackageFile, PackageMetadata},
-        test::{
-            create_readable_temporary_file, create_test_package, get_last_commit_message,
-            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
-            TEST_PACKAGE_METADATA,
-        },
+    use super::{Package, PackageFile, PackageMetadata};
+    use crate::test::{
+        create_readable_temporary_file, create_test_package, get_last_commit_message,
+        initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
+        TEST_PACKAGE_METADATA,
     };
     use anyhow::{Ok, Result};
     use tempfile::tempdir;
@@ -205,6 +219,61 @@ mod tests {
             get_last_commit_message(&repository),
             "Adding package: some-package-name, version: 0.1.0"
         );
+        target_directory.close()?;
+        repository_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn latest_package_metadata_is_found() -> Result<()> {
+        let mut test_package = create_test_package()?;
+        let target_directory = tempdir()?;
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let (repository_directory, repository) = initialize_test_repository();
+        test_package.save(package_folder.clone(), &repository)?;
+
+        let mut new_test_package = create_test_package()?;
+        new_test_package.metadata.version = String::from("4.0.0");
+        new_test_package.save(package_folder, &repository)?;
+
+        insta::assert_debug_snapshot!(PackageMetadata::get_latest_metadata(
+            &test_package.metadata.name,
+            &repository
+        )?);
+        target_directory.close()?;
+        repository_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn is_the_latest_package_version() -> Result<()> {
+        let mut test_package = create_test_package()?;
+        let target_directory = tempdir()?;
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let (repository_directory, repository) = initialize_test_repository();
+        test_package.save(package_folder, &repository)?;
+
+        let mut new_test_package = create_test_package()?;
+        new_test_package.metadata.version = String::from("4.0.0");
+
+        assert!(new_test_package.metadata.is_latest_version(&repository)?);
+        target_directory.close()?;
+        repository_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn is_not_the_latest_package_version() -> Result<()> {
+        let mut test_package = create_test_package()?;
+        let target_directory = tempdir()?;
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let (repository_directory, repository) = initialize_test_repository();
+        test_package.save(package_folder, &repository)?;
+
+        let mut new_test_package = create_test_package()?;
+        new_test_package.metadata.version = String::from("0.0.1");
+
+        assert!(!new_test_package.metadata.is_latest_version(&repository)?);
         target_directory.close()?;
         repository_directory.close()?;
         Ok(())

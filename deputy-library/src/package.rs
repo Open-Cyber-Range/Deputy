@@ -158,18 +158,30 @@ impl TryFrom<&[u8]> for Package {
 
     fn try_from(package_bytes: &[u8]) -> Result<Self> {
         let mut metadata_length_bytes: [u8; 4] = Default::default();
-        metadata_length_bytes.copy_from_slice(&package_bytes[0..4]);
+        metadata_length_bytes.copy_from_slice(
+            package_bytes
+                .get(0..4)
+                .ok_or_else(|| anyhow::anyhow!("Could not find metadata length"))?,
+        );
         let metadata_length = u32::from_le_bytes(metadata_length_bytes);
         let metadata_end = (4 + metadata_length) as usize;
-        let metadata_bytes = &package_bytes[4..metadata_end];
+        let metadata_bytes = package_bytes
+            .get(4..metadata_end)
+            .ok_or_else(|| anyhow::anyhow!("Could not din metadata"))?;
         let metadata = PackageMetadata::try_from(metadata_bytes)?;
 
         let mut file_length_bytes: [u8; 4] = Default::default();
-        file_length_bytes.copy_from_slice(&package_bytes[metadata_end..metadata_end + 4]);
+        file_length_bytes.copy_from_slice(
+            package_bytes
+                .get(metadata_end..metadata_end + 4)
+                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
+        );
         let file_length = u32::from_le_bytes(file_length_bytes);
         let file_start = metadata_end + 4;
         let file_end = file_start + (file_length) as usize;
-        let file_bytes = &package_bytes[file_start..file_end];
+        let file_bytes = package_bytes
+            .get(file_start..file_end)
+            .ok_or_else(|| anyhow::anyhow!("Could not find file"))?;
         let file = PackageFile::try_from(file_bytes)?;
 
         Ok(Package { metadata, file })

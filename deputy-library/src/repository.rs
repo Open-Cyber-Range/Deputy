@@ -4,7 +4,7 @@ use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -107,6 +107,36 @@ fn reset_repository_to_last_good_state(repository: &Repository) -> Result<()> {
     Ok(())
 }
 
+fn find_package_file_by_name(repository: &Repository, name: &str) -> Result<Option<File>> {
+    let mut full_path = repository
+        .path()
+        .parent()
+        .ok_or_else(|| Error::msg("Repository root not found"))?
+        .to_owned();
+    let relative_repository_path = generate_package_path(name)?;
+    full_path.push(relative_repository_path);
+
+    let file = OpenOptions::new().read(true).open(full_path.clone()).ok();
+    Ok(file)
+}
+
+pub fn find_metadata_by_package_name(
+    repository: &Repository,
+    name: &str,
+) -> Result<Vec<PackageMetadata>> {
+    let mut metadata_list = Vec::new();
+    if let Some(mut file) = find_package_file_by_name(repository, name)? {
+        let mut file_content = String::new();
+        file.read_to_string(&mut file_content).ok();
+        for line in file_content.lines() {
+            if let Result::Ok(package_metadata) = serde_json::from_str::<PackageMetadata>(line) {
+                metadata_list.push(package_metadata);
+            }
+        }
+    }
+    Ok(metadata_list)
+}
+
 pub fn update_index_repository(
     repository: &Repository,
     package_metadata: &PackageMetadata,
@@ -152,8 +182,9 @@ pub fn get_or_create_repository(
 mod tests {
     use crate::{
         repository::{
-            create_or_find_package_file, get_or_create_repository, initialize_repository,
-            update_index_repository, RepositoryConfiguration,
+            create_or_find_package_file, find_metadata_by_package_name, find_package_file_by_name,
+            get_or_create_repository, initialize_repository, update_index_repository,
+            RepositoryConfiguration,
         },
         test::{initialize_test_repository, TEST_PACKAGE_METADATA},
     };
@@ -294,6 +325,39 @@ mod tests {
 
         assert_eq!("initial", parent.message().unwrap());
         temporary_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn non_existing_package_file_is_not_found() -> Result<()> {
+        let (root_directory, repository) = initialize_test_repository();
+        let file_option = find_package_file_by_name(&repository, "my-test")?;
+
+        assert!(file_option.is_none());
+        root_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn existing_package_file_is_found() -> Result<()> {
+        let (root_directory, repository) = initialize_test_repository();
+        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
+        let file_option = find_package_file_by_name(&repository, &TEST_PACKAGE_METADATA.name)?;
+
+        assert!(file_option.is_some());
+        root_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn package_metadata_is_found() -> Result<()> {
+        let (root_directory, repository) = initialize_test_repository();
+        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
+        let metadata_list =
+            find_metadata_by_package_name(&repository, &TEST_PACKAGE_METADATA.name)?;
+
+        insta::assert_debug_snapshot!(metadata_list);
+        root_directory.close()?;
         Ok(())
     }
 

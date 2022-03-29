@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::constants;
+use crate::{constants, package::PackageMetadata};
 use anyhow::{anyhow, Result};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -39,6 +39,33 @@ enum ContentType {
 pub enum SubType {
     #[serde(alias = "packer")]
     Packer,
+}
+
+pub trait Validate {
+    fn validate(&self) -> Result<()>;
+}
+
+impl Validate for PackageMetadata {
+    fn validate(&self) -> Result<()> {
+        if self.name.is_empty() {
+            return Err(anyhow!("Package name is empty"));
+        }
+        if self.version.is_empty() {
+            return Err(anyhow!("Package version is empty"));
+        }
+        if self.version.parse::<Version>().is_err() {
+            return Err(anyhow!("Package version is not valid"));
+        }
+        if self.checksum.is_empty() {
+            return Err(anyhow!("Package checksum is empty"));
+        }
+        if !(self.checksum.len() == constants::SHA256_LENGTH as usize
+            && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
+        {
+            return Err(anyhow!("Package checksum is not valid"));
+        }
+        Ok(())
+    }
 }
 
 fn validate_name(name: String) -> Result<()> {

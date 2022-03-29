@@ -150,18 +150,17 @@ pub fn get_or_create_repository(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::File,
-        io::BufRead,
-        path::{Path, PathBuf},
-    };
-
     use crate::{
         repository::{
             create_or_find_package_file, get_or_create_repository, initialize_repository,
             update_index_repository, RepositoryConfiguration,
         },
         test::{initialize_test_repository, TEST_PACKAGE_METADATA},
+    };
+    use std::{
+        fs::File,
+        io::BufRead,
+        path::{Path, PathBuf},
     };
 
     use super::{create_package_commit, generate_package_path, write_metadata_to_file, HEAD_REF};

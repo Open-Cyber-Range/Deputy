@@ -1,0 +1,7 @@
+host: localhost
+port: 8080
+repository:
+  folder: /tmp/test-repo
+  username: some-username
+  email: some@email.com
+package_folder: /tmp/packages

@@ -135,15 +135,16 @@ mod tests {
 
     fn create_temp_project() -> Result<Project> {
         let toml_content = 
-        br#"[package]
-name = "test_package_1-0-4"
-description = "This package does nothing at all, and we spent 300 manhours on it..."
-version = "1.0.4"
-authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
-[content]
-type = "vm"
-sub_type = "packer"
-"#;
+            br#"
+                [package]
+                name = "test_package_1-0-4"
+                description = "This package does nothing at all, and we spent 300 manhours on it..."
+                version = "1.0.4"
+                authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
+                [content]
+                type = "vm"
+                sub_type = "packer"
+            "#;
 
         let dir = TempDir::new()?;
         let target_dir = Builder::new()
@@ -187,12 +188,11 @@ sub_type = "packer"
         let file = fs::File::open(&zip_path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
 
-       let extraction_dir = 
-            Builder::new()
-                .prefix("extracts")
-                .rand_bytes(0)
-                .tempdir()
-                .unwrap();
+        let extraction_dir = Builder::new()
+            .prefix("extracts")
+            .rand_bytes(0)
+            .tempdir()
+            .unwrap();
 
         let extraction_dir_path = &extraction_dir.path();
         let extraction_dir_str = extraction_dir_path.as_os_str();

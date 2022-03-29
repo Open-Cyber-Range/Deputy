@@ -17,8 +17,7 @@ mod tests {
     #[actix_web::test]
     async fn test_adding_package() -> Result<()> {
         let random_string = generate_random_string(8)?;
-        let (package_folder, repository_folder) =
-            create_predictable_temporary_folders(random_string.clone())?;
+        let (package_folder, _) = create_predictable_temporary_folders(random_string.clone())?;
         let app_state = create_test_app_state(random_string)?;
         let app = test::init_service(App::new().app_data(app_state).service(add_package)).await;
 
@@ -31,12 +30,8 @@ mod tests {
             .set_payload(payload)
             .to_request();
         let response = test::call_service(&app, request).await;
+
         assert!(response.status().is_success());
-        println!(
-            "{:?}",
-            PathBuf::from(package_folder.clone()).join(package_name.clone())
-        );
-        println!("{:?}", repository_folder);
         assert!(PathBuf::from(package_folder).join(package_name).exists());
         Ok(())
     }

@@ -1,5 +1,5 @@
 use crate::repository::{find_metadata_by_package_name, update_index_repository};
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result};
 use git2::Repository;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -18,18 +18,25 @@ pub struct PackageMetadata {
 }
 
 impl PackageMetadata {
-    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<PackageMetadata> {
+    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<Option<PackageMetadata>> {
         let metadata_list = find_metadata_by_package_name(repository, name)?;
+
         let latest_metadata = metadata_list
             .iter()
             .max_by(|a, b| a.version.cmp(&b.version))
-            .ok_or_else(|| anyhow!("No metadata found"))?;
-        Ok(latest_metadata.clone())
+            .cloned();
+
+        Ok(latest_metadata)
     }
 
     pub fn is_latest_version(&self, repository: &Repository) -> Result<bool> {
-        let current_latest_version = PackageMetadata::get_latest_metadata(&self.name, repository)?;
-        Ok(self.version.parse::<Version>()? > current_latest_version.version.parse::<Version>()?)
+        if let Some(current_latest_version) =
+            PackageMetadata::get_latest_metadata(&self.name, repository)?
+        {
+            return Ok(self.version.parse::<Version>()?
+                > current_latest_version.version.parse::<Version>()?);
+        }
+        Ok(true)
     }
 }
 
@@ -240,6 +247,18 @@ mod tests {
             &test_package.metadata.name,
             &repository
         )?);
+        target_directory.close()?;
+        repository_directory.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn is_the_latest_package_version_if_is_the_first() -> Result<()> {
+        let test_package = create_test_package()?;
+        let target_directory = tempdir()?;
+        let (repository_directory, repository) = initialize_test_repository();
+
+        assert!(test_package.metadata.is_latest_version(&repository)?);
         target_directory.close()?;
         repository_directory.close()?;
         Ok(())

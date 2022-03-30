@@ -18,7 +18,7 @@ pub fn create_package(root_directory: &str) -> Result<()> {
         return Err(anyhow!("Missing package.toml file"));
     }
 
-    validation::package_toml(toml_path)?;
+    validation::validate_package_toml(toml_path)?;
 
     let destination_file_path = create_destination_file_path(root_directory)?;
     let zip_file = File::create(&destination_file_path)?;

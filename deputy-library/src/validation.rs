@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::constants;
+use crate::{constants, package::PackageMetadata};
 use anyhow::{anyhow, Result};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,33 @@ pub enum SubType {
     Packer,
 }
 
+pub trait Validate {
+    fn validate(&self) -> Result<()>;
+}
+
+impl Validate for PackageMetadata {
+    fn validate(&self) -> Result<()> {
+        if self.name.is_empty() {
+            return Err(anyhow!("Package name is empty"));
+        }
+        if self.version.is_empty() {
+            return Err(anyhow!("Package version is empty"));
+        }
+        if self.version.parse::<Version>().is_err() {
+            return Err(anyhow!("Package version is not valid"));
+        }
+        if self.checksum.is_empty() {
+            return Err(anyhow!("Package checksum is empty"));
+        }
+        if !(self.checksum.len() == constants::SHA256_LENGTH as usize
+            && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
+        {
+            return Err(anyhow!("Package checksum is not valid"));
+        }
+        Ok(())
+    }
+}
+
 fn validate_name(name: String) -> Result<()> {
     if !constants::VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
@@ -72,7 +99,7 @@ fn validate_type(content: Content) -> Result<()> {
     Ok(())
 }
 
-pub fn package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
+pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -136,7 +163,7 @@ type = "vm"
 sub_type = "packer"
 "#;
         let (file, _deserialized_toml) = create_temp_file(toml_content)?;
-        assert!(package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(&file.path()).is_ok());
         file.close()?;
         Ok(())
     }

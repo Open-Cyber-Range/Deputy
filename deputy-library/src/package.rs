@@ -206,7 +206,7 @@ mod tests {
         let target_directory = tempdir()?;
         let package_folder = target_directory.path().to_str().unwrap().to_string();
         let bytes = TEST_FILE_BYTES.clone();
-        println!("{:?}", bytes);
+
         let mut package_file = PackageFile::try_from(&bytes as &[u8])?;
 
         let test_name = String::from("test-name");

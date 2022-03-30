@@ -20,30 +20,34 @@ pub fn create_package(root_directory: &str) -> Result<()> {
 
     validation::package_toml(toml_path)?;
 
+    let destination_file_path = create_destination_file_path(root_directory)?;
+    let zip_file = File::create(&destination_file_path)?;
+
+    let mut walkdir = WalkBuilder::new(&root_directory);
+
+    walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
+
+    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, zip_file)?;
+
+    Ok(())
+}
+
+fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
     let package_full_path = std::fs::canonicalize(PathBuf::from(root_directory))?;
     let parent_directory_name = package_full_path
         .file_name()
         .ok_or_else(|| anyhow!("Invalid or root directory"))?
         .to_str()
         .ok_or_else(||anyhow!("UTF-8 conversion error"))?;
-    
     let mut package_name = PathBuf::from(parent_directory_name);
     package_name.set_extension("package");
-
-    let destination_dir: PathBuf = ["..","target","package"].iter().collect();
-    let destination_file: PathBuf = [&destination_dir, &package_name].iter().collect();
-
-    if !&destination_dir.exists() {
-        std::fs::create_dir_all(destination_dir)?;
+    
+    let destination_directory: PathBuf = ["..","target","package"].iter().collect();
+    let destination_file: PathBuf = [&destination_directory, &package_name].iter().collect();
+        if !&destination_directory.exists() {
+            std::fs::create_dir_all(destination_directory)?;
     };
-    let file = File::create(&destination_file)?;
-    let mut walkdir = WalkBuilder::new(&root_directory);
-
-    walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
-
-    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, file)?;
-
-    Ok(())
+    Ok(destination_file)
 }
 
 fn zip_dir<T>(

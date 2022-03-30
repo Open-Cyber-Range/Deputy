@@ -89,6 +89,7 @@ mod tests {
     use anyhow::Result;
     use std::fs;
     use tempfile::{Builder, TempDir, NamedTempFile};
+    use zip_extensions::*;
 
     struct Project {
         root_dir: TempDir,
@@ -101,16 +102,15 @@ mod tests {
     #[test]
     fn archive_was_created() -> Result<()> {
         let temp_project = create_temp_project()?;
-        let dir = temp_project.root_dir;
-    
-        let dir_str = &dir.into_path().to_str().unwrap().to_owned();
-        let package_name = dir_str.split('/').last().unwrap().to_owned() + ".package";
-        let archive_path = "../target/package/".to_string() + &package_name;
-        
-        create_package(dir_str)?;
+
+        let archive_path = create_archive_path(&temp_project)?;
+        let root_directory_string = get_root_directory_string(&temp_project);
+
+        create_package(root_directory_string)?;
 
         assert!(Path::new(&archive_path).is_file());
 
+        temp_project.root_dir.close()?;
         fs::remove_file(archive_path)?;
         Ok(())
     }
@@ -118,22 +118,47 @@ mod tests {
     #[test]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
         let temp_project = create_temp_project()?;
+
+        let archive_path = create_archive_path(&temp_project)?;
+        let root_directory_string = get_root_directory_string(&temp_project);
+
+        create_package(root_directory_string)?;
+
+        let extraction_dir = Builder::new()
+            .prefix("extracts")
+            .rand_bytes(0)
+            .tempdir_in(&temp_project.target_dir)
+            .unwrap();
+
+        zip_extract(&archive_path, &extraction_dir.path().to_path_buf())?;
+
         let target_dir = temp_project.target_dir.path().is_dir();
-
-        let dir_str = temp_project.root_dir.into_path().to_str().unwrap().to_owned();
-        let package_name = dir_str.split('/').last().unwrap().to_owned() + ".package";
-        let archive_path = "../target/package/".to_string() + &package_name;
-
-        create_package(&dir_str)?;
-
-        let temp_extract_dir = extract_archive(Path::new(&archive_path));
-        let temp_extract_dir = temp_extract_dir.path().join("/target").exists();
+        let extracted_target_dir = extraction_dir.path().join("/target").exists();
 
         assert!(target_dir);
-        assert!(!temp_extract_dir);
+        assert!(!extracted_target_dir);
 
+        temp_project.root_dir.close()?;
         fs::remove_file(archive_path)?;
         Ok(())
+    }
+
+    fn get_root_directory_string(temp_project: &Project) -> &str {
+        let root_directory_string = temp_project.root_dir.path().to_str().unwrap();
+        root_directory_string
+    }
+
+    fn create_archive_path(temp_project: &Project) -> Result<PathBuf, anyhow::Error> {
+        let parent_directory_name = temp_project.root_dir.path()
+            .file_name()
+            .ok_or_else(|| anyhow!("Invalid or root directory"))?
+            .to_str()
+            .ok_or_else(||anyhow!("UTF-8 conversion error"))?;
+        let mut package_name = PathBuf::from(parent_directory_name);
+        package_name.set_extension("package");
+        let destination_directory: PathBuf = ["..","target","package"].iter().collect();
+        let archive_path: PathBuf = [destination_directory, package_name].iter().collect();
+        Ok(archive_path)
     }
 
     fn create_temp_project() -> Result<Project> {
@@ -148,26 +173,47 @@ mod tests {
                 type = "vm"
                 sub_type = "packer"
             "#;
-
+        
+        let target_file_ipsum = 
+            br#"
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean consectetur nisl at aliquet pharetra. Cras fringilla 
+            quis leo quis tempus. Aliquam efficitur orci sapien, in luctus elit tempor id. Sed eget dui odio. Suspendisse potenti. 
+            Vestibulum purus quam, fringilla vitae egestas eget, convallis et ex. In ut euismod libero, eget euismod leo. Curabitur 
+            semper dolor mi, quis scelerisque purus fermentum eu.
+            Mauris euismod felis diam, et dictum ante porttitor ac. Suspendisse lacus sapien, maximus et accumsan ultrices, porta 
+            vel leo. Pellentesque pulvinar enim elementum odio porta, vitae ultricies justo condimentum.
+            "#;
+        
+        let src_file_ipsum = 
+            br#"
+            Mauris elementum non quam laoreet tristique. Aenean sed nisl a quam venenatis porttitor. Nullam turpis velit, maximus 
+            vitae orci nec, tempus fermentum quam. Vestibulum tristique sollicitudin dignissim. Interdum et malesuada fames ac ante 
+            ipsum primis in faucibus. Phasellus at neque metus. Ut eleifend venenatis arcu. Vestibulum vitae elit ante. Sed fringilla 
+            placerat magna sollicitudin convallis. Maecenas semper est id tortor interdum, et tempus eros viverra. Fusce at quam nisl.
+            Vivamus elementum at arcu et semper. Donec molestie, lorem et condimentum congue, nisl nisl mattis lorem, rhoncus dapibus 
+            ex massa eget felis.
+            "#;
         let dir = TempDir::new()?;
         let target_dir = Builder::new()
             .prefix("target")
             .rand_bytes(0)
             .tempdir_in(&dir)?;
-        let target_file = Builder::new()
+        let mut target_file = Builder::new()
             .prefix("test_target_file")
             .suffix(".txt")
             .rand_bytes(0)
             .tempfile_in(&target_dir)?;
+        target_file.write_all(target_file_ipsum)?;
         let src_dir = Builder::new()
             .prefix("src")
             .rand_bytes(0)
             .tempdir_in(&dir)?;
-        let src_file = Builder::new()
+        let mut src_file = Builder::new()
             .prefix("test_file")
             .suffix(".txt")
             .rand_bytes(0)
             .tempfile_in(&src_dir)?;
+        src_file.write_all(src_file_ipsum)?;
         let mut toml_file = Builder::new()
             .prefix("package")
             .suffix(".toml")
@@ -185,39 +231,5 @@ mod tests {
         };
 
     Ok(temp_project)
-    }
-
-    fn extract_archive(zip_path: &Path) -> TempDir {
-        let file = fs::File::open(&zip_path).unwrap();
-        let mut archive = zip::ZipArchive::new(file).unwrap();
-
-        let extraction_dir = Builder::new()
-            .prefix("extracts")
-            .rand_bytes(0)
-            .tempdir()
-            .unwrap();
-
-        let extraction_dir_path = &extraction_dir.path();
-        let extraction_dir_str = extraction_dir_path.as_os_str();
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let filename = file.enclosed_name().unwrap();
-            let mut outpath = PathBuf::from(extraction_dir_str);
-            outpath.push(filename);
-
-            if (*file.name()).ends_with('/') {
-                fs::create_dir_all(&outpath).unwrap();
-            } else {
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        fs::create_dir_all(&p).unwrap();
-                    }
-                }
-                let mut outfile = fs::File::create(&outpath).unwrap();
-                std::io::copy(&mut file, &mut outfile).unwrap();
-            }
-        }
-    extraction_dir
     }
 }

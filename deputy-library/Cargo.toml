@@ -16,4 +16,5 @@ toml = "0.5"
 semver = "1"
 lazy_static = "1"
 zip = { version = "0.6", features = ["bzip2"] }
+zip-extensions = "0.6"
 ignore = "0.4"

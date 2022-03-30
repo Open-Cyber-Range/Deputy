@@ -6,4 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-deputy-library = { path = "../deputy-library" }
+actix-web = "4"
+anyhow = "1"
+deputy-library = { path = "../deputy-library", default-features = false }
+env_logger = "0.9"
+git2 = "0.14"
+log = "0.4"
+rand = "0.8"
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.8"
+tempfile = "3"
+insta = "1"
+
+[features]
+default = ["test"]
+test = ["deputy-library/test"]

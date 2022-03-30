@@ -9,10 +9,10 @@ use zip::{result::ZipError, write::FileOptions, CompressionMethod};
 
 /// Creates an archive of the given folder if it contains a valid package.toml file 
 /// and saves it in "../target/package/<folder_name>.package"
-pub fn create_package(src_dir: &str) -> Result<()> {
-    let toml_path = src_dir.to_string() + "/package.toml";
+pub fn create_package(root_directory: &str) -> Result<()> {
+    let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
 
-    if !Path::new(src_dir).is_dir() {
+    if !Path::new(root_directory).is_dir() {
         return Err(anyhow!(ZipError::FileNotFound));
     } else if !Path::new(&toml_path).is_file() {
         return Err(anyhow!("Missing package.toml file"));
@@ -20,32 +20,29 @@ pub fn create_package(src_dir: &str) -> Result<()> {
 
     validation::package_toml(toml_path)?;
 
-    let package_full_path = std::fs::canonicalize(PathBuf::from(src_dir))?;
-    let package_name = package_full_path
+    let package_full_path = std::fs::canonicalize(PathBuf::from(root_directory))?;
+    let parent_directory_name = package_full_path
+        .file_name()
+        .ok_or_else(|| anyhow!("Invalid or root directory"))?
         .to_str()
-        .unwrap()
-        .split('/')
-        .last()
-        .unwrap()
-        .to_owned()
-        + ".package";
+        .ok_or_else(||anyhow!("UTF-8 conversion error"))?;
+    
+    let mut package_name = PathBuf::from(parent_directory_name);
+    package_name.set_extension("package");
 
-    let destination_dir_str = "../target/package/".to_string();
-    let destination_file_str = destination_dir_str.clone() + package_name.as_str();
-    let destination_file = Path::new(&destination_file_str);
+    let destination_dir: PathBuf = ["..","target","package"].iter().collect();
+    let destination_file: PathBuf = [&destination_dir, &package_name].iter().collect();
 
-    if !Path::new(&destination_dir_str).exists() {
-        std::fs::create_dir_all("../target/package/")?;
+    if !&destination_dir.exists() {
+        std::fs::create_dir_all(destination_dir)?;
     };
     let file = File::create(&destination_file)?;
-    let mut walkdir = WalkBuilder::new(&src_dir);
+    let mut walkdir = WalkBuilder::new(&root_directory);
 
     walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
 
-    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), src_dir, file)?;
+    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, file)?;
 
-    let archive_size = std::fs::metadata(destination_file)?.len();
-    println!("Created archive: {:?} ({} bytes)", destination_file_str, archive_size);
     Ok(())
 }
 
@@ -215,15 +212,6 @@ mod tests {
                 }
                 let mut outfile = fs::File::create(&outpath).unwrap();
                 std::io::copy(&mut file, &mut outfile).unwrap();
-            }
-
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-
-                if let Some(mode) = file.unix_mode() {
-                    fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
-                }
             }
         }
     extraction_dir

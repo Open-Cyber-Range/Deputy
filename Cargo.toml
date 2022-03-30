@@ -1,7 +1,3 @@
 [workspace]
 
-members = [
-    "deputy",
-    "deputy-package-server",
-    "deputy-library"
-]
+members = ["deputy", "deputy-package-server", "deputy-library"]

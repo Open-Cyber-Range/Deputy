@@ -1,0 +1,63 @@
+stages:
+  - build
+
+lint-and-test:
+  stage: build
+  image: nexus.ex.c-lab.ee:8003/rust-builder
+  before_script:
+    - rustup component add clippy
+  script:
+    - cargo clippy -- -Dwarnings
+    - cargo build --verbose
+    - cargo test --verbose
+  cache:
+    key: deputy-cargo-target
+    paths:
+      - target
+  only:
+    - develop
+    - master
+    - merge_requests
+
+build-x86-64bit-windows-release:
+  stage: build
+  needs: ["lint-and-test"]
+  image: nexus.ex.c-lab.ee:8003/rust-builder
+  script:
+    - cargo build --release --target x86_64-pc-windows-gnu
+  cache:
+    key: deputy-cargo-target
+    paths:
+      - target
+  only:
+    - master
+
+build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
+  stage: build
+  needs: ["lint-and-test"]
+  image: nexus.ex.c-lab.ee:8003/rust-builder
+  script:
+    - cargo deb --target x86_64-unknown-linux-gnu -p deputy-package-server
+    - DEB_FILE=$(find ./target/x86_64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
+    - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
+  cache:
+    key: deputy-cargo-target
+    paths:
+      - target
+  only:
+    - master
+
+build-and-upload-arm-64bit-linux-release-for-deputy-package-server:
+  stage: build
+  needs: ["lint-and-test"]
+  image: nexus.ex.c-lab.ee:8003/rust-builder
+  script:
+    - LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):/usr/aarch64-linux-gnu/lib/ cargo deb --target aarch64-unknown-linux-gnu -p sdl-parser-export
+    - DEB_FILE=$(find ./target/aarch64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
+    - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
+  cache:
+    key: deputy-cargo-target
+    paths:
+      - target
+  only:
+    - master

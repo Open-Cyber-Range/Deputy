@@ -109,7 +109,6 @@ mod tests {
     use std::fs;
     use tempfile::{Builder, TempDir, NamedTempFile};
     use zip_extensions::*;
-    use rand::Rng;
 
     struct Project {
         root_dir: TempDir,
@@ -121,7 +120,7 @@ mod tests {
     }
     #[test]
     fn archive_was_created() -> Result<()> {
-        let temp_project = create_temp_project()?;
+        let temp_project = create_project_with_toml1()?;
 
         let root_directory_string = get_root_directory_string(&temp_project);
         let archive_path = create_destination_file_path(root_directory_string)?;
@@ -138,7 +137,7 @@ mod tests {
 
     #[test]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
-        let temp_project = create_temp_project()?;
+        let temp_project = create_project_with_toml2()?;
 
         let root_directory_string = get_root_directory_string(&temp_project);
         let archive_path = create_destination_file_path(root_directory_string)?;
@@ -169,11 +168,11 @@ mod tests {
         root_directory_string
     }
 
-    fn create_temp_project() -> Result<Project> {
+    fn create_project_with_toml1() -> Result<Project> {
         let toml_content = 
             r#"
                 [package]
-                name = "test_package_RANDOM_NUMBER"
+                name = "test_package_1"
                 description = "This package does nothing at all, and we spent 300 manhours on it..."
                 version = "1.0.4"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
@@ -181,8 +180,23 @@ mod tests {
                 type = "vm"
                 sub_type = "packer"
             "#;
-        let random_number: u64 = rand::thread_rng().gen();
-        let toml_content = toml_content.replace("RANDOM_NUMBER", random_number.to_string().as_str());
+            create_temp_project(toml_content)
+    }
+    fn create_project_with_toml2() -> Result<Project> {
+        let toml_content = 
+            r#"
+                [package]
+                name = "test_package_2"
+                description = "This package does nothing at all, and we spent 300 manhours on it..."
+                version = "1.0.4"
+                authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
+                [content]
+                type = "vm"
+                sub_type = "packer"
+            "#;
+            create_temp_project(toml_content)
+    }
+    fn create_temp_project(toml_content: &str) -> Result<Project> {
         
         let target_file_ipsum = 
             br#"

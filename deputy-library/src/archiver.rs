@@ -1,48 +1,42 @@
 use anyhow::{anyhow, Result};
-use crate::validation;
+use crate::{validation, toml_structure::Project};
 use std::fs::File;
 use ignore::{DirEntry, WalkBuilder};
 use std::io::{prelude::*, Seek, Write};
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
-use zip::{result::ZipError, write::FileOptions, CompressionMethod};
+use zip::{write::FileOptions, CompressionMethod};
 
-/// Creates an archive of the given folder if it contains a valid package.toml file 
-/// and saves it in "../target/package/<folder_name>.package"
-pub fn create_package(root_directory: &str) -> Result<()> {
-    let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
 
-    if !Path::new(root_directory).is_dir() {
-        return Err(anyhow!(ZipError::FileNotFound));
-    } else if !Path::new(&toml_path).is_file() {
-        return Err(anyhow!("Missing package.toml file"));
-    }
-
-    validation::validate_package_toml(toml_path)?;
-
-    let destination_file_path = create_destination_file_path(root_directory)?;
-    let zip_file = File::create(&destination_file_path)?;
-
-    let mut walkdir = WalkBuilder::new(&root_directory);
-
-    walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
-
-    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, zip_file)?;
-
-    Ok(())
-}
+/// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
+/// and saves the created archive in `"/target/package/<package_name>.package"`
+/// 
+/// The validation of the required `package.toml` file is done by calling [`validation::validate_package_toml`]
+/// and the archives name is dervied from its `name` field.
+/// 
+/// Folders in the given directory are walked through and filtered using the `Ignore` crate which supports
+/// ignore files such as `.gitignore` as well as global gitignore globs. However, folders as well as their contents that are hidden 
+/// or named `"target"` are always excluded.
+/// 
+/// # Example
+/// ```ignore
+/// create_package("my_project/summize/");
+/// let mut output_file: PathBuf = ["target", "package", "summize"].iter().collect();
+/// output_file.set_extension("package");
+/// assert!(output_file.is_file());
+/// ```
 
 fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
-    let package_full_path = std::fs::canonicalize(PathBuf::from(root_directory))?;
-    let parent_directory_name = package_full_path
-        .file_name()
-        .ok_or_else(|| anyhow!("Invalid or root directory"))?
-        .to_str()
-        .ok_or_else(|| anyhow!("UTF-8 conversion error"))?;
-    let mut package_name = PathBuf::from(parent_directory_name);
+
+    let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
+    let mut file = File::open(toml_path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let deserialized_toml: Project = toml::from_str(&*contents)?;
+    let mut package_name = PathBuf::from(deserialized_toml.package.name);
     package_name.set_extension("package");
     
-    let destination_directory: PathBuf = ["..","target","package"].iter().collect();
+    let destination_directory: PathBuf = ["target","package"].iter().collect();
     let destination_file: PathBuf = [&destination_directory, &package_name].iter().collect();
         if !&destination_directory.exists() {
             std::fs::create_dir_all(destination_directory)?;
@@ -83,6 +77,32 @@ where
     Ok(())
 }
 
+pub fn create_package(root_directory: &str) -> Result<()> {
+    
+    if !Path::new(root_directory).is_dir() {
+        return Err(anyhow!("Invalid or missing directory"));
+    } 
+
+    let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
+    
+    if !Path::new(&toml_path).is_file() {
+        return Err(anyhow!("Missing package.toml file"));
+    }
+    
+    validation::validate_package_toml(toml_path)?;
+
+    let destination_file_path = create_destination_file_path(root_directory)?;
+    let zip_file = File::create(&destination_file_path)?;
+
+    let mut walkdir = WalkBuilder::new(&root_directory);
+
+    walkdir.filter_entry(|entry|!entry.path().ends_with("target"));
+
+    zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, zip_file)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +110,7 @@ mod tests {
     use std::fs;
     use tempfile::{Builder, TempDir, NamedTempFile};
     use zip_extensions::*;
+    use serial_test::serial;
 
     struct Project {
         root_dir: TempDir,
@@ -100,15 +121,17 @@ mod tests {
         _toml_file: NamedTempFile,
     }
     #[test]
+    #[serial]
     fn archive_was_created() -> Result<()> {
         let temp_project = create_temp_project()?;
 
-        let archive_path = create_archive_path(&temp_project)?;
         let root_directory_string = get_root_directory_string(&temp_project);
+        let archive_path = create_destination_file_path(root_directory_string)?;
 
         create_package(root_directory_string)?;
 
-        assert!(Path::new(&archive_path).is_file());
+        let archive = Path::new(&archive_path);
+        assert!(archive.is_file());
 
         temp_project.root_dir.close()?;
         fs::remove_file(archive_path)?;
@@ -116,11 +139,12 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
         let temp_project = create_temp_project()?;
 
-        let archive_path = create_archive_path(&temp_project)?;
         let root_directory_string = get_root_directory_string(&temp_project);
+        let archive_path = create_destination_file_path(root_directory_string)?;
 
         create_package(root_directory_string)?;
 
@@ -146,19 +170,6 @@ mod tests {
     fn get_root_directory_string(temp_project: &Project) -> &str {
         let root_directory_string = temp_project.root_dir.path().to_str().unwrap();
         root_directory_string
-    }
-
-    fn create_archive_path(temp_project: &Project) -> Result<PathBuf, anyhow::Error> {
-        let parent_directory_name = temp_project.root_dir.path()
-            .file_name()
-            .ok_or_else(|| anyhow!("Invalid or root directory"))?
-            .to_str()
-            .ok_or_else(||anyhow!("UTF-8 conversion error"))?;
-        let mut package_name = PathBuf::from(parent_directory_name);
-        package_name.set_extension("package");
-        let destination_directory: PathBuf = ["..","target","package"].iter().collect();
-        let archive_path: PathBuf = [destination_directory, package_name].iter().collect();
-        Ok(archive_path)
     }
 
     fn create_temp_project() -> Result<Project> {

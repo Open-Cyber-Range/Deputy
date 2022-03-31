@@ -3,43 +3,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::{constants, package::PackageMetadata};
+use crate::{constants, package::PackageMetadata, toml_structure::*};
 use anyhow::{anyhow, Result};
 use semver::Version;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Config {
-    package: Package,
-    content: Content,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Package {
-    name: String,
-    description: String,
-    version: String,
-    authors: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct Content {
-    #[serde(rename = "type")]
-    content_type: ContentType,
-    sub_type: SubType,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-enum ContentType {
-    #[serde(alias = "vm")]
-    VM,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum SubType {
-    #[serde(alias = "packer")]
-    Packer,
-}
 
 pub trait Validate {
     fn validate(&self) -> Result<()>;
@@ -104,7 +70,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let deserialized_toml: Config = toml::from_str(&*contents)?;
+    let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_type(deserialized_toml.content)?;
@@ -118,7 +84,7 @@ mod tests {
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
 
-    fn create_temp_file(toml_content: &[u8]) -> Result<(NamedTempFile, Config)> {
+    fn create_temp_file(toml_content: &[u8]) -> Result<(NamedTempFile, Project)> {
         let mut file = Builder::new()
             .prefix("package")
             .suffix(".toml")
@@ -128,15 +94,15 @@ mod tests {
         Ok((file, deserialized_toml))
     }
 
-    fn deserialize_toml(file: &NamedTempFile) -> Result<Config> {
+    fn deserialize_toml(file: &NamedTempFile) -> Result<Project> {
         let mut contents = String::new();
         let mut read_file = File::open(file.path())?;
         read_file.read_to_string(&mut contents)?;
-        let deserialized_toml: Config = toml::from_str(&*contents)?;
+        let deserialized_toml: Project = toml::from_str(&*contents)?;
         Ok(deserialized_toml)
     }
 
-    fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Config)> {
+    fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Project)> {
         let toml_content = br#"
 [package]
 name = "this is incorrect formatting"

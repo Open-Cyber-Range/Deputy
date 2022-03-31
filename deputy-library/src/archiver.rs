@@ -181,8 +181,8 @@ mod tests {
                 type = "vm"
                 sub_type = "packer"
             "#;
-        let random_name_suffix: u64 = rand::thread_rng().gen();
-        let toml_content = toml_content.replace("RANDOM_NUMBER", random_name_suffix.to_string().as_str());
+        let random_number: u64 = rand::thread_rng().gen();
+        let toml_content = toml_content.replace("RANDOM_NUMBER", random_number.to_string().as_str());
         
         let target_file_ipsum = 
             br#"

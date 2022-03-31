@@ -38,7 +38,7 @@ fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
         .file_name()
         .ok_or_else(|| anyhow!("Invalid or root directory"))?
         .to_str()
-        .ok_or_else(||anyhow!("UTF-8 conversion error"))?;
+        .ok_or_else(|| anyhow!("UTF-8 conversion error"))?;
     let mut package_name = PathBuf::from(parent_directory_name);
     package_name.set_extension("package");
     

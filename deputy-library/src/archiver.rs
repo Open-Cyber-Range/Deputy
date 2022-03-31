@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use crate::{validation, toml_structure::Project};
+use crate::{validation, project::Project};
 use std::fs::File;
 use ignore::{DirEntry, WalkBuilder};
 use std::io::{prelude::*, Seek, Write};
@@ -25,7 +25,6 @@ use zip::{write::FileOptions, CompressionMethod};
 /// output_file.set_extension("package");
 /// assert!(output_file.is_file());
 /// ```
-
 fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
 
     let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
@@ -110,7 +109,7 @@ mod tests {
     use std::fs;
     use tempfile::{Builder, TempDir, NamedTempFile};
     use zip_extensions::*;
-    use serial_test::serial;
+    use rand::Rng;
 
     struct Project {
         root_dir: TempDir,
@@ -121,7 +120,6 @@ mod tests {
         _toml_file: NamedTempFile,
     }
     #[test]
-    #[serial]
     fn archive_was_created() -> Result<()> {
         let temp_project = create_temp_project()?;
 
@@ -139,7 +137,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
         let temp_project = create_temp_project()?;
 
@@ -156,11 +153,11 @@ mod tests {
 
         zip_extract(&archive_path, &extraction_dir.path().to_path_buf())?;
 
-        let target_dir = temp_project.target_dir.path().is_dir();
-        let extracted_target_dir = extraction_dir.path().join("/target").exists();
+        let target_dir_exists = temp_project.target_dir.path().is_dir();
+        let extracted_target_dir_exists = extraction_dir.path().join("/target").exists();
 
-        assert!(target_dir);
-        assert!(!extracted_target_dir);
+        assert!(target_dir_exists);
+        assert!(!extracted_target_dir_exists);
 
         temp_project.root_dir.close()?;
         fs::remove_file(archive_path)?;
@@ -174,9 +171,9 @@ mod tests {
 
     fn create_temp_project() -> Result<Project> {
         let toml_content = 
-            br#"
+            r#"
                 [package]
-                name = "test_package_1-0-4"
+                name = "test_package_RANDOM_NUMBER"
                 description = "This package does nothing at all, and we spent 300 manhours on it..."
                 version = "1.0.4"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
@@ -184,6 +181,8 @@ mod tests {
                 type = "vm"
                 sub_type = "packer"
             "#;
+        let random_name_suffix: u64 = rand::thread_rng().gen();
+        let toml_content = toml_content.replace("RANDOM_NUMBER", random_name_suffix.to_string().as_str());
         
         let target_file_ipsum = 
             br#"
@@ -230,7 +229,7 @@ mod tests {
             .suffix(".toml")
             .rand_bytes(0)
             .tempfile_in(&dir)?;
-        toml_file.write_all(toml_content)?;
+        toml_file.write_all(toml_content.as_bytes())?;
 
         let temp_project = Project {
             root_dir: dir,

@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::{constants, package::PackageMetadata, toml_structure::*};
+use crate::{constants, package::PackageMetadata, project::*};
 use anyhow::{anyhow, Result};
 use semver::Version;
 

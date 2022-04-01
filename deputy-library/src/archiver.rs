@@ -44,7 +44,7 @@ fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
 }
 
 fn zip_dir<T>(
-    it: &mut dyn Iterator<Item = DirEntry>,
+    directory_iterator: &mut dyn Iterator<Item = DirEntry>,
     prefix: &str,
     writer: T,
 ) -> zip::result::ZipResult<()>
@@ -56,7 +56,7 @@ where
         .compression_method(CompressionMethod::Bzip2);
 
     let mut buffer = Vec::new();
-    for entry in it {
+    for entry in directory_iterator {
         let path = entry.path();
         let name = path.strip_prefix(Path::new(prefix)).unwrap();
 

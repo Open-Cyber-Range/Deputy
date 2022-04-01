@@ -9,7 +9,7 @@ use zip::{write::FileOptions, CompressionMethod};
 
 
 /// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
-/// and saves the created archive in `"/target/package/<package_name>.package"`
+/// and saves the created archive in `"<input_directory>/target/package/<package_name>.package"`
 /// 
 /// The validation of the required `package.toml` file is done by calling [`validation::validate_package_toml`]
 /// and the archives name is dervied from its `name` field.
@@ -35,7 +35,7 @@ fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
     let mut package_name = PathBuf::from(deserialized_toml.package.name);
     package_name.set_extension("package");
     
-    let destination_directory: PathBuf = ["target","package"].iter().collect();
+    let destination_directory: PathBuf = [root_directory,"target","package"].iter().collect();
     let destination_file: PathBuf = [&destination_directory, &package_name].iter().collect();
         if !&destination_directory.exists() {
             std::fs::create_dir_all(destination_directory)?;
@@ -53,8 +53,7 @@ where
 {
     let mut zip = zip::ZipWriter::new(writer);
     let options = FileOptions::default()
-        .compression_method(CompressionMethod::Bzip2)
-        .unix_permissions(0o755);
+        .compression_method(CompressionMethod::Bzip2);
 
     let mut buffer = Vec::new();
     for entry in it {
@@ -106,7 +105,6 @@ pub fn create_package(root_directory: &str) -> Result<()> {
 mod tests {
     use super::*;
     use anyhow::Result;
-    use std::fs;
     use tempfile::{Builder, TempDir, NamedTempFile};
     use zip_extensions::*;
 
@@ -120,7 +118,7 @@ mod tests {
     }
     #[test]
     fn archive_was_created() -> Result<()> {
-        let temp_project = create_project_with_toml1()?;
+        let temp_project = create_temp_project()?;
 
         let root_directory_string = get_root_directory_string(&temp_project);
         let archive_path = create_destination_file_path(root_directory_string)?;
@@ -131,13 +129,12 @@ mod tests {
         assert!(archive.is_file());
 
         temp_project.root_dir.close()?;
-        fs::remove_file(archive_path)?;
         Ok(())
     }
 
     #[test]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
-        let temp_project = create_project_with_toml2()?;
+        let temp_project = create_temp_project()?;
 
         let root_directory_string = get_root_directory_string(&temp_project);
         let archive_path = create_destination_file_path(root_directory_string)?;
@@ -159,7 +156,6 @@ mod tests {
         assert!(!extracted_target_dir_exists);
 
         temp_project.root_dir.close()?;
-        fs::remove_file(archive_path)?;
         Ok(())
     }
 
@@ -168,7 +164,7 @@ mod tests {
         root_directory_string
     }
 
-    fn create_project_with_toml1() -> Result<Project> {
+    fn create_temp_project() -> Result<Project> {
         let toml_content = 
             r#"
                 [package]
@@ -180,24 +176,6 @@ mod tests {
                 type = "vm"
                 sub_type = "packer"
             "#;
-            create_temp_project(toml_content)
-    }
-    fn create_project_with_toml2() -> Result<Project> {
-        let toml_content = 
-            r#"
-                [package]
-                name = "test_package_2"
-                description = "This package does nothing at all, and we spent 300 manhours on it..."
-                version = "1.0.4"
-                authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
-                [content]
-                type = "vm"
-                sub_type = "packer"
-            "#;
-            create_temp_project(toml_content)
-    }
-    fn create_temp_project(toml_content: &str) -> Result<Project> {
-        
         let target_file_ipsum = 
             br#"
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean consectetur nisl at aliquet pharetra. Cras fringilla 

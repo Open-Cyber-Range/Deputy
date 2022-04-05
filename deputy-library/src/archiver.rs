@@ -7,24 +7,6 @@ use std::iter::Iterator;
 use std::path::{Path, PathBuf};
 use zip::{write::FileOptions, CompressionMethod};
 
-
-/// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
-/// and saves the created archive in `"<input_directory>/target/package/<package_name>.package"`
-/// 
-/// The validation of the required `package.toml` file is done by calling [`validation::validate_package_toml`]
-/// and the archives name is dervied from its `name` field.
-/// 
-/// Folders in the given directory are walked through and filtered using the `Ignore` crate which supports
-/// ignore files such as `.gitignore` as well as global gitignore globs. However, folders as well as their contents that are hidden 
-/// or named `"target"` are always excluded.
-/// 
-/// # Example
-/// ```ignore
-/// create_package("my_project/summize/");
-/// let mut output_file: PathBuf = ["target", "package", "summize"].iter().collect();
-/// output_file.set_extension("package");
-/// assert!(output_file.is_file());
-/// ```
 fn create_destination_file_path(root_directory: &str) -> Result<PathBuf> {
 
     let toml_path: PathBuf = [root_directory, "package.toml"].iter().collect();
@@ -75,7 +57,24 @@ where
     Ok(())
 }
 
-pub fn create_package(root_directory: &str) -> Result<()> {
+/// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
+/// and returns a `PathBuf` in the form of: `<input_directory>/target/package/<package_name>.package`
+/// 
+/// The validation of the required `package.toml` file is done by calling [`validation::validate_package_toml`]
+/// and the archives name is dervied from its `name` field.
+/// 
+/// Folders in the given directory are walked through and filtered using the `Ignore` crate which supports
+/// ignore files such as `.gitignore` as well as global gitignore globs. However, folders as well as their contents that are hidden 
+/// or named `"target"` are always excluded.
+/// 
+/// # Example
+/// ```ignore
+/// create_package("my_project/summize/");
+/// let mut output_file: PathBuf = ["target", "package", "summize"].iter().collect();
+/// output_file.set_extension("package");
+/// assert!(output_file.is_file());
+/// ```
+pub fn create_package(root_directory: &str) -> Result<PathBuf> {
     
     if !Path::new(root_directory).is_dir() {
         return Err(anyhow!("Invalid or missing directory"));
@@ -98,7 +97,7 @@ pub fn create_package(root_directory: &str) -> Result<()> {
 
     zip_dir(&mut walkdir.build().filter_map(|e| e.ok()), root_directory, zip_file)?;
 
-    Ok(())
+    Ok(destination_file_path)
 }
 
 #[cfg(test)]

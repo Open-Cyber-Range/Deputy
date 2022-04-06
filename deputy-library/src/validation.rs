@@ -1,11 +1,12 @@
-use std::fmt::Debug;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::{fmt::Debug, io};
 
 use crate::{constants, package::PackageMetadata, project::*};
 use anyhow::{anyhow, Result};
 use semver::Version;
+use sha2::{Digest, Sha256};
 
 pub trait Validate {
     fn validate(&self) -> Result<()>;
@@ -63,6 +64,14 @@ fn validate_type(content: Content) -> Result<()> {
         return Err(anyhow!("Sub-type mismatch with the type"));
     }
     Ok(())
+}
+
+pub fn get_sha256_checksum_from_file(file_pathbuf: &Path) -> Result<String> {
+    let mut file = File::open(file_pathbuf)?;
+    let mut sha256 = Sha256::new();
+    io::copy(&mut file, &mut sha256)?;
+    let checksum = format!("{:x}", sha256.finalize());
+    Ok(checksum)
 }
 
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {

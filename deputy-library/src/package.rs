@@ -1,4 +1,6 @@
+use crate::project::Project;
 use crate::repository::{find_metadata_by_package_name, update_index_repository};
+use crate::validation::get_sha256_checksum_from_file;
 use anyhow::{Ok, Result};
 use git2::Repository;
 use semver::Version;
@@ -7,7 +9,7 @@ use std::{
     fs::File,
     io::{BufReader, Read, Write},
     ops::{Deref, DerefMut},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -65,6 +67,23 @@ impl Package {
         update_index_repository(repository, &self.metadata)?;
         self.file.save(package_folder, self.metadata.name.clone())?;
         Ok(())
+    }
+    pub fn parse_metadata(
+        toml_path: PathBuf,
+        archive_path: &Path,
+    ) -> Result<PackageMetadata> {
+        let mut file = File::open(&toml_path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+
+        let deserialized_toml: Project = toml::from_str(&*contents)?;
+
+        let metadata = PackageMetadata {
+            name: deserialized_toml.package.name,
+            version: deserialized_toml.package.version,
+            checksum: get_sha256_checksum_from_file(archive_path)?,
+        };
+        Ok(metadata)
     }
 }
 

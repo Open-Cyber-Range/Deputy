@@ -2,17 +2,15 @@
 name = "deputy"
 version = "0.1.0"
 edition = "2021"
-default-run = "deputy"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-deputy-library = { path = "../deputy-library" }
-anyhow = "1"
-clap = {version = "3", features = ["derive"]}
 actix-web = "4"
-tempfile = "3"
-sha2 = "0.10"
-toml = "0.5"
+anyhow = "1"
+clap = { version = "3", features = ["derive"] }
+deputy-library = { path = "../deputy-library" }
 reqwest = "0.11"
-tokio = {version = "1.1", features = ["full"]}
+tempfile = "3"
+toml = "0.5"
+tokio = { version = "1.1", features = ["full"] }

@@ -27,7 +27,8 @@ async fn real_main() -> Result<()> {
             });
             return App::new()
                 .app_data(app_data)
-                .service(scope("").service(status).service(version))
+                .service(status)
+                .service(version)
                 .service(scope("/api/v1").service(add_package));
         }
         error!("Failed to get the repository for keeping the index");

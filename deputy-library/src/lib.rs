@@ -8,5 +8,5 @@ pub mod package;
 pub mod repository;
 #[cfg(feature = "test")]
 pub mod test;
-mod project;
+pub mod project;
 pub mod validation;

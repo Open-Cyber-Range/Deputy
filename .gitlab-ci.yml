@@ -13,7 +13,7 @@ lint-and-test:
   cache:
     key: deputy-cargo-target
     paths:
-      - target
+      - target/
   only:
     - develop
     - master
@@ -28,7 +28,7 @@ build-x86-64bit-windows-release:
   cache:
     key: deputy-cargo-target
     paths:
-      - target
+      - target/
   only:
     - master
 
@@ -43,6 +43,6 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   cache:
     key: deputy-cargo-target
     paths:
-      - target
+      - target/
   only:
     - master

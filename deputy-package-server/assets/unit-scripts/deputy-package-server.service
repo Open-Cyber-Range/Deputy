@@ -5,6 +5,8 @@ After=network.target
 [Service]
 ExecStart=/var/opt/deputy/bin/deputy-package-server /etc/opt/deputy/deputy-package-server/config.yml
 Type=simple
+User=root
+Group=root
 Restart=on-failure
 RestartSec=10
 StartLimitInterval=10m

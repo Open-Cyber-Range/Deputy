@@ -1,4 +1,4 @@
-use crate::validation::SubType;
+use crate::project::SubType;
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
 

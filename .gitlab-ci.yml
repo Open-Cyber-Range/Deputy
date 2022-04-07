@@ -8,6 +8,11 @@ lint-and-test:
     - cargo clippy -- -Dwarnings
     - cargo build --verbose
     - cargo tarpaulin --skip-clean --verbose --out Xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
   cache:
     key: deputy-cargo-target
     paths:

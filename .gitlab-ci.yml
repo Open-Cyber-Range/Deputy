@@ -4,12 +4,10 @@ stages:
 lint-and-test:
   stage: build
   image: nexus.ex.c-lab.ee:8003/rust-builder
-  before_script:
-    - rustup component add clippy
   script:
     - cargo clippy -- -Dwarnings
     - cargo build --verbose
-    - cargo test --verbose
+    - cargo tarpaulin --skip-clean --verbose --out Xml
   cache:
     key: deputy-cargo-target
     paths:
@@ -18,6 +16,11 @@ lint-and-test:
     - develop
     - master
     - merge_requests
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
 
 build-x86-64bit-windows-release:
   stage: build

@@ -8,7 +8,7 @@ lint-and-test:
     - cargo clippy -- -Dwarnings
     - cargo build --verbose
     - cargo tarpaulin --skip-clean --verbose --out Xml
-  coverage: ^\d+.\d+% coverage
+  coverage: '^\d+.\d+% coverage'
   artifacts:
     reports:
       cobertura: cobertura.xml

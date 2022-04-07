@@ -10,9 +10,7 @@ lint-and-test:
     - cargo tarpaulin --skip-clean --verbose --out Xml
   artifacts:
     reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
+      cobertura: cobertura.xml
   cache:
     key: deputy-cargo-target
     paths:

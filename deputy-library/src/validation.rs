@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::{fmt::Debug, io};
+use std::{fmt::Debug};
 
 use crate::{
     constants,
@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use semver::Version;
-use sha2::{Digest, Sha256};
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;

@@ -8,14 +8,10 @@ lint-and-test:
     - cargo clippy -- -Dwarnings
     - cargo build --verbose
     - cargo tarpaulin --skip-clean --verbose --out Xml
-  coverage: '/^\d+.\d+% coverage/'
+  #coverage: '^\d+.\d+% coverage'
   artifacts:
     reports:
       cobertura: cobertura.xml
-  cache:
-    key: deputy-cargo-target
-    paths:
-      - target/
   only:
     - develop
     - master
@@ -27,10 +23,6 @@ build-x86-64bit-windows-release:
   image: nexus.ex.c-lab.ee:8003/rust-builder
   script:
     - cargo build --release --target x86_64-pc-windows-gnu
-  cache:
-    key: deputy-cargo-target
-    paths:
-      - target/
   only:
     - master
 
@@ -42,9 +34,5 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
     - cargo deb --target x86_64-unknown-linux-gnu -p deputy-package-server
     - DEB_FILE=$(find ./target/x86_64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
     - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
-  cache:
-    key: deputy-cargo-target
-    paths:
-      - target/
   only:
     - master

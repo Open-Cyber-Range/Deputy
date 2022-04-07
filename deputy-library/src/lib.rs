@@ -10,3 +10,4 @@ pub mod repository;
 pub mod test;
 pub mod project;
 pub mod validation;
+pub mod cli;

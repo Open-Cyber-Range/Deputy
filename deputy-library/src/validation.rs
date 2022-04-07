@@ -78,14 +78,6 @@ fn validate_type(content: Content) -> Result<()> {
     Ok(())
 }
 
-pub fn get_sha256_checksum_from_file(file_pathbuf: &Path) -> Result<String> {
-    let mut file = File::open(file_pathbuf)?;
-    let mut sha256 = Sha256::new();
-    io::copy(&mut file, &mut sha256)?;
-    let checksum = format!("{:x}", sha256.finalize());
-    Ok(checksum)
-}
-
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();

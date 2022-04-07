@@ -11,9 +11,7 @@ lint-and-test:
   coverage: ^\d+.\d+% coverage
   artifacts:
     reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
+      cobertura: cobertura.xml
   cache:
     key: deputy-cargo-target
     paths:

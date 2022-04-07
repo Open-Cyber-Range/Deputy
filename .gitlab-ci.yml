@@ -16,11 +16,6 @@ lint-and-test:
     - develop
     - master
     - merge_requests
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: cobertura.xml
 
 build-x86-64bit-windows-release:
   stage: build

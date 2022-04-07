@@ -4,7 +4,7 @@ use git2::Repository;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{BufReader, Read, Write},
     ops::{Deref, DerefMut},
     path::PathBuf,
@@ -44,10 +44,12 @@ impl PackageMetadata {
 pub struct PackageFile(pub File);
 
 impl PackageFile {
-    fn save(&mut self, package_folder: String, name: String) -> Result<()> {
+    fn save(&mut self, package_folder: String, name: String, version: String) -> Result<()> {
         let mut content_buffer: Vec<u8> = Vec::new();
         self.read_to_end(&mut content_buffer)?;
-        let final_file_path: PathBuf = [package_folder, name].iter().collect();
+        let package_folder_path: PathBuf = [package_folder, name].iter().collect();
+        fs::create_dir_all(package_folder_path.clone())?;
+        let final_file_path: PathBuf = package_folder_path.join(version);
         let mut file = File::create(final_file_path)?;
         file.write_all(&content_buffer)?;
         Ok(())
@@ -63,7 +65,11 @@ pub struct Package {
 impl Package {
     pub fn save(&mut self, package_folder: String, repository: &Repository) -> Result<()> {
         update_index_repository(repository, &self.metadata)?;
-        self.file.save(package_folder, self.metadata.name.clone())?;
+        self.file.save(
+            package_folder,
+            self.metadata.name.clone(),
+            self.metadata.version.clone(),
+        )?;
         Ok(())
     }
 }
@@ -210,9 +216,15 @@ mod tests {
         let mut package_file = PackageFile::try_from(&bytes as &[u8])?;
 
         let test_name = String::from("test-name");
-        let expected_file_path: PathBuf =
-            [package_folder.clone(), test_name.clone()].iter().collect();
-        package_file.save(package_folder, test_name)?;
+        let test_version = String::from("1.0.0");
+        let expected_file_path: PathBuf = [
+            package_folder.clone(),
+            test_name.clone(),
+            test_version.clone(),
+        ]
+        .iter()
+        .collect();
+        package_file.save(package_folder, test_name, test_version)?;
 
         let mut created_file = File::open(expected_file_path)?;
         assert!(created_file.metadata().unwrap().is_file());

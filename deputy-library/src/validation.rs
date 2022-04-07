@@ -3,17 +3,29 @@ use std::io::Read;
 use std::path::Path;
 use std::{fmt::Debug, io};
 
-use crate::{constants, package::PackageMetadata, project::*};
+use crate::{
+    constants,
+    package::{Package, PackageMetadata},
+    project::*,
+};
 use anyhow::{anyhow, Result};
 use semver::Version;
 use sha2::{Digest, Sha256};
 
 pub trait Validate {
-    fn validate(&self) -> Result<()>;
+    fn validate(&mut self) -> Result<()>;
+}
+
+impl Validate for Package {
+    fn validate(&mut self) -> Result<()> {
+        self.metadata.validate()?;
+        self.validate_checksum()?;
+        Ok(())
+    }
 }
 
 impl Validate for PackageMetadata {
-    fn validate(&self) -> Result<()> {
+    fn validate(&mut self) -> Result<()> {
         if self.name.is_empty() {
             return Err(anyhow!("Package name is empty"));
         }

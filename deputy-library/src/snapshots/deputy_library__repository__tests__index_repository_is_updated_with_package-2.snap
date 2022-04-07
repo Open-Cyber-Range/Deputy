@@ -1,0 +1,5 @@
+---
+source: deputy-library/src/repository.rs
+expression: parent.message().unwrap()
+---
+"Adding package: some-package-name, version: 0.1.0"

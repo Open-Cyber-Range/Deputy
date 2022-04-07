@@ -257,8 +257,7 @@ mod tests {
         let read_file = File::open(file_path)?;
         let line = std::io::BufReader::new(read_file).lines().next().unwrap()?;
 
-        let expected_string = "{\"name\":\"some-package-name\",\"version\":\"0.1.0\",\"checksum\":\"d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c\"}";
-        assert_eq!(expected_string, line);
+        insta::assert_debug_snapshot!(line);
         temporary_dir.close()?;
         Ok(())
     }
@@ -396,14 +395,9 @@ mod tests {
             .unwrap()?;
 
         assert!(read_file.metadata()?.is_file());
-        assert_eq!(
-            r#"{"name":"some-package-name","version":"0.1.0","checksum":"d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c"}"#,
-            line
-        );
-        assert_eq!(
-            "Adding package: some-package-name, version: 0.1.0",
-            parent.message().unwrap()
-        );
+        insta::assert_debug_snapshot!(line);
+        insta::assert_debug_snapshot!(parent.message().unwrap());
+
         temporary_directory.close()?;
         Ok(())
     }

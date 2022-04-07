@@ -16,7 +16,7 @@ pub async fn add_package(package_bytes: Bytes, app_state: Data<AppState>) -> Htt
         Ok(mut package) => {
             let folder = &app_state.package_folder;
             let repository = &app_state.repository;
-            match package.metadata.validate() {
+            match package.validate() {
                 Ok(_) => match package.metadata.is_latest_version(repository) {
                     Ok(true) => match package.save(folder.to_string(), repository) {
                         Ok(_) => HttpResponse::Ok().finish(),

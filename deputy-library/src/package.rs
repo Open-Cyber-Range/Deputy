@@ -1,11 +1,12 @@
 use crate::repository::{find_metadata_by_package_name, update_index_repository};
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use git2::Repository;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{BufReader, Read, Write},
+    io::{copy, BufReader, Read, Write},
     ops::{Deref, DerefMut},
     path::PathBuf,
 };
@@ -54,6 +55,13 @@ impl PackageFile {
         file.write_all(&content_buffer)?;
         Ok(())
     }
+
+    fn calculate_checksum(&mut self) -> Result<String> {
+        let mut hasher = Sha256::new();
+        copy(&mut self.0, &mut hasher)?;
+        let hash_bytes = hasher.finalize();
+        Ok(format!("{:x}", hash_bytes))
+    }
 }
 
 #[derive(Debug)]
@@ -70,6 +78,18 @@ impl Package {
             self.metadata.name.clone(),
             self.metadata.version.clone(),
         )?;
+        Ok(())
+    }
+
+    pub fn validate_checksum(&mut self) -> Result<()> {
+        let calculated = self.file.calculate_checksum()?;
+        if calculated != self.metadata.checksum {
+            return Err(anyhow!(
+                "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
+                calculated,
+                self.metadata.checksum
+            ));
+        }
         Ok(())
     }
 }

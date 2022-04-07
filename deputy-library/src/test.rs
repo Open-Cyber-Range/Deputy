@@ -8,7 +8,7 @@ use crate::package::{Package, PackageFile, PackageMetadata};
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
-        checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c".to_string(),
+        checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),
         name: "some-package-name".to_string(),
     };

@@ -8,3 +8,4 @@ lazy_static! {
 }
 
 pub const SHA256_LENGTH: usize = 64;
+pub const PACKAGE_PUT_URL: &str = "http://localhost:8080/api/v1/package";

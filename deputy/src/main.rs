@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use deputy_library::cli::create_and_send_package_file;
+use deputy_library::client::create_and_send_package_file;
 use std::env;
 
 #[derive(Parser, Debug)]
@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Publish {} => {
-            create_and_send_package_file().await?;
+            create_and_send_package_file(env::current_dir()?).await?;
             Ok(())
         }
         Commands::Version {} => {

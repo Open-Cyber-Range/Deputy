@@ -1,5 +1,10 @@
-use crate::project::Body;
-use crate::repository::{find_metadata_by_package_name, update_index_repository};
+use crate::{
+    archiver,
+    client::{find_toml, publishing_put_request},
+    constants::{PACKAGE_PUT_URL, PACKAGE_TOML},
+    project::Body,
+    repository::{find_metadata_by_package_name, update_index_repository},
+};
 use anyhow::{anyhow, Ok, Result};
 use git2::Repository;
 use semver::Version;
@@ -225,6 +230,30 @@ impl TryFrom<&[u8]> for Package {
 
         Ok(Package { metadata, file })
     }
+}
+
+pub fn create_package_from_toml(toml_path: PathBuf) -> Result<Package> {
+    let package_root = toml_path
+        .parent()
+        .ok_or_else(|| anyhow!("Directory error"))?;
+    let archive_path = archiver::create_package(package_root.to_path_buf())?;
+    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
+    let file = File::open(&archive_path)?;
+    let package = Package {
+        metadata,
+        file: PackageFile(file),
+    };
+    Ok(package)
+}
+
+pub async fn create_and_send_package_file(execution_directory: PathBuf) -> Result<()> {
+    let package_toml = PathBuf::from(PACKAGE_TOML);
+    let toml_path = [&execution_directory, &package_toml].iter().collect();
+    let toml_path = find_toml(toml_path)?;
+    let package = create_package_from_toml(toml_path)?;
+    let package_bytes = Vec::try_from(package)?;
+    publishing_put_request(PACKAGE_PUT_URL, package_bytes).await?;
+    Ok(())
 }
 
 #[cfg(test)]

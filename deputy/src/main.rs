@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use deputy_library::client::create_and_send_package_file;
+use deputy_library::package::create_and_send_package_file;
 use std::env;
 
 #[derive(Parser, Debug)]

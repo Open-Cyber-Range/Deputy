@@ -145,7 +145,7 @@ mod tests {
             .unwrap();
 
         zip_extract(
-            &archive_path.to_owned(), //??????? doesn't work without it anymore??
+            &archive_path,
             &extraction_dir.path().to_path_buf(),
         )?;
 

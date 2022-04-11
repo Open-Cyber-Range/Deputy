@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{copy, BufReader, Read, Write},
+    io::{copy, BufReader, Read, Seek as _, SeekFrom, Write},
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
@@ -48,6 +48,7 @@ pub struct PackageFile(pub File);
 impl PackageFile {
     fn save(&mut self, package_folder: String, name: String, version: String) -> Result<()> {
         let mut content_buffer: Vec<u8> = Vec::new();
+        self.seek(SeekFrom::Start(0))?;
         self.read_to_end(&mut content_buffer)?;
         let package_folder_path: PathBuf = [package_folder, name].iter().collect();
         fs::create_dir_all(package_folder_path.clone())?;

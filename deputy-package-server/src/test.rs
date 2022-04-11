@@ -77,7 +77,6 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
 async fn real_main(configuration: Configuration) -> Result<()> {
     HttpServer::new(move || {
         let package_folder = configuration.package_folder.clone();
-
         if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = Data::new(AppState {
                 repository,

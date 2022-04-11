@@ -1,4 +1,4 @@
-use crate::project::Project;
+use crate::project::Body;
 use crate::repository::{find_metadata_by_package_name, update_index_repository};
 use anyhow::{anyhow, Ok, Result};
 use git2::Repository;
@@ -39,6 +39,17 @@ impl PackageMetadata {
                 > current_latest_version.version.parse::<Version>()?);
         }
         Ok(true)
+    }
+
+    pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let archive_file = File::open(&archive_path)?;
+        let metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            checksum: PackageFile(archive_file).calculate_checksum()?,
+        };
+        Ok(metadata)
     }
 }
 
@@ -93,20 +104,6 @@ impl Package {
             ));
         }
         Ok(())
-    }
-    pub fn parse_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
-        let mut file = File::open(&toml_path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-
-        let deserialized_toml: Project = toml::from_str(&*contents)?;
-        let file = File::open(&archive_path)?;
-        let metadata = PackageMetadata {
-            name: deserialized_toml.package.name,
-            version: deserialized_toml.package.version,
-            checksum: PackageFile(file).calculate_checksum()?,
-        };
-        Ok(metadata)
     }
 }
 

@@ -437,7 +437,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 14);
+        assert_eq!(package.file.metadata()?.len(), 961);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

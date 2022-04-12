@@ -2,9 +2,11 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
+    use deputy_library::{client::publishing_put_request, test::TEST_PACKAGE_BYTES};
+    use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
-    use std::path::PathBuf;
     use std::process::Command;
+    use std::{fs, path::PathBuf};
     use tempfile::{Builder, TempDir};
 
     #[test]
@@ -73,6 +75,37 @@ mod tests {
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
 
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn rejected_put_request() -> Result<()> {
+        let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
+        start_test_server(CONFIGURATION.to_owned());
+        let result = publishing_put_request(
+            "http://localhost:9090/api/v1/package",
+            invalid_package_bytes,
+        )
+        .await;
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn accepted_put_request() -> Result<()> {
+        let package_bytes = TEST_PACKAGE_BYTES.clone();
+        start_test_server(CONFIGURATION.to_owned());
+
+        let client = reqwest::Client::new();
+        let response = client
+            .put("http://localhost:9090/api/v1/package")
+            .body(package_bytes)
+            .send()
+            .await?;
+
+        assert!(response.status().is_success());
+        fs::remove_dir_all(&CONFIGURATION.package_folder)?;
+        fs::remove_dir_all(&CONFIGURATION.repository.folder)?;
         Ok(())
     }
 }

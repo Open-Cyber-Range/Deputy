@@ -9,12 +9,14 @@ pub async fn publishing_put_request(put_url: &str, package_bytes: Vec<u8>) -> Re
     match response.status() {
         StatusCode::OK => {
             println!("Package uploaded successfully");
-        }
+            Ok(())
+        },
         _ => {
-            println!("{}", response.text().await?)
+            let response_text = response.text().await?;
+            println!("{}", response_text);
+            Err(anyhow!(response_text))
         }
     }
-    Ok(())
 }
 
 pub fn find_toml(mut toml_path: PathBuf) -> Result<PathBuf> {

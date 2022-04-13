@@ -1,4 +1,4 @@
-use crate::{project::Project, validation};
+use crate::{constants::PACKAGE_TOML, project::Project, validation};
 use anyhow::{anyhow, Result};
 use ignore::{DirEntry, WalkBuilder};
 use std::fs::File;
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use zip::{write::FileOptions, CompressionMethod};
 
 fn create_destination_file_path(root_directory: &Path) -> Result<PathBuf> {
-    let toml_path = root_directory.join("package.toml");
+    let toml_path = root_directory.join(PACKAGE_TOML);
     let mut file = File::open(toml_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -16,7 +16,7 @@ fn create_destination_file_path(root_directory: &Path) -> Result<PathBuf> {
     let mut package_name = PathBuf::from(deserialized_toml.package.name);
     package_name.set_extension("package");
 
-    let destination_directory: PathBuf = root_directory.join("target").join("package");
+    let destination_directory: PathBuf = root_directory.join("target/package");
     let destination_file: PathBuf = [&destination_directory, &package_name].iter().collect();
     if !&destination_directory.exists() {
         std::fs::create_dir_all(destination_directory)?;
@@ -77,7 +77,7 @@ pub fn create_package(root_directory: PathBuf) -> Result<PathBuf> {
         return Err(anyhow!("Invalid or missing directory"));
     }
 
-    let toml_path = root_directory.join("package.toml");
+    let toml_path = root_directory.join(PACKAGE_TOML);
 
     if !Path::new(&toml_path).is_file() {
         return Err(anyhow!("Missing package.toml file"));

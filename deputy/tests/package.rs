@@ -7,18 +7,6 @@ mod tests {
     use std::{fs, path::PathBuf};
 
     #[actix_web::test]
-    async fn get_test_server_version() -> Result<()> {
-        start_test_server(CONFIGURATION.to_owned());
-        let version_response = reqwest::get("http://localhost:9090/version")
-            .await?
-            .text()
-            .await?;
-        println!("{:?}", version_response);
-
-        Ok(())
-    }
-
-    #[actix_web::test]
     async fn valid_package_was_sent_and_received() -> Result<()> {
         let temp_project = create_temp_project()?;
         let toml_path = temp_project.toml_file.path().to_path_buf();

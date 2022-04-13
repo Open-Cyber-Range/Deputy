@@ -2,7 +2,7 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy_library::{client::publishing_put_request, test::TEST_PACKAGE_BYTES};
+    use deputy_library::{client::upload_package, test::TEST_PACKAGE_BYTES};
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
     use std::process::Command;
@@ -82,7 +82,7 @@ mod tests {
     async fn rejected_put_request() -> Result<()> {
         let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
         start_test_server(CONFIGURATION.to_owned());
-        let result = publishing_put_request(
+        let result = upload_package(
             "http://localhost:9090/api/v1/package",
             invalid_package_bytes,
         )

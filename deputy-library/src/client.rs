@@ -1,19 +1,20 @@
 use crate::constants::PACKAGE_TOML;
 use anyhow::{anyhow, Result};
+use log::{error, info};
 use reqwest::StatusCode;
 use std::path::PathBuf;
 
-pub async fn publishing_put_request(put_url: &str, package_bytes: Vec<u8>) -> Result<()> {
+pub async fn upload_package(put_url: &str, package_bytes: Vec<u8>) -> Result<()> {
     let client = reqwest::Client::new();
     let response = client.put(put_url).body(package_bytes).send().await?;
     match response.status() {
         StatusCode::OK => {
-            println!("Package uploaded successfully");
+            info!("Package uploaded successfully");
             Ok(())
-        },
+        }
         _ => {
             let response_text = response.text().await?;
-            println!("{}", response_text);
+            error!("Failed to upload package: {:?}", response_text);
             Err(anyhow!(response_text))
         }
     }

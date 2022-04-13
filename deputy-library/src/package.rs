@@ -1,6 +1,6 @@
 use crate::{
     archiver,
-    client::{find_toml, publishing_put_request},
+    client::{find_toml, upload_package},
     constants::{PACKAGE_PUT_URL, PACKAGE_TOML},
     project::Body,
     repository::{find_metadata_by_package_name, update_index_repository},
@@ -252,7 +252,7 @@ pub async fn create_and_send_package_file(execution_directory: PathBuf) -> Resul
     let toml_path = find_toml(toml_path)?;
     let package = create_package_from_toml(toml_path)?;
     let package_bytes = Vec::try_from(package)?;
-    publishing_put_request(PACKAGE_PUT_URL, package_bytes).await?;
+    upload_package(PACKAGE_PUT_URL, package_bytes).await?;
     Ok(())
 }
 

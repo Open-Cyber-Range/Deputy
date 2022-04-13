@@ -8,7 +8,7 @@ use rand::Rng;
 use std::path::PathBuf;
 
 use crate::{
-    configuration::Configuration, routes::basic::version, routes::package::add_package, AppState,
+    configuration::Configuration, routes::package::add_package, AppState,
 };
 use lazy_static::lazy_static;
 
@@ -74,7 +74,7 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     }))
 }
 #[actix_web::main]
-async fn real_main(configuration: Configuration) -> Result<()> {
+async fn initialize_test_server(configuration: Configuration) -> Result<()> {
     HttpServer::new(move || {
         let package_folder = configuration.package_folder.clone();
         if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
@@ -85,7 +85,6 @@ async fn real_main(configuration: Configuration) -> Result<()> {
             return App::new()
                 .app_data(app_data)
                 .service(scope("/api/v1").service(add_package))
-                .service(version);
         }
         panic!("Failed to get the repository for keeping the index");
     })
@@ -95,6 +94,6 @@ async fn real_main(configuration: Configuration) -> Result<()> {
     Ok(())
 }
 pub fn start_test_server(configuration: Configuration) {
-    std::thread::spawn(|| real_main(configuration));
+    std::thread::spawn(|| initialize_test_server(configuration));
     std::thread::sleep(std::time::Duration::from_millis(1000));
 }

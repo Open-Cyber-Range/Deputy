@@ -1,7 +1,8 @@
 use crate::{
     archiver,
     client::{find_toml, upload_package},
-    constants::{PACKAGE_PUT_URL, PACKAGE_TOML},
+    configuration::get_configuration,
+    constants::{PACKAGE_TOML, PACKAGE_UPLOAD_PATH},
     project::Body,
     repository::{find_metadata_by_package_name, update_index_repository},
 };
@@ -246,13 +247,20 @@ pub fn create_package_from_toml(toml_path: PathBuf) -> Result<Package> {
     Ok(package)
 }
 
-pub async fn create_and_send_package_file(execution_directory: PathBuf) -> Result<()> {
+pub async fn create_and_send_package_file(
+    execution_directory: PathBuf,
+    client: reqwest::Client,
+) -> Result<()> {
     let package_toml = PathBuf::from(PACKAGE_TOML);
     let toml_path = [&execution_directory, &package_toml].iter().collect();
     let toml_path = find_toml(toml_path)?;
     let package = create_package_from_toml(toml_path)?;
     let package_bytes = Vec::try_from(package)?;
-    upload_package(PACKAGE_PUT_URL, package_bytes).await?;
+    let api = get_configuration()?.repository.repositories[0]
+        .api
+        .to_owned();
+    let put_uri = api + PACKAGE_UPLOAD_PATH;
+    upload_package(put_uri.as_str(), package_bytes, client).await?;
     Ok(())
 }
 

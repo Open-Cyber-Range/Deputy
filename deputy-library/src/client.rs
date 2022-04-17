@@ -4,9 +4,12 @@ use log::{error, info};
 use reqwest::StatusCode;
 use std::path::PathBuf;
 
-pub async fn upload_package(put_url: &str, package_bytes: Vec<u8>) -> Result<()> {
-    let client = reqwest::Client::new();
-    let response = client.put(put_url).body(package_bytes).send().await?;
+pub async fn upload_package(
+    package_upload_uri: &str,
+    payload: Vec<u8>,
+    client: reqwest::Client,
+) -> Result<()> {
+    let response = client.put(package_upload_uri).body(payload).send().await?;
     match response.status() {
         StatusCode::OK => {
             info!("Package uploaded successfully");

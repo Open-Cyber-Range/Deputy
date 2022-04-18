@@ -1,4 +1,10 @@
-use crate::repository::{find_metadata_by_package_name, update_index_repository};
+use crate::{
+    archiver,
+    client::{find_toml, upload_package},
+    constants::{PACKAGE_TOML, PACKAGE_UPLOAD_PATH},
+    project::Body,
+    repository::{find_metadata_by_package_name, update_index_repository},
+};
 use anyhow::{anyhow, Ok, Result};
 use git2::Repository;
 use semver::Version;
@@ -6,9 +12,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{copy, BufReader, Read, Write},
+    io::{copy, BufReader, Read, Seek as _, SeekFrom, Write},
     ops::{Deref, DerefMut},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -39,6 +45,17 @@ impl PackageMetadata {
         }
         Ok(true)
     }
+
+    pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let archive_file = File::open(&archive_path)?;
+        let metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            checksum: PackageFile(archive_file).calculate_checksum()?,
+        };
+        Ok(metadata)
+    }
 }
 
 #[derive(Debug)]
@@ -47,6 +64,7 @@ pub struct PackageFile(pub File);
 impl PackageFile {
     fn save(&mut self, package_folder: String, name: String, version: String) -> Result<()> {
         let mut content_buffer: Vec<u8> = Vec::new();
+        self.seek(SeekFrom::Start(0))?;
         self.read_to_end(&mut content_buffer)?;
         let package_folder_path: PathBuf = [package_folder, name].iter().collect();
         fs::create_dir_all(package_folder_path.clone())?;
@@ -212,6 +230,35 @@ impl TryFrom<&[u8]> for Package {
 
         Ok(Package { metadata, file })
     }
+}
+
+pub fn create_package_from_toml(toml_path: PathBuf) -> Result<Package> {
+    let package_root = toml_path
+        .parent()
+        .ok_or_else(|| anyhow!("Directory error"))?;
+    let archive_path = archiver::create_package(package_root.to_path_buf())?;
+    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
+    let file = File::open(&archive_path)?;
+    let package = Package {
+        metadata,
+        file: PackageFile(file),
+    };
+    Ok(package)
+}
+
+pub async fn create_and_send_package_file(
+    execution_directory: PathBuf,
+    client: reqwest::Client,
+    api: &str,
+) -> Result<()> {
+    let package_toml = PathBuf::from(PACKAGE_TOML);
+    let toml_path = [&execution_directory, &package_toml].iter().collect();
+    let toml_path = find_toml(toml_path)?;
+    let package = create_package_from_toml(toml_path)?;
+    let package_bytes = Vec::try_from(package)?;
+    let put_uri = format!("{}{}", api, PACKAGE_UPLOAD_PATH);
+    upload_package(put_uri.as_str(), package_bytes, client).await?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -395,7 +442,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 14);
+        assert_eq!(package.file.metadata()?.len(), 961);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

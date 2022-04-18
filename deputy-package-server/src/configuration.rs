@@ -1,8 +1,7 @@
-use std::fs::read_to_string;
-
 use anyhow::{Error, Result};
 use deputy_library::repository::RepositoryConfiguration;
 use serde::{Deserialize, Serialize};
+use std::fs::read_to_string;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {

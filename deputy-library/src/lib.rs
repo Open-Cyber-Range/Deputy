@@ -3,10 +3,11 @@
 extern crate lazy_static;
 
 pub mod archiver;
-mod constants;
+pub mod client;
+pub mod constants;
 pub mod package;
+pub mod project;
 pub mod repository;
 #[cfg(feature = "test")]
 pub mod test;
-mod project;
 pub mod validation;

@@ -6,4 +6,20 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+actix-test = "*"
+actix-web = "4"
+anyhow = "1"
+clap = { version = "3", features = ["derive"] }
 deputy-library = { path = "../deputy-library" }
+deputy-package-server = { path = "../deputy-package-server" }
+git2 = "0.14"
+reqwest = "0.11"
+serde = { version = "1", features = ["derive"] }
+toml = "0.5"
+tokio = { version = "1.1", features = ["full"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "2.1"
+rand = "0.8"
+tempfile = "3"

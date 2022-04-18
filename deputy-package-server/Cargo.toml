@@ -38,6 +38,7 @@ anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"
 git2 = "0.14"
+lazy_static = "1"
 log = "0.4"
 rand = "0.8"
 semver = "1"

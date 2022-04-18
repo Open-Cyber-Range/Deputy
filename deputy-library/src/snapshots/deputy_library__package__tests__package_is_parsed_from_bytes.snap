@@ -3,7 +3,7 @@ source: deputy-library/src/package.rs
 expression: package.metadata
 ---
 PackageMetadata {
-    name: "some-package-name",
-    version: "0.1.0",
-    checksum: "d867001db0e2b6e0496f9fac96930e2d42233ecd3ca0413e0753d4c7695d289c",
+    name: "test_package_1",
+    version: "1.0.4",
+    checksum: "6d98ed9ca09671b8f4f45a8197d357efa322cabfe249adabb274f4c7e93c92d0",
 }

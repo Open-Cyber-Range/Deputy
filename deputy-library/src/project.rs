@@ -1,3 +1,6 @@
+use anyhow::{Ok, Result};
+use std::{fs::File, io::Read, path::PathBuf};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -12,6 +15,23 @@ pub struct Body {
     pub description: String,
     pub version: String,
     pub authors: Option<Vec<String>>,
+}
+
+impl Body {
+    pub fn create_from_toml(toml_path: PathBuf) -> Result<Body> {
+        let mut toml_file = File::open(&toml_path)?;
+        let mut contents = String::new();
+        toml_file.read_to_string(&mut contents)?;
+
+        let deserialized_toml: Project = toml::from_str(&*contents)?;
+        let result = Body {
+            name: deserialized_toml.package.name,
+            description: deserialized_toml.package.description,
+            version: deserialized_toml.package.version,
+            authors: deserialized_toml.package.authors,
+        };
+        Ok(result)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

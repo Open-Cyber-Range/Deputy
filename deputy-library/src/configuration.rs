@@ -19,10 +19,12 @@ pub struct Configuration {
     pub repository: Repositories,
 }
 
-pub fn get_configuration() -> Result<Configuration> {
-    let configuration_path = env::var(CONFIG_FILE_PATH_ENV_KEY)?;
-    let configuration_contents = read_to_string(configuration_path)?;
-    Ok(toml::from_str(&configuration_contents)?)
+impl Configuration {
+   pub fn get_configuration() -> Result<Configuration> {
+        let configuration_path = env::var(CONFIG_FILE_PATH_ENV_KEY)?;
+        let configuration_contents = read_to_string(configuration_path)?;
+        Ok(toml::from_str(&configuration_contents)?)
+    }
 }
 
 #[cfg(test)]
@@ -51,14 +53,14 @@ mod tests {
         if env::var(CONFIG_FILE_PATH_ENV_KEY).is_err() {
             let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
             env::set_var(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
-            let configuration = get_configuration()?;
+            let configuration = Configuration::get_configuration()?;
             env::remove_var(CONFIG_FILE_PATH_ENV_KEY);
             configuration_directory.close()?;
             assert_eq!(configuration.repository.repositories[0].api, "apilink");
             assert_eq!(configuration.repository.repositories[0].dl, "dllink");
             Ok(())
         } else {
-            let configuration = get_configuration()?;
+            let configuration = Configuration::get_configuration()?;
             assert!(!configuration.repository.repositories[0].api.is_empty());
             assert!(!configuration.repository.repositories[0].dl.is_empty());
             Ok(())

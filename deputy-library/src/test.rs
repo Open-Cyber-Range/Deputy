@@ -1,7 +1,6 @@
 use anyhow::{Ok, Result};
 use git2::{Repository, RepositoryInitOptions};
-use std::fs::File;
-use std::io::Write;
+use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir,NamedTempFile};
 
 use crate::package::{Package, PackageFile, PackageMetadata};

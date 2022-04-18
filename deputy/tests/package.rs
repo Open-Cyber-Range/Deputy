@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use deputy_library::package::create_package_from_toml;
-    use deputy_library::test::create_temp_project;
+    use deputy_library::{package::create_package_from_toml, test::create_temp_project};
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use std::{fs, path::PathBuf};
 

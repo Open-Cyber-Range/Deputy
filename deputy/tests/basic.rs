@@ -2,14 +2,12 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy_library::constants::CONFIG_FILE_PATH_ENV_KEY;
-    use deputy_library::{client::upload_package, test::TEST_PACKAGE_BYTES};
+    use deputy_library::{
+        client::upload_package, constants::CONFIG_FILE_PATH_ENV_KEY, test::TEST_PACKAGE_BYTES,
+    };
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
-    use std::env;
-    use std::io::Write;
-    use std::process::Command;
-    use std::{fs, path::PathBuf};
+    use std::{env, fs, io::Write, path::PathBuf, process::Command};
     use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
 
     fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {

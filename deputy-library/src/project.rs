@@ -1,6 +1,5 @@
 use anyhow::{Ok, Result};
-use std::path::PathBuf;
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +18,7 @@ pub struct Body {
 }
 
 impl Body {
-   pub fn create_from_toml(toml_path: PathBuf) -> Result<Body> {
+    pub fn create_from_toml(toml_path: PathBuf) -> Result<Body> {
         let mut toml_file = File::open(&toml_path)?;
         let mut contents = String::new();
         toml_file.read_to_string(&mut contents)?;

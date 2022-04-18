@@ -1,4 +1,4 @@
-use crate::constants::CONFIG_FILE_PATH_ENV_KEY;
+use deputy_library::constants::CONFIG_FILE_PATH_ENV_KEY;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{env, fs::read_to_string};

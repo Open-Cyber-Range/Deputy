@@ -2,22 +2,41 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
+    use deputy_library::constants::CONFIG_FILE_PATH_ENV_KEY;
     use deputy_library::{client::upload_package, test::TEST_PACKAGE_BYTES};
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
+    use std::env;
+    use std::io::Write;
     use std::process::Command;
     use std::{fs, path::PathBuf};
-    use tempfile::{Builder, TempDir};
+    use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
+
+    fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {
+        let configuration_file_contents = br#"    
+                [repository]
+                repositories = [{ dl = "dllink", api = "apilink" }]"#;
+        let configuration_directory = tempdir()?;
+        let mut configuration_file = Builder::new()
+            .prefix("configuration")
+            .suffix(".toml")
+            .rand_bytes(0)
+            .tempfile_in(&configuration_directory)?;
+        configuration_file.write_all(configuration_file_contents)?;
+        Ok((configuration_directory, configuration_file))
+    }
 
     #[test]
     fn test_version() -> Result<()> {
-        let mut cmd = Command::cargo_bin("deputy")?;
-
-        cmd.arg("version");
-        cmd.assert()
+        let mut command = Command::cargo_bin("deputy")?;
+        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        command.arg("version");
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        command
+            .assert()
             .success()
             .stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
-
+        configuration_directory.close()?;
         Ok(())
     }
 
@@ -25,19 +44,21 @@ mod tests {
     fn error_on_missing_package_toml_file() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
-
-        let mut cmd = Command::cargo_bin("deputy")?;
-        cmd.arg("publish");
-        cmd.current_dir(temp_dir);
-        cmd.assert().failure().stderr(predicate::str::contains(
+        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        let mut command = Command::cargo_bin("deputy")?;
+        command.arg("publish");
+        command.current_dir(temp_dir);
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        command.assert().failure().stderr(predicate::str::contains(
             "Error: Could not find package.toml",
         ));
-
+        configuration_directory.close()?;
         Ok(())
     }
     #[test]
     fn error_on_missing_package_toml_content() -> Result<()> {
         let temp_dir = TempDir::new()?;
+        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
         let _package_toml = Builder::new()
             .prefix("package")
             .suffix(".toml")
@@ -45,19 +66,22 @@ mod tests {
             .tempfile_in(&temp_dir)?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
 
-        let mut cmd = Command::cargo_bin("deputy")?;
-        cmd.arg("publish");
-        cmd.current_dir(temp_dir);
-        cmd.assert()
+        let mut command = Command::cargo_bin("deputy")?;
+        command.arg("publish");
+        command.current_dir(temp_dir);
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        command
+            .assert()
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
-
+        configuration_directory.close()?;
         Ok(())
     }
 
     #[test]
     fn finds_invalid_package_toml_from_parent_folder() -> Result<()> {
         let root_temp_dir = TempDir::new()?;
+        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
         let deep_path: PathBuf = ["some", "where", "many", "layers", "deep"].iter().collect();
         let deep_path = root_temp_dir.path().join(deep_path);
         std::fs::create_dir_all(&deep_path)?;
@@ -68,13 +92,15 @@ mod tests {
             .rand_bytes(0)
             .tempfile_in(&root_temp_dir)?;
 
-        let mut cmd = Command::cargo_bin("deputy")?;
-        cmd.arg("publish");
-        cmd.current_dir(deep_path.as_path());
-        cmd.assert()
+        let mut command = Command::cargo_bin("deputy")?;
+        command.arg("publish");
+        command.current_dir(deep_path.as_path());
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        command
+            .assert()
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
-
+        configuration_directory.close()?;
         Ok(())
     }
 

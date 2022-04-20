@@ -8,7 +8,9 @@ use rand::Rng;
 use std::path::PathBuf;
 
 use crate::{
-    configuration::Configuration, routes::package::add_package, routes::package::download_package, AppState,
+    configuration::Configuration,
+    routes::package::{add_package, download_package},
+    AppState,
 };
 use lazy_static::lazy_static;
 

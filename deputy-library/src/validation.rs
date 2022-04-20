@@ -46,7 +46,7 @@ impl Validate for PackageMetadata {
     }
 }
 
-fn validate_name(name: String) -> Result<()> {
+pub fn validate_name(name: String) -> Result<()> {
     if !constants::VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
             "Name {:?} must be one word of alphanumeric, `-`, or `_` characters.",
@@ -56,7 +56,7 @@ fn validate_name(name: String) -> Result<()> {
     Ok(())
 }
 
-fn validate_version(version: String) -> Result<()> {
+pub fn validate_version(version: String) -> Result<()> {
     match Version::parse(version.as_str()) {
         Ok(_) => Ok(()),
         Err(_) => Err(anyhow!(

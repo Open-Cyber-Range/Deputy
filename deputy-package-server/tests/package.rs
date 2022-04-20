@@ -122,18 +122,23 @@ mod tests {
         let package_version = test_package.metadata.version.clone();
 
         let app = test::init_service(App::new().app_data(app_state).service(download_package).service(add_package)).await;
+        
         let payload = Vec::try_from(test_package)?;
+
         let request = test::TestRequest::put()
             .uri("/package")
             .set_payload(payload.clone())
             .to_request();
+
         test::call_service(&app, request).await;
+
         let request = test::TestRequest::get()
             .uri(&format!("/package/{}/{}/download", package_name, package_version))
             .to_request();
-        let response = test::call_service(&app, request).await;
 
+        let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
+
         let body = to_bytes(response.into_body()).await.unwrap();
         let content = from_utf8(&body).unwrap();
         assert_eq!(content, "some content \n");

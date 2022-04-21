@@ -34,6 +34,7 @@ systemd-units = { unit-name = "deputy-package-server", unit-scripts = "assets/un
 
 [dependencies]
 actix-web = "4"
+actix-files = "0.6"
 anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"

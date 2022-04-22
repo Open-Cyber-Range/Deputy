@@ -8,12 +8,14 @@ mod tests {
     use deputy_library::test::create_test_package;
     use deputy_package_server::{
         routes::package::add_package,
+        routes::package::download_package,
         test::{
             create_predictable_temporary_folders, create_test_app_state, generate_random_string,
         },
         AppState,
     };
     use std::path::PathBuf;
+    use std::str::from_utf8;
 
     fn setup_package_server() -> Result<(String, Data<AppState>)> {
         let randomizer = generate_random_string(10)?;
@@ -107,6 +109,40 @@ mod tests {
             body.as_str(),
             "Package version on the server is either same or later"
         );
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn download_package_with_name_and_version() -> Result<()> {
+        let (_, app_state) = setup_package_server()?;
+
+        let test_package = create_test_package()?;
+        
+        let package_name = test_package.metadata.name.clone();
+        let package_version = test_package.metadata.version.clone();
+
+        let app = test::init_service(App::new().app_data(app_state).service(download_package).service(add_package)).await;
+        
+        let payload = Vec::try_from(test_package)?;
+
+        let request = test::TestRequest::put()
+            .uri("/package")
+            .set_payload(payload.clone())
+            .to_request();
+
+        test::call_service(&app, request).await;
+
+        let request = test::TestRequest::get()
+            .uri(&format!("/package/{}/{}/download", package_name, package_version))
+            .to_request();
+
+        let response = test::call_service(&app, request).await;
+        assert!(response.status().is_success());
+
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let content = from_utf8(&body).unwrap();
+        assert_eq!(content, "some content \n");
+        
         Ok(())
     }
 }

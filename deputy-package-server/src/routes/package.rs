@@ -1,9 +1,19 @@
 use actix_web::{
     put,
-    web::{Bytes, Data},
+    get,
+    web::{Bytes, Data, Path},
     HttpResponse,
+    Responder,
+    Error
 };
-use deputy_library::{package::Package, validation::Validate};
+use deputy_library::{
+    package::Package,
+    validation::{Validate, validate_name, validate_version}
+};
+use actix_files::NamedFile;
+
+use std::path::PathBuf;
+
 use log::error;
 
 use crate::AppState;
@@ -47,4 +57,33 @@ pub async fn add_package(package_bytes: Bytes, app_state: Data<AppState>) -> Htt
             HttpResponse::UnprocessableEntity().body("Failed to parse package bytes")
         }
     }
+}
+
+
+#[get("package/{package_name}/{package_version}/download")]
+pub async fn download_package(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>
+) -> impl Responder {
+    let package_folder = &app_state.package_folder;
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    match validate_name(package_name.to_string()) {
+        Ok(_) => (),
+        Err(error) => {
+            error!("Failed to validate package name: {:}", error);
+        }
+    }
+    match validate_version(package_version.to_string()) {
+        Ok(_) => (),
+        Err(error) => {
+            error!("Failed to validate package version: {:}", error);
+        }
+    }
+    
+    let package_path = PathBuf::from(package_folder).join(package_name).join(package_version);
+    NamedFile::open(package_path).map_err(|error| {
+        error!("Failed to open the package: {:}", error);
+        Error::from(error)
+    })
 }

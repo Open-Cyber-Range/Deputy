@@ -8,7 +8,9 @@ use rand::Rng;
 use std::path::PathBuf;
 
 use crate::{
-    configuration::Configuration, routes::package::add_package, AppState,
+    configuration::Configuration,
+    routes::package::{add_package, download_package},
+    AppState,
 };
 use lazy_static::lazy_static;
 
@@ -85,6 +87,7 @@ async fn initialize_test_server(configuration: Configuration) -> Result<()> {
             return App::new()
                 .app_data(app_data)
                 .service(scope("/api/v1").service(add_package))
+                .service(scope("/api/v1").service(download_package))
         }
         panic!("Failed to get the repository for keeping the index");
     })

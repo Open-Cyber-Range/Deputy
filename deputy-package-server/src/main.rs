@@ -9,6 +9,7 @@ use deputy_package_server::{
     routes::{
         basic::{status, version},
         package::add_package,
+        package::download_package,
     },
     AppState,
 };
@@ -29,7 +30,8 @@ async fn real_main() -> Result<()> {
                 .app_data(app_data)
                 .service(status)
                 .service(version)
-                .service(scope("/api/v1").service(add_package));
+                .service(scope("/api/v1").service(add_package))
+                .service(scope("/api/v1").service(download_package));
         }
         error!("Failed to get the repository for keeping the index");
         panic!("Failed to get the repository for keeping the index");

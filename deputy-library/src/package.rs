@@ -5,7 +5,10 @@ use crate::{
     project::Body,
     repository::{find_metadata_by_package_name, update_index_repository},
 };
-use anyhow::{anyhow, Ok, Result};
+use actix_http::error::PayloadError;
+use actix_web::web::Bytes;
+use anyhow::{anyhow, Result};
+use futures::{Stream, StreamExt};
 use git2::Repository;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -15,7 +18,10 @@ use std::{
     io::{copy, BufReader, Read, Seek as _, SeekFrom, Write},
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
+    pin::Pin,
 };
+use tokio::fs::File as TokioFile;
+use tokio_util::codec::{BytesCodec, FramedRead};
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
@@ -80,6 +86,19 @@ impl PackageFile {
         let hash_bytes = hasher.finalize();
         Ok(format!("{:x}", hash_bytes))
     }
+
+    pub async fn from_stream(
+        mut stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
+    ) -> Result<Self> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        while let Some(chunk) = stream.next().await {
+            file.write_all(&chunk?)?;
+            file.flush()?;
+        }
+
+        let new_handler = file.reopen()?;
+        Ok(PackageFile(new_handler))
+    }
 }
 
 #[derive(Debug)]
@@ -89,6 +108,10 @@ pub struct Package {
 }
 
 impl Package {
+    pub fn new(metadata: PackageMetadata, file: PackageFile) -> Self {
+        Self { metadata, file }
+    }
+
     pub fn save(&mut self, package_folder: String, repository: &Repository) -> Result<()> {
         update_index_repository(repository, &self.metadata)?;
         self.file.save(
@@ -197,6 +220,30 @@ impl<'a> TryFrom<Package> for Vec<u8> {
     }
 }
 
+pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
+
+impl<'a> TryFrom<Package> for PackageStream {
+    type Error = anyhow::Error;
+
+    fn try_from(package: Package) -> Result<Self> {
+        let mut metadata_bytes_with_lenght = Vec::try_from(&package.metadata)?;
+        if metadata_bytes_with_lenght.len() < 4 {
+            return Err(anyhow!("Metadata is too short"));
+        }
+        let metadata_bytes = metadata_bytes_with_lenght.drain(4..).collect::<Vec<_>>();
+        let stream: PackageStream =
+            Box::pin(futures::stream::iter(vec![Ok(Bytes::from(metadata_bytes))]));
+        let tokio_file = TokioFile::from(package.file.0);
+        let file_stream = FramedRead::new(tokio_file, BytesCodec::new()).map(|bytes| match bytes {
+            Ok(bytes) => Ok(bytes.freeze()),
+            Err(err) => Err(PayloadError::Io(err)),
+        });
+        let stream = stream.chain(file_stream);
+
+        Ok(stream.boxed_local())
+    }
+}
+
 impl TryFrom<&[u8]> for Package {
     type Error = anyhow::Error;
 
@@ -211,7 +258,7 @@ impl TryFrom<&[u8]> for Package {
         let metadata_end = (4 + metadata_length) as usize;
         let metadata_bytes = package_bytes
             .get(4..metadata_end)
-            .ok_or_else(|| anyhow::anyhow!("Could not din metadata"))?;
+            .ok_or_else(|| anyhow::anyhow!("Could not find metadata"))?;
         let metadata = PackageMetadata::try_from(metadata_bytes)?;
 
         let mut file_length_bytes: [u8; 4] = Default::default();
@@ -263,15 +310,15 @@ pub async fn create_and_send_package_file(
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, io::Read, path::PathBuf};
-
-    use super::{Package, PackageFile, PackageMetadata};
+    use super::{Package, PackageFile, PackageMetadata, PackageStream};
     use crate::test::{
         create_readable_temporary_file, create_test_package, get_last_commit_message,
         initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
         TEST_PACKAGE_METADATA,
     };
     use anyhow::{Ok, Result};
+    use futures::StreamExt;
+    use std::{fs::File, io::Read, path::PathBuf};
     use tempfile::tempdir;
 
     #[test]
@@ -433,6 +480,29 @@ mod tests {
         let package = create_test_package()?;
         let package_bytes = Vec::try_from(package)?;
         insta::assert_debug_snapshot!(package_bytes);
+
+        Ok(())
+    }
+
+    #[test]
+    fn package_is_converted_to_stream() -> Result<()> {
+        let package = create_test_package()?;
+        let mut byte_stream = PackageStream::try_from(package)?;
+        tokio::runtime::Runtime::new()?.block_on(async move {
+            let mut counter = 0;
+            let mut bytes = Vec::new();
+            while let Some(chunk) = byte_stream.next().await {
+                let chunk = chunk.unwrap();
+                bytes.append(&mut chunk.to_vec());
+                counter += 1;
+                if counter == 1 {
+                    PackageMetadata::try_from(bytes.as_slice())?;
+                }
+            }
+            assert_eq!(counter, 2);
+            insta::assert_debug_snapshot!(bytes);
+            Ok(())
+        })?;
 
         Ok(())
     }

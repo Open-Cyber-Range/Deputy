@@ -16,12 +16,17 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct VirtualMachine {
+    pub operating_system: String,
+    pub architecture: String,
+}
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
+    pub virtual_machine: VirtualMachine,
 }
 
 impl PackageMetadata {
@@ -53,6 +58,10 @@ impl PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: PackageFile(archive_file).calculate_checksum()?,
+            virtual_machine: VirtualMachine {
+                operating_system: "something".to_string(), //TODO: Are these system paremeters or entered by the user or waht
+                architecture: "something".to_string(),
+            },
         };
         Ok(metadata)
     }

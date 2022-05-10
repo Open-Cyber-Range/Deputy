@@ -3,13 +3,17 @@ use git2::{Repository, RepositoryInitOptions};
 use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir,NamedTempFile};
 
-use crate::package::{Package, PackageFile, PackageMetadata};
+use crate::package::{Package, PackageFile, PackageMetadata, VirtualMachine};
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),
         name: "some-package-name".to_string(),
+        virtual_machine: VirtualMachine{
+            operating_system: "pop-os".to_string(),
+            architecture: "x86_64".to_string(),
+        }
     };
     pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![
         123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99, 107, 97, 103,

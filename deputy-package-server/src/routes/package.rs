@@ -110,18 +110,15 @@ pub async fn download_package(
     let package_folder = &app_state.package_folder;
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
-    match validate_name(package_name.to_string()) {
-        Ok(_) => (),
-        Err(error) => {
-            error!("Failed to validate package name: {error}");
-        }
-    }
-    match validate_version(package_version.to_string()) {
-        Ok(_) => (),
-        Err(error) => {
-            error!("Failed to validate package version: {error}");
-        }
-    }
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
 
     let package_path = PathBuf::from(package_folder)
         .join(package_name)

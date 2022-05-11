@@ -15,9 +15,13 @@ pub enum PackageServerError {
     FileSave,
     #[error("Failed to save the package")]
     PackageSave,
-    #[error("Failed to parse version value")]
-    PackageValidation,
     #[error("Failed to validate the package")]
+    PackageValidation,
+    #[error("Failed to validate the package version")]
+    PackageVersionValidation,
+    #[error("Failed to validate the package name")]
+    PackageNameValidation,
+    #[error("Failed to parse version value")]
     VersionParse,
     #[error("Package version on the server is either same or later")]
     VersionConflict,
@@ -41,6 +45,8 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::PackageParse => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionParse => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageVersionValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageNameValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionConflict => StatusCode::CONFLICT,
                 PackageServerError::FileSave => StatusCode::INTERNAL_SERVER_ERROR,
                 PackageServerError::PackageSave => StatusCode::INTERNAL_SERVER_ERROR,

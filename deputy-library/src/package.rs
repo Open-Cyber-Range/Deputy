@@ -50,7 +50,7 @@ impl PackageMetadata {
     pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path.clone())?;
         let archive_file = File::open(&archive_path)?;
-        let virtual_machine = Some(VirtualMachine::create_from_toml(toml_path)?);
+        let virtual_machine = VirtualMachine::create_from_toml(toml_path)?;
         let metadata = PackageMetadata {
             name: package_body.name,
             version: package_body.version,
@@ -266,13 +266,20 @@ pub async fn create_and_send_package_file(
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, io::Read, path::PathBuf};
+    use std::{
+        fs::File,
+        io::{Read, Write},
+        path::PathBuf,
+    };
 
     use super::{Package, PackageFile, PackageMetadata};
-    use crate::test::{
-        create_readable_temporary_file, create_test_package, get_last_commit_message,
-        initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
-        TEST_PACKAGE_METADATA,
+    use crate::{
+        package::create_package_from_toml,
+        test::{
+            create_readable_temporary_file, create_test_package, get_last_commit_message,
+            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
+            TEST_PACKAGE_METADATA,
+        },
     };
     use anyhow::{Ok, Result};
     use tempfile::tempdir;
@@ -407,6 +414,35 @@ mod tests {
 
         let metadata = PackageMetadata::try_from(&bytes as &[u8])?;
         insta::assert_debug_snapshot!(metadata);
+        Ok(())
+    }
+
+    #[test]
+    fn missing_virtual_machine_metadata_is_given_value_unknown() -> Result<()> {
+        let toml_content = r#"
+                [package]
+                name = "test_package_1"
+                description = "This is a package"
+                version = "1.0.4"
+                authors = ["Robert robert@exmaple.com"]
+                [content]
+                type = "vm"
+                sub_type = "packer"
+                "#;
+        let temp_dir = tempfile::TempDir::new()?;
+        let mut package_toml = tempfile::Builder::new()
+            .prefix("package")
+            .suffix(".toml")
+            .rand_bytes(0)
+            .tempfile_in(&temp_dir)?;
+        package_toml.write_all(toml_content.as_bytes())?;
+        let temp_package = create_package_from_toml(package_toml.path().to_path_buf())?;
+        let metadata = temp_package.metadata;
+        if let Some(virtual_machine) = metadata.virtual_machine {
+            assert_eq!(virtual_machine.operating_system, "Unknown".to_string());
+            assert_eq!(virtual_machine.architecture, "Unknown".to_string());
+        }
+        temp_dir.close()?;
         Ok(())
     }
 

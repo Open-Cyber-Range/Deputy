@@ -25,7 +25,7 @@ fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::
     Ok(deserialized_toml)
 }
 impl VirtualMachine {
-    pub fn create_from_toml(toml_path: PathBuf) -> Result<VirtualMachine> {
+    pub fn create_from_toml(toml_path: PathBuf) -> Result<Option<VirtualMachine>> {
         let deserialized_toml = create_project_from_toml_path(toml_path)?;
 
         match deserialized_toml.content.content_type {
@@ -41,10 +41,9 @@ impl VirtualMachine {
                         value => value.to_string(),
                     },
                 };
-                Ok(result)
-            } /*
-              Unreachable pattern since VM is currently the only content_type
-              _ => Ok(VirtualMachine::default()),
+                Ok(Some(result))
+            } /* Unreachable pattern since VM is currently the only ContentType
+              _ => Ok(None),
                */
         }
     }

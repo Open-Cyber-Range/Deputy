@@ -77,6 +77,23 @@ fn validate_type(content: Content) -> Result<()> {
     Ok(())
 }
 
+fn validate_virtual_machine(virtual_machine: VirtualMachine) -> Result<()> {
+    if !constants::VALID_OPERATING_SYSTEMS.contains(&virtual_machine.operating_system.as_str()) {
+        return Err(anyhow!(
+            "VM operating system {:?} not valid",
+            virtual_machine.operating_system
+        ));
+    };
+    if !constants::VALID_ARCHITECTURES.contains(&virtual_machine.architecture.as_str()) {
+        return Err(anyhow!(
+            "VM architecture {:?} not valid",
+            virtual_machine.architecture
+        ));
+    };
+
+    Ok(())
+}
+
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
@@ -86,6 +103,9 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_type(deserialized_toml.content)?;
+    if let Some(virtual_machine) = deserialized_toml.virtual_machine {
+        validate_virtual_machine(virtual_machine)?;
+    }
     Ok(())
 }
 

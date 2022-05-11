@@ -2,4 +2,4 @@
 source: deputy-library/src/repository.rs
 expression: line
 ---
-"{\"name\":\"some-package-name\",\"version\":\"0.1.0\",\"checksum\":\"aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73\"}"
+"{\"name\":\"some-package-name\",\"version\":\"0.1.0\",\"checksum\":\"aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73\",\"virtual_machine\":{\"operating_system\":\"pop-os\",\"architecture\":\"x86_64\"}}"

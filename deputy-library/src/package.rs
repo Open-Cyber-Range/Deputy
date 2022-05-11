@@ -2,7 +2,7 @@ use crate::{
     archiver,
     client::{find_toml, upload_package},
     constants::{PACKAGE_TOML, PACKAGE_UPLOAD_PATH},
-    project::Body,
+    project::{Body, VirtualMachine},
     repository::{find_metadata_by_package_name, update_index_repository},
 };
 use anyhow::{anyhow, Ok, Result};
@@ -16,17 +16,13 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct VirtualMachine {
-    pub operating_system: String,
-    pub architecture: String,
-}
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
-    pub virtual_machine: VirtualMachine,
+    pub virtual_machine: Option<VirtualMachine>,
 }
 
 impl PackageMetadata {
@@ -52,16 +48,14 @@ impl PackageMetadata {
     }
 
     pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
-        let package_body = Body::create_from_toml(toml_path)?;
+        let package_body = Body::create_from_toml(toml_path.clone())?;
         let archive_file = File::open(&archive_path)?;
+        let virtual_machine = Some(VirtualMachine::create_from_toml(toml_path)?);
         let metadata = PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: PackageFile(archive_file).calculate_checksum()?,
-            virtual_machine: VirtualMachine {
-                operating_system: "something".to_string(), //TODO: Are these system paremeters or entered by the user or waht
-                architecture: "something".to_string(),
-            },
+            virtual_machine,
         };
         Ok(metadata)
     }
@@ -451,7 +445,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 961);
+        assert_eq!(package.file.metadata()?.len(), 1009);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

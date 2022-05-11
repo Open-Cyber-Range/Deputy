@@ -1,11 +1,17 @@
 ---
 source: deputy-library/src/package.rs
-expression: "PackageMetadata::get_latest_metadata(&test_package.metadata.name,\n        &repository)?"
+expression: "PackageMetadata::get_latest_metadata(&test_package.metadata.name,\n                                     &repository)?"
 ---
 Some(
     PackageMetadata {
         name: "some-package-name",
         version: "4.0.0",
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73",
+        virtual_machine: Some(
+            VirtualMachine {
+                operating_system: "pop-os",
+                architecture: "x86_64",
+            },
+        ),
     },
 )

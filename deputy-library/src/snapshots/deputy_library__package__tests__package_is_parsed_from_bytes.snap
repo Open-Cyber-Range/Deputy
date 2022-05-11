@@ -5,5 +5,11 @@ expression: package.metadata
 PackageMetadata {
     name: "test_package_1",
     version: "1.0.4",
-    checksum: "6d98ed9ca09671b8f4f45a8197d357efa322cabfe249adabb274f4c7e93c92d0",
+    checksum: "8cc6739909901b80596b060d3e71637184d06dddf716dc0874856e4d7eaeaa4f",
+    virtual_machine: Some(
+        VirtualMachine {
+            operating_system: "pop-os",
+            architecture: "x86_64",
+        },
+    ),
 }

@@ -13,48 +13,53 @@ use deputy_library::{
     validation::{validate_name, validate_version, Validate},
 };
 use futures::StreamExt;
+use git2::Repository;
 use log::error;
 use std::path::PathBuf;
 
+fn check_for_version_error(
+    package_metadata: &PackageMetadata,
+    repository: &Repository,
+) -> Result<(), Error> {
+    if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
+        if !is_valid {
+            error!("Package version on the server is either same or later");
+            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
+        }
+    } else {
+        error!("Failed to validate versioning");
+        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
+    }
+
+    Ok(())
+}
+
 #[put("package")]
-pub async fn add_package(package_bytes: Bytes, app_state: Data<AppState>) -> HttpResponse {
+pub async fn add_package(
+    package_bytes: Bytes,
+    app_state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
     let package_vector = package_bytes.to_vec();
 
-    match Package::try_from(&package_vector as &[u8]) {
-        Ok(mut package) => {
-            let folder = &app_state.package_folder;
-            let repository = &app_state.repository;
-            match package.validate() {
-                Ok(_) => match package.metadata.is_latest_version(repository) {
-                    Ok(true) => match package.save(folder.to_string(), repository) {
-                        Ok(_) => HttpResponse::Ok().finish(),
-                        Err(error) => {
-                            error!("Failed to save the package: {:}", error);
-                            HttpResponse::InternalServerError().finish()
-                        }
-                    },
-                    Ok(false) => {
-                        error!("Package version on the server is either same or later");
-                        HttpResponse::BadRequest()
-                            .body("Package version on the server is either same or later")
-                    }
-                    Err(error) => {
-                        error!("Failed to validate versioning: {:}", error);
-                        HttpResponse::InternalServerError().finish()
-                    }
-                },
-                Err(error) => {
-                    error!("Failed to validate the package: {:}", error);
-                    HttpResponse::BadRequest()
-                        .body(format!("Failed to validate the package: {:}", error))
-                }
-            }
-        }
-        Err(error) => {
-            error!("Failed to parse package body: {:?}", error);
-            HttpResponse::UnprocessableEntity().body("Failed to parse package bytes")
-        }
-    }
+    let mut package = Package::try_from(&package_vector as &[u8]).map_err(|error| {
+        error!("Failed to validate the package: {error}");
+        ServerResponseError(PackageServerError::PackageParse.into())
+    })?;
+    let folder = &app_state.package_folder;
+    let repository = &app_state.repository;
+    package.validate().map_err(|error| {
+        error!("Failed to validate the package: {error}");
+        ServerResponseError(PackageServerError::PackageValidation.into())
+    })?;
+    check_for_version_error(&package.metadata, repository)?;
+
+    package
+        .save(folder.to_string(), repository)
+        .map_err(|error| {
+            error!("Failed to save the package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[put("/package/stream")]
@@ -75,21 +80,18 @@ pub async fn add_package_streaming(
 
     let folder = &app_state.package_folder;
     let repository = &app_state.repository;
-    if let Ok(is_valid) = metadata.is_latest_version(repository) {
-        if !is_valid {
-            error!("Package version on the server is either same or later");
-            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
-        }
-    } else {
-        error!("Failed to validate versioning");
-        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
-    }
+    check_for_version_error(&metadata, repository)?;
 
     let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
         error!("Failed to save the file: {error}");
         ServerResponseError(PackageServerError::FileSave.into())
     })?;
+
     let mut package = Package::new(metadata, package_file);
+    package.validate().map_err(|error| {
+        error!("Failed to validate the package: {error}");
+        ServerResponseError(PackageServerError::PackageValidation.into())
+    })?;
     package
         .save(folder.to_string(), repository)
         .map_err(|error| {

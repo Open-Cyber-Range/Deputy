@@ -9,11 +9,15 @@ use thiserror::Error as ThisError;
 pub enum PackageServerError {
     #[error("Failed to parse metadata")]
     MetadataParse,
+    #[error("Failed to parse package")]
+    PackageParse,
     #[error("Failed to save the file")]
     FileSave,
     #[error("Failed to save the package")]
     PackageSave,
     #[error("Failed to parse version value")]
+    PackageValidation,
+    #[error("Failed to validate the package")]
     VersionParse,
     #[error("Package version on the server is either same or later")]
     VersionConflict,
@@ -34,10 +38,12 @@ impl ResponseError for ServerResponseError {
         {
             return match package_server_error {
                 PackageServerError::MetadataParse => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageParse => StatusCode::BAD_REQUEST,
+                PackageServerError::VersionParse => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::VersionConflict => StatusCode::CONFLICT,
                 PackageServerError::FileSave => StatusCode::INTERNAL_SERVER_ERROR,
                 PackageServerError::PackageSave => StatusCode::INTERNAL_SERVER_ERROR,
-                PackageServerError::VersionParse => StatusCode::BAD_REQUEST,
-                PackageServerError::VersionConflict => StatusCode::CONFLICT,
             };
         }
         StatusCode::INTERNAL_SERVER_ERROR

@@ -65,7 +65,7 @@ pub async fn add_package_streaming(
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
         PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {:}", error);
+            error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         })?
     } else {
@@ -86,14 +86,14 @@ pub async fn add_package_streaming(
     }
 
     let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
-        error!("Failed to save the file: {:}", error);
+        error!("Failed to save the file: {error}");
         ServerResponseError(PackageServerError::FileSave.into())
     })?;
     let mut package = Package::new(metadata, package_file);
     package
         .save(folder.to_string(), repository)
         .map_err(|error| {
-            error!("Failed to save the package: {:}", error);
+            error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
@@ -111,13 +111,13 @@ pub async fn download_package(
     match validate_name(package_name.to_string()) {
         Ok(_) => (),
         Err(error) => {
-            error!("Failed to validate package name: {:}", error);
+            error!("Failed to validate package name: {error}");
         }
     }
     match validate_version(package_version.to_string()) {
         Ok(_) => (),
         Err(error) => {
-            error!("Failed to validate package version: {:}", error);
+            error!("Failed to validate package version: {error}");
         }
     }
 
@@ -125,7 +125,7 @@ pub async fn download_package(
         .join(package_name)
         .join(package_version);
     NamedFile::open(package_path).map_err(|error| {
-        error!("Failed to open the package: {:}", error);
+        error!("Failed to open the package: {error}");
         Error::from(error)
     })
 }

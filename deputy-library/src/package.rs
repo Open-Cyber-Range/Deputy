@@ -278,7 +278,7 @@ mod tests {
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
             initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
-            TEST_PACKAGE_METADATA,
+            TEST_PACKAGE_METADATA, TEST_PACKAGE_TOML_SCHEMA,
         },
     };
     use anyhow::{Ok, Result};
@@ -419,23 +419,13 @@ mod tests {
 
     #[test]
     fn missing_virtual_machine_metadata_is_given_value_unknown() -> Result<()> {
-        let toml_content = r#"
-                [package]
-                name = "test_package_1"
-                description = "This is a package"
-                version = "1.0.4"
-                authors = ["Robert robert@exmaple.com"]
-                [content]
-                type = "vm"
-                sub_type = "packer"
-                "#;
         let temp_dir = tempfile::TempDir::new()?;
         let mut package_toml = tempfile::Builder::new()
             .prefix("package")
             .suffix(".toml")
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
-        package_toml.write_all(toml_content.as_bytes())?;
+        package_toml.write_all(TEST_PACKAGE_TOML_SCHEMA.as_bytes())?;
         let temp_package = create_package_from_toml(package_toml.path().to_path_buf())?;
         let metadata = temp_package.metadata;
         if let Some(virtual_machine) = metadata.virtual_machine {

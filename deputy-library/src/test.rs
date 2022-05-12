@@ -16,6 +16,18 @@ lazy_static! {
             architecture: "x86_64".to_string(),
         })
     };
+
+    pub static ref TEST_PACKAGE_TOML_SCHEMA: &'static str = r#"
+        [package]
+        name = "test_package_1"
+        description = "This is a package"
+        version = "1.0.4"
+        authors = ["Robert robert@exmaple.com"]
+        [content]
+        type = "vm"
+        sub_type = "packer"
+        "#;
+        
     pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99, 
         107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48, 46, 49, 46, 48, 34, 44, 
         34, 99, 104, 101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 

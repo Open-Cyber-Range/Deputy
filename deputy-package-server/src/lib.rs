@@ -1,6 +1,7 @@
 use git2::Repository;
 
 pub mod configuration;
+mod errors;
 pub mod routes;
 #[cfg(feature = "test")]
 pub mod test;

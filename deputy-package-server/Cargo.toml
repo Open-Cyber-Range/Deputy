@@ -35,9 +35,11 @@ systemd-units = { unit-name = "deputy-package-server", unit-scripts = "assets/un
 [dependencies]
 actix-web = "4"
 actix-files = "0.6"
+actix-http = { version = "3", features = ["http2", "ws"] }
 anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"
+futures = "0.3"
 git2 = "0.14"
 insta = "1"
 lazy_static = "1"
@@ -47,6 +49,7 @@ semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 tempfile = "3"
+thiserror = "1"
 
 [features]
 default = ["test"]

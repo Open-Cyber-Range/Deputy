@@ -102,10 +102,7 @@ mod tests {
 
         assert!(response.status().is_client_error());
         let body = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(
-            body.as_str(),
-            "Failed to validate the package: Package checksum is not valid"
-        );
+        assert_eq!(body.as_str(), "Failed to validate the package");
         Ok(())
     }
 

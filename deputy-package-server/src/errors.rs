@@ -9,7 +9,7 @@ use thiserror::Error as ThisError;
 pub enum PackageServerError {
     #[error("Failed to parse metadata")]
     MetadataParse,
-    #[error("Failed to parse package")]
+    #[error("Failed to parse package bytes")]
     PackageParse,
     #[error("Failed to save the file")]
     FileSave,

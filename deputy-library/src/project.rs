@@ -1,7 +1,7 @@
 use anyhow::{Ok, Result};
 use std::{fs::File, io::Read, path::PathBuf};
-
 use serde::{Deserialize, Serialize};
+use crate::constants::{Architecture, OperatingSystem};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Project {
@@ -12,50 +12,25 @@ pub struct Project {
 }
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
-    #[serde(default)]
-    pub operating_system: String,
-    #[serde(default)]
-    pub architecture: String,
+    #[serde(default = "default_os")]
+    pub operating_system: OperatingSystem,
+    #[serde(default = "default_architecture")]
+    pub architecture: Architecture,
 }
-fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::Error> {
+pub fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(&toml_path)?;
     let mut contents = String::new();
     toml_file.read_to_string(&mut contents)?;
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     Ok(deserialized_toml)
 }
-impl VirtualMachine {
-    pub fn create_from_toml(toml_path: PathBuf) -> Result<Option<VirtualMachine>> {
-        let deserialized_toml = create_project_from_toml_path(toml_path)?;
 
-        match deserialized_toml.content.content_type {
-            ContentType::VM => {
-                let virtual_machine = deserialized_toml.virtual_machine.unwrap_or_default();
-                let result = VirtualMachine {
-                    operating_system: match virtual_machine.operating_system.trim() {
-                        "" => "Unknown".to_string(),
-                        value => value.to_string(),
-                    },
-                    architecture: match virtual_machine.architecture.trim() {
-                        "" => "Unknown".to_string(),
-                        value => value.to_string(),
-                    },
-                };
-                Ok(Some(result))
-            } /* Unreachable pattern since VM is currently the only ContentType
-              _ => Ok(None),
-               */
-        }
-    }
+pub fn default_os() -> OperatingSystem {
+    OperatingSystem::Unknown
 }
 
-impl Default for VirtualMachine {
-    fn default() -> VirtualMachine {
-        VirtualMachine {
-            operating_system: "Unknown".to_string(),
-            architecture: "Unknown".to_string(),
-        }
-    }
+pub fn default_architecture() -> Architecture {
+    Architecture::Unknown
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

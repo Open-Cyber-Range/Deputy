@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::{
-    constants,
+    constants::{self, Architecture, OperatingSystem},
     package::{Package, PackageMetadata},
     project::*,
 };
@@ -42,6 +42,14 @@ impl Validate for PackageMetadata {
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
+        if let Some(virtual_machine) = &self.virtual_machine {
+            if virtual_machine.operating_system == OperatingSystem::Unknown {
+                return Err(anyhow!("Package defined as VM but OS is unknown"));
+            }
+            if virtual_machine.architecture == Architecture::Unknown {
+                return Err(anyhow!("Package defined as VM but architecture is unknown"));
+            }
+        }
         Ok(())
     }
 }
@@ -66,7 +74,7 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
-fn validate_type(content: Content) -> Result<()> {
+fn validate_type(content: &Content) -> Result<()> {
     let is_valid = match content.content_type {
         ContentType::VM => constants::VALID_VM_TYPES.contains(&&content.sub_type),
     };
@@ -78,19 +86,12 @@ fn validate_type(content: Content) -> Result<()> {
 }
 
 fn validate_virtual_machine(virtual_machine: VirtualMachine) -> Result<()> {
-    if !constants::VALID_OPERATING_SYSTEMS.contains(&virtual_machine.operating_system.as_str()) {
-        return Err(anyhow!(
-            "VM operating system {:?} not valid",
-            virtual_machine.operating_system
-        ));
+    if virtual_machine.operating_system == OperatingSystem::Unknown {
+        return Err(anyhow!("Package defined as VM but OS is unknown"));
     };
-    if !constants::VALID_ARCHITECTURES.contains(&virtual_machine.architecture.as_str()) {
-        return Err(anyhow!(
-            "VM architecture {:?} not valid",
-            virtual_machine.architecture
-        ));
+    if virtual_machine.architecture == Architecture::Unknown {
+        return Err(anyhow!("Package defined as VM but architecture is unknown"));
     };
-
     Ok(())
 }
 
@@ -102,9 +103,15 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
-    validate_type(deserialized_toml.content)?;
-    if let Some(virtual_machine) = deserialized_toml.virtual_machine {
-        validate_virtual_machine(virtual_machine)?;
+    validate_type(&deserialized_toml.content)?;
+    if deserialized_toml.content.content_type == ContentType::VM {
+        if let Some(virtual_machine) = deserialized_toml.virtual_machine {
+            validate_virtual_machine(virtual_machine)?;
+        } else {
+            return Err(anyhow!(
+                "Package type defined as VM but virtual-machine descriptor is missing"
+            ));
+        }
     }
     Ok(())
 }
@@ -112,6 +119,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test::TEST_VALID_PACKAGE_TOML_SCHEMA;
     use anyhow::Ok;
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
@@ -150,17 +158,8 @@ sub_type = "packer"
 
     #[test]
     fn positive_result_all_fields_correct() -> Result<()> {
-        let toml_content = br#"
-[package]
-name = "test_package_1-0-4"
-description = "This package does nothing at all, and we spent 300 manhours on it..."
-version = "1.0.4"
-authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
-[content]
-type = "vm"
-sub_type = "packer"
-"#;
-        let (file, _deserialized_toml) = create_temp_file(toml_content)?;
+        let (file, _deserialized_toml) =
+            create_temp_file(TEST_VALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         assert!(validate_package_toml(&file.path()).is_ok());
         file.close()?;
         Ok(())
@@ -196,7 +195,7 @@ type = "virtuelle machine"
 sub_type = "packer"
 "#;
         let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(deserialized_toml.content).is_err());
+        assert!(validate_type(&deserialized_toml.content).is_err());
         file.close().unwrap();
     }
 
@@ -214,7 +213,7 @@ type = "vm"
 sub_type = "something_wrong"
 "#;
         let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(deserialized_toml.content).is_err());
+        assert!(validate_type(&deserialized_toml.content).is_err());
         file.close().unwrap();
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     archiver,
     client::{find_toml, upload_package},
     constants::{PACKAGE_TOML, PACKAGE_UPLOAD_PATH},
-    project::{Body, VirtualMachine},
+    project::{create_project_from_toml_path, VirtualMachine},
     repository::{find_metadata_by_package_name, update_index_repository},
 };
 use anyhow::{anyhow, Ok, Result};
@@ -48,14 +48,13 @@ impl PackageMetadata {
     }
 
     pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
-        let package_body = Body::create_from_toml(toml_path.clone())?;
+        let project = create_project_from_toml_path(toml_path)?;
         let archive_file = File::open(&archive_path)?;
-        let virtual_machine = VirtualMachine::create_from_toml(toml_path)?;
         let metadata = PackageMetadata {
-            name: package_body.name,
-            version: package_body.version,
+            name: project.package.name,
+            version: project.package.version,
             checksum: PackageFile(archive_file).calculate_checksum()?,
-            virtual_machine,
+            virtual_machine: project.virtual_machine,
         };
         Ok(metadata)
     }
@@ -266,22 +265,21 @@ pub async fn create_and_send_package_file(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs::File,
-        io::{Read, Write},
-        path::PathBuf,
-    };
-
     use super::{Package, PackageFile, PackageMetadata};
     use crate::{
         package::create_package_from_toml,
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
-            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
-            TEST_PACKAGE_METADATA, TEST_PACKAGE_TOML_SCHEMA,
+            initialize_test_repository, TEST_FILE_BYTES, TEST_INVALID_PACKAGE_TOML_SCHEMA,
+            TEST_METADATA_BYTES, TEST_PACKAGE_BYTES, TEST_PACKAGE_METADATA,
         },
     };
     use anyhow::{Ok, Result};
+    use std::{
+        fs::File,
+        io::{Read, Write},
+        path::PathBuf,
+    };
     use tempfile::tempdir;
 
     #[test]
@@ -403,7 +401,6 @@ mod tests {
     fn metadata_is_converted_to_bytes() -> Result<()> {
         let package_metadata: &PackageMetadata = &TEST_PACKAGE_METADATA;
         let metadata_bytes = Vec::try_from(package_metadata)?;
-
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }
@@ -418,20 +415,16 @@ mod tests {
     }
 
     #[test]
-    fn missing_virtual_machine_metadata_is_given_value_unknown() -> Result<()> {
+    fn package_defined_as_vm_with_missing_fields_fails_validation() -> Result<()> {
         let temp_dir = tempfile::TempDir::new()?;
         let mut package_toml = tempfile::Builder::new()
             .prefix("package")
             .suffix(".toml")
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
-        package_toml.write_all(TEST_PACKAGE_TOML_SCHEMA.as_bytes())?;
-        let temp_package = create_package_from_toml(package_toml.path().to_path_buf())?;
-        let metadata = temp_package.metadata;
-        if let Some(virtual_machine) = metadata.virtual_machine {
-            assert_eq!(virtual_machine.operating_system, "Unknown".to_string());
-            assert_eq!(virtual_machine.architecture, "Unknown".to_string());
-        }
+        package_toml.write_all(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
+        let temp_package = create_package_from_toml(package_toml.path().to_path_buf());
+        assert!(temp_package.is_err());
         temp_dir.close()?;
         Ok(())
     }
@@ -462,7 +455,6 @@ mod tests {
         let package = create_test_package()?;
         let package_bytes = Vec::try_from(package)?;
         insta::assert_debug_snapshot!(package_bytes);
-
         Ok(())
     }
 
@@ -471,7 +463,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 1009);
+        assert_eq!(package.file.metadata()?.len(), 14);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

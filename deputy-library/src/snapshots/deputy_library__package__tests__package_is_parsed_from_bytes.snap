@@ -3,13 +3,13 @@ source: deputy-library/src/package.rs
 expression: package.metadata
 ---
 PackageMetadata {
-    name: "test_package_1",
-    version: "1.0.4",
-    checksum: "8cc6739909901b80596b060d3e71637184d06dddf716dc0874856e4d7eaeaa4f",
+    name: "some-package-name",
+    version: "0.1.0",
+    checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73",
     virtual_machine: Some(
         VirtualMachine {
-            operating_system: "pop-os",
-            architecture: "x86_64",
+            operating_system: Ubuntu,
+            architecture: Arm64,
         },
     ),
 }

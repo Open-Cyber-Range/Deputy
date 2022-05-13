@@ -112,6 +112,19 @@ impl Package {
         }
         Ok(())
     }
+    pub fn create_from_toml(toml_path: PathBuf) -> Result<Package> {
+    let package_root = toml_path
+        .parent()
+        .ok_or_else(|| anyhow!("Directory error"))?;
+    let archive_path = archiver::create_package(package_root.to_path_buf())?;
+    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
+    let file = File::open(&archive_path)?;
+    let package = Package {
+        metadata,
+        file: PackageFile(file),
+    };
+    Ok(package)
+}
 }
 
 impl Deref for PackageFile {
@@ -234,20 +247,6 @@ impl TryFrom<&[u8]> for Package {
     }
 }
 
-pub fn create_package_from_toml(toml_path: PathBuf) -> Result<Package> {
-    let package_root = toml_path
-        .parent()
-        .ok_or_else(|| anyhow!("Directory error"))?;
-    let archive_path = archiver::create_package(package_root.to_path_buf())?;
-    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
-    let file = File::open(&archive_path)?;
-    let package = Package {
-        metadata,
-        file: PackageFile(file),
-    };
-    Ok(package)
-}
-
 pub async fn create_and_send_package_file(
     execution_directory: PathBuf,
     client: reqwest::Client,
@@ -256,7 +255,7 @@ pub async fn create_and_send_package_file(
     let package_toml = PathBuf::from(PACKAGE_TOML);
     let toml_path = [&execution_directory, &package_toml].iter().collect();
     let toml_path = find_toml(toml_path)?;
-    let package = create_package_from_toml(toml_path)?;
+    let package = Package::create_from_toml(toml_path)?;
     let package_bytes = Vec::try_from(package)?;
     let put_uri = format!("{}{}", api, PACKAGE_UPLOAD_PATH);
     upload_package(put_uri.as_str(), package_bytes, client).await?;
@@ -267,7 +266,6 @@ pub async fn create_and_send_package_file(
 mod tests {
     use super::{Package, PackageFile, PackageMetadata};
     use crate::{
-        package::create_package_from_toml,
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
             initialize_test_repository, TEST_FILE_BYTES, TEST_INVALID_PACKAGE_TOML_SCHEMA,
@@ -423,7 +421,7 @@ mod tests {
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
         package_toml.write_all(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
-        let temp_package = create_package_from_toml(package_toml.path().to_path_buf());
+        let temp_package = Package::create_from_toml(package_toml.path().to_path_buf());
         assert!(temp_package.is_err());
         temp_dir.close()?;
         Ok(())

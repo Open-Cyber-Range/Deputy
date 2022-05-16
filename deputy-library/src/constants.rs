@@ -41,7 +41,6 @@ pub enum OperatingSystem {
     Solaris,
     SUSELinuxEnterprise,
     Ubuntu,
-    Unknown,
     Windows10,
     Windows11,
     Windows2000,
@@ -55,6 +54,9 @@ pub enum OperatingSystem {
     WindowsServer2022,
     WindowsVista,
     WindowsXP,
+
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -63,5 +65,7 @@ pub enum Architecture {
     Arm64,
     Armhf,
     I386,
+
+    #[serde(other)]
     Unknown,
 }

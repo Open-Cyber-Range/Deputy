@@ -27,6 +27,8 @@ lazy_static! {
         [content]
         type = "vm"
         sub_type = "packer"
+        [virtual-machine]
+        operating_system = "Invalid OS and missing Architecture"
         "#;
 
     pub static ref TEST_VALID_PACKAGE_TOML_SCHEMA: &'static str = r#"

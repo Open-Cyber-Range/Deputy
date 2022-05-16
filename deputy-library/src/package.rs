@@ -113,18 +113,18 @@ impl Package {
         Ok(())
     }
     pub fn create_from_toml(toml_path: PathBuf) -> Result<Package> {
-    let package_root = toml_path
-        .parent()
-        .ok_or_else(|| anyhow!("Directory error"))?;
-    let archive_path = archiver::create_package(package_root.to_path_buf())?;
-    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
-    let file = File::open(&archive_path)?;
-    let package = Package {
-        metadata,
-        file: PackageFile(file),
-    };
-    Ok(package)
-}
+        let package_root = toml_path
+            .parent()
+            .ok_or_else(|| anyhow!("Directory error"))?;
+        let archive_path = archiver::create_package(package_root.to_path_buf())?;
+        let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
+        let file = File::open(&archive_path)?;
+        let package = Package {
+            metadata,
+            file: PackageFile(file),
+        };
+        Ok(package)
+    }
 }
 
 impl Deref for PackageFile {
@@ -266,6 +266,7 @@ pub async fn create_and_send_package_file(
 mod tests {
     use super::{Package, PackageFile, PackageMetadata};
     use crate::{
+        constants::{Architecture, OperatingSystem},
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
             initialize_test_repository, TEST_FILE_BYTES, TEST_INVALID_PACKAGE_TOML_SCHEMA,
@@ -413,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn package_defined_as_vm_with_missing_fields_fails_validation() -> Result<()> {
+    fn missing_and_invalid_virtual_machine_fields_are_set_unknown() -> Result<()> {
         let temp_dir = tempfile::TempDir::new()?;
         let mut package_toml = tempfile::Builder::new()
             .prefix("package")
@@ -421,8 +422,12 @@ mod tests {
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
         package_toml.write_all(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
-        let temp_package = Package::create_from_toml(package_toml.path().to_path_buf());
-        assert!(temp_package.is_err());
+        let temp_package = Package::create_from_toml(package_toml.path().to_path_buf())?;
+        let metadata = temp_package.metadata;
+        if let Some(virtual_machine) = metadata.virtual_machine {
+            assert_eq!(virtual_machine.operating_system, OperatingSystem::Unknown);
+            assert_eq!(virtual_machine.architecture, Architecture::Unknown);
+        }
         temp_dir.close()?;
         Ok(())
     }

@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::{
-    constants::{self, Architecture, OperatingSystem},
+    constants::{self},
     package::{Package, PackageMetadata},
     project::*,
 };
@@ -42,14 +42,6 @@ impl Validate for PackageMetadata {
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
-        if let Some(virtual_machine) = &self.virtual_machine {
-            if virtual_machine.operating_system == OperatingSystem::Unknown {
-                return Err(anyhow!("Package defined as VM but OS is unknown"));
-            }
-            if virtual_machine.architecture == Architecture::Unknown {
-                return Err(anyhow!("Package defined as VM but architecture is unknown"));
-            }
-        }
         Ok(())
     }
 }
@@ -85,16 +77,6 @@ fn validate_type(content: &Content) -> Result<()> {
     Ok(())
 }
 
-fn validate_virtual_machine(virtual_machine: VirtualMachine) -> Result<()> {
-    if virtual_machine.operating_system == OperatingSystem::Unknown {
-        return Err(anyhow!("Package defined as VM but OS is unknown"));
-    };
-    if virtual_machine.architecture == Architecture::Unknown {
-        return Err(anyhow!("Package defined as VM but architecture is unknown"));
-    };
-    Ok(())
-}
-
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
@@ -104,15 +86,6 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_type(&deserialized_toml.content)?;
-    if deserialized_toml.content.content_type == ContentType::VM {
-        if let Some(virtual_machine) = deserialized_toml.virtual_machine {
-            validate_virtual_machine(virtual_machine)?;
-        } else {
-            return Err(anyhow!(
-                "Package type defined as VM but virtual-machine descriptor is missing"
-            ));
-        }
-    }
     Ok(())
 }
 

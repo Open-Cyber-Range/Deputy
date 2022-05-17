@@ -1,36 +1,32 @@
 use anyhow::Result;
+use awc::Client;
 use clap::{Parser, Subcommand};
 use deputy::configuration::Configuration;
-use deputy_library::package::create_and_send_package_file;
-use std::env;
+use deputy::executor::Executor;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
 #[clap(name = "deputy")]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 enum Commands {
     Publish,
-    Version,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let client = reqwest::Client::new();
-    let api = &Configuration::get_configuration()?.repository.repositories[0].api;
+    let client = Client::new();
+    let executor = Executor::new(Configuration::get_configuration()?, client);
 
     match args.command {
-        Commands::Publish {} => {
-            create_and_send_package_file(env::current_dir()?, client, api).await?;
-            Ok(())
+        Commands::Publish => {
+            executor.publish().await?;
         }
-        Commands::Version {} => {
-            println!("{}", env!("CARGO_PKG_VERSION"));
-            Ok(())
-        }
-    }
+    };
+    Ok(())
 }

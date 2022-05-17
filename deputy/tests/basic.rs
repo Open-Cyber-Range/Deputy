@@ -2,9 +2,8 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy_library::{
-        client::upload_package, constants::CONFIG_FILE_PATH_ENV_KEY, test::TEST_PACKAGE_BYTES,
-    };
+    use deputy::{client::upload_package, constants::CONFIG_FILE_PATH_ENV_KEY};
+    use deputy_library::test::TEST_PACKAGE_BYTES;
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
     use std::{env, fs, io::Write, path::PathBuf, process::Command};

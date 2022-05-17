@@ -1,7 +1,7 @@
 use anyhow::{Ok, Result};
 use git2::{Repository, RepositoryInitOptions};
 use std::{io::Write, fs::File};
-use tempfile::{Builder, TempDir,NamedTempFile};
+use tempfile::{Builder, TempDir,NamedTempFile, TempPath};
 
 use crate::package::{Package, PackageFile, PackageMetadata};
 
@@ -88,15 +88,16 @@ lazy_static! {
         pub toml_file: NamedTempFile,
     }
 
-pub fn create_readable_temporary_file(content: &str) -> Result<File> {
-    let mut temporary_file = Builder::new().append(true).tempfile()?;
-    write!(&mut temporary_file, "{}", content)?;
-    Ok(File::open(temporary_file.path())?)
+pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)> {
+    let file = tempfile::NamedTempFile::new()?;
+    let mut other_handler = file.reopen()?;
+    write!(&mut other_handler, "{}", content)?;
+    Ok(file.into_parts())
 }
 
 pub fn create_test_package() -> Result<Package> {
-    let temporary_file = create_readable_temporary_file("some content \n")?;
-    let file = PackageFile(temporary_file);
+    let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
+    let file = PackageFile(temporary_file, Some(path));
 
     Ok(Package {
         metadata: TEST_PACKAGE_METADATA.clone(),

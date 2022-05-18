@@ -1,5 +1,4 @@
 use anyhow::Result;
-use awc::Client;
 use clap::{Parser, Subcommand};
 use deputy::configuration::Configuration;
 use deputy::executor::Executor;
@@ -20,8 +19,7 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let client = Client::new();
-    let executor = Executor::new(Configuration::get_configuration()?, client);
+    let executor = Executor::try_new(Configuration::get_configuration()?)?;
 
     match args.command {
         Commands::Publish => {

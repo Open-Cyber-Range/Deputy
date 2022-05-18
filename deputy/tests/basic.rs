@@ -2,7 +2,7 @@
 mod tests {
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy::{client::upload_package, constants::CONFIG_FILE_PATH_ENV_KEY};
+    use deputy::{client::Client, constants::CONFIG_FILE_PATH_ENV_KEY};
     use deputy_library::test::TEST_PACKAGE_BYTES;
     use deputy_package_server::test::{start_test_server, CONFIGURATION};
     use predicates::prelude::*;
@@ -27,7 +27,7 @@ mod tests {
     fn test_version() -> Result<()> {
         let mut command = Command::cargo_bin("deputy")?;
         let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
-        command.arg("version");
+        command.arg("--version");
         command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
         command
             .assert()
@@ -105,14 +105,10 @@ mod tests {
     async fn rejected_put_request() -> Result<()> {
         let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
         start_test_server(CONFIGURATION.to_owned());
-        let client = reqwest::Client::new();
-        let result = upload_package(
-            "http://localhost:9090/api/v1/package",
-            invalid_package_bytes,
-            client,
-        )
-        .await;
-        assert!(result.is_err());
+        let client = Client::new("http://localhost:9090".to_string());
+        let response = client.upload_small_package(invalid_package_bytes).await;
+
+        assert!(response.is_err());
         Ok(())
     }
 
@@ -121,14 +117,10 @@ mod tests {
         let package_bytes = TEST_PACKAGE_BYTES.clone();
         start_test_server(CONFIGURATION.to_owned());
 
-        let client = reqwest::Client::new();
-        let response = client
-            .put("http://localhost:9090/api/v1/package")
-            .body(package_bytes)
-            .send()
-            .await?;
+        let client = Client::new("http://localhost:9090".to_string());
+        let response = client.upload_small_package(package_bytes).await;
 
-        assert!(response.status().is_success());
+        assert!(response.is_ok());
         fs::remove_dir_all(&CONFIGURATION.package_folder)?;
         fs::remove_dir_all(&CONFIGURATION.repository.folder)?;
         Ok(())

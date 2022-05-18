@@ -4,7 +4,7 @@ use awc::Client as ActixWebClient;
 use deputy_library::package::PackageStream;
 use log::error;
 
-pub(crate) struct Client {
+pub struct Client {
     client: ActixWebClient,
     api_base_url: String,
 }

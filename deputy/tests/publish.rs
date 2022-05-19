@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn rejected_put_request() -> Result<()> {
+    async fn rejects_invalid_small_package() -> Result<()> {
         let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
         let (configuration, server_address) = generate_server_test_configuration(9091)?;
         start_test_server(configuration).await?;
@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn accepted_put_request() -> Result<()> {
+    async fn accepts_valid_small_package() -> Result<()> {
         let package_bytes = TEST_PACKAGE_BYTES.clone();
         let (configuration, server_address) = generate_server_test_configuration(9092)?;
         start_test_server(configuration.clone()).await?;

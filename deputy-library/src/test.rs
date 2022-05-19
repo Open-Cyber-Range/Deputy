@@ -1,9 +1,11 @@
-use anyhow::{Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use git2::{Repository, RepositoryInitOptions};
+use rayon::current_num_threads;
 use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir,NamedTempFile, TempPath};
-
+use byte_unit::Byte;
 use crate::package::{Package, PackageFile, PackageMetadata};
+use rand;
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
@@ -79,57 +81,61 @@ lazy_static! {
         ];
 }
 
-    pub struct TempArchive {
-        pub root_dir: TempDir,
-        pub target_dir: TempDir,
-        pub src_dir: TempDir,
-        pub target_file: NamedTempFile,
-        pub src_file: NamedTempFile,
-        pub toml_file: NamedTempFile,
+pub struct TempArchive {
+    pub root_dir: TempDir,
+    pub target_dir: TempDir,
+    pub src_dir: TempDir,
+    pub target_file: NamedTempFile,
+    pub src_file: NamedTempFile,
+    pub toml_file: NamedTempFile,
+}
+
+impl TempArchive {
+    pub fn builder () -> TempArchiveBuilder {
+        TempArchiveBuilder::new()
+    }
+}
+
+#[derive(Default)]
+pub struct TempArchiveBuilder {
+    is_large: bool,
+}
+
+impl TempArchiveBuilder {
+    pub fn new () -> TempArchiveBuilder {
+        TempArchiveBuilder {
+            is_large: false,
+        }
     }
 
-pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)> {
-    let file = tempfile::NamedTempFile::new()?;
-    let mut other_handler = file.reopen()?;
-    write!(&mut other_handler, "{}", content)?;
-    Ok(file.into_parts())
-}
-
-pub fn create_test_package() -> Result<Package> {
-    let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
-    let file = PackageFile(temporary_file, Some(path));
-
-    Ok(Package {
-        metadata: TEST_PACKAGE_METADATA.clone(),
-        file,
-    })
-}
-
-pub fn initialize_test_repository() -> (TempDir, Repository) {
-    let td = TempDir::new().unwrap();
-    let mut opts = RepositoryInitOptions::new();
-    opts.initial_head("master");
-    let repo = Repository::init_opts(td.path(), &opts).unwrap();
-    {
-        let mut config = repo.config().unwrap();
-        config.set_str("user.name", "name").unwrap();
-        config.set_str("user.email", "email").unwrap();
-        let mut index = repo.index().unwrap();
-        let id = index.write_tree().unwrap();
-
-        let tree = repo.find_tree(id).unwrap();
-        let sig = repo.signature().unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
-            .unwrap();
+    pub fn is_large(mut self, value: bool) -> Self {
+        self.is_large = value;
+        self
     }
-    (td, repo)
-}
 
-pub fn get_last_commit_message(repo: &Repository) -> String {
-    let head = repo.head().unwrap().peel_to_commit().unwrap();
-    head.message().unwrap().to_string()
-}
-pub fn create_temp_project() -> Result<TempArchive> {
+    fn generate_vec(size: usize) -> Result<Vec<u8>> {
+        let bytes_per_thread = size / current_num_threads();
+        let mut handles = Vec::new();
+        for _ in 0..current_num_threads() {
+            let handle = std::thread::spawn(move || {
+                let mut vec = Vec::new();
+                for _ in 0..bytes_per_thread {
+                    vec.push(rand::random::<u8>() );
+                }
+                vec
+            });
+            handles.push(handle);
+        }
+        let mut final_result: Vec<u8> = Vec::new();
+        while !handles.is_empty() {
+            let current_thread = handles.remove(0);
+            final_result.extend(current_thread.join().map_err(|error| anyhow!("Failed to join due to: {:?}", error))?);
+        }
+        Ok(final_result)
+    }
+
+
+    pub fn build(self) -> Result<TempArchive> {
         let toml_content = 
             r#"
                 [package]
@@ -187,6 +193,15 @@ pub fn create_temp_project() -> Result<TempArchive> {
             .rand_bytes(0)
             .tempfile_in(&dir)?;
         toml_file.write_all(toml_content.as_bytes())?;
+        if self.is_large {
+            let mut large_file = Builder::new()
+                .prefix("large")
+                .suffix(".txt")
+                .rand_bytes(0)
+                .tempfile_in(&dir)?;
+            let random_bytes: Vec<u8> = TempArchiveBuilder::generate_vec(Byte::from_str("20MB")?.get_bytes() as usize)?;
+            large_file.write_all(&random_bytes)?;
+        }
 
         let temp_project = TempArchive {
             root_dir: dir,
@@ -197,5 +212,49 @@ pub fn create_temp_project() -> Result<TempArchive> {
             toml_file,
         };
 
-    Ok(temp_project)
+        Ok(temp_project)
     }
+}
+
+pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)> {
+    let file = tempfile::NamedTempFile::new()?;
+    let mut other_handler = file.reopen()?;
+    write!(&mut other_handler, "{}", content)?;
+    Ok(file.into_parts())
+}
+
+pub fn create_test_package() -> Result<Package> {
+    let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
+    let file = PackageFile(temporary_file, Some(path));
+
+    Ok(Package {
+        metadata: TEST_PACKAGE_METADATA.clone(),
+        file,
+    })
+}
+
+pub fn initialize_test_repository() -> (TempDir, Repository) {
+    let td = TempDir::new().unwrap();
+    let mut opts = RepositoryInitOptions::new();
+    opts.initial_head("master");
+    let repo = Repository::init_opts(td.path(), &opts).unwrap();
+    {
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "name").unwrap();
+        config.set_str("user.email", "email").unwrap();
+        let mut index = repo.index().unwrap();
+        let id = index.write_tree().unwrap();
+
+        let tree = repo.find_tree(id).unwrap();
+        let sig = repo.signature().unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
+            .unwrap();
+    }
+    (td, repo)
+}
+
+pub fn get_last_commit_message(repo: &Repository) -> String {
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    head.message().unwrap().to_string()
+}
+

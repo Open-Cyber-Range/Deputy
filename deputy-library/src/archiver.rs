@@ -101,14 +101,14 @@ pub fn create_package(toml_path: &PathBuf) -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::create_temp_project;
+    use crate::test::TempArchive;
     use anyhow::Result;
     use tempfile::Builder;
     use zip_extensions::*;
 
     #[test]
     fn archive_was_created() -> Result<()> {
-        let temp_project = create_temp_project()?;
+        let temp_project = TempArchive::builder().build()?;
 
         let toml_file_path = temp_project.toml_file.path().to_path_buf();
         let archive_path = get_destination_file_path(&toml_file_path)?;
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
-        let temp_project = create_temp_project()?;
+        let temp_project = TempArchive::builder().build()?;
         let toml_file_path = temp_project.toml_file.path().to_path_buf();
         let archive_path = get_destination_file_path(&toml_file_path)?;
 

@@ -13,6 +13,7 @@ anyhow = "1"
 awc = "3"
 byte-unit = "4"
 clap = { version = "3", features = ["derive"] }
+colored = "2"
 deputy-library = { path = "../deputy-library" }
 deputy-package-server = { path = "../deputy-package-server" }
 git2 = "0.14"

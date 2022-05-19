@@ -19,27 +19,34 @@ mod tests {
     async fn valid_package_was_sent_and_received() -> Result<()> {
         let temp_project = create_temp_project()?;
         let toml_path = temp_project.toml_file.path().to_path_buf();
+        let mut command = Command::cargo_bin("deputy")?;
+        command.arg("publish");
+        command.current_dir(temp_project.root_dir.path());
+
+        let (server_configuration, server_address) = generate_server_test_configuration(9090)?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address)?;
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+
         let temp_package = Package::from_file(toml_path)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
-        let (configuration, server_address) = generate_server_test_configuration(9090)?;
         let saved_package_path: PathBuf = [
-            &configuration.package_folder,
+            &server_configuration.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
         .iter()
         .collect();
 
-        start_test_server(configuration.clone()).await?;
-        let client = Client::new(server_address);
-        let response = client.upload_small_package(temp_package.try_into()?).await;
+        start_test_server(server_configuration.clone()).await?;
+        command.assert().success();
         let saved_package_size = fs::metadata(saved_package_path)?.len();
-        assert!(response.is_ok());
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
-        fs::remove_dir_all(&configuration.package_folder)?;
-        fs::remove_dir_all(&configuration.repository.folder)?;
+        fs::remove_dir_all(&server_configuration.package_folder)?;
+        fs::remove_dir_all(&server_configuration.repository.folder)?;
+        configuration_directory.close()?;
         Ok(())
     }
 
@@ -47,7 +54,8 @@ mod tests {
     fn error_on_missing_package_toml_file() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
-        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file("does-not-matter")?;
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_dir);
@@ -62,7 +70,8 @@ mod tests {
     #[test]
     fn error_on_missing_package_toml_content() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file("does-not-matter")?;
         let _package_toml = Builder::new()
             .prefix("package")
             .suffix(".toml")
@@ -85,7 +94,8 @@ mod tests {
     #[test]
     fn finds_invalid_package_toml_from_parent_folder() -> Result<()> {
         let root_temp_dir = TempDir::new()?;
-        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file("does-not-matter")?;
         let deep_path: PathBuf = ["some", "where", "many", "layers", "deep"].iter().collect();
         let deep_path = root_temp_dir.path().join(deep_path);
         std::fs::create_dir_all(&deep_path)?;

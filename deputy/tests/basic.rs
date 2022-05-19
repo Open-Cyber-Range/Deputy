@@ -12,7 +12,8 @@ mod tests {
     #[test]
     fn test_version() -> Result<()> {
         let mut command = Command::cargo_bin("deputy")?;
-        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file("does-not-matter")?;
         command.arg("--version");
         command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
         command

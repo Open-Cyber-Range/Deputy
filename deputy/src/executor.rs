@@ -28,7 +28,7 @@ impl Executor {
     pub async fn publish(&self) -> Result<()> {
         let package_toml = find_toml(current_dir()?)?;
         let package = Package::from_file(package_toml)?;
-        if package.get_size()? >= *SMALL_PACKAGE_LIMIT {
+        if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
             self.client
                 .upload_small_package(package.try_into()?)
                 .await?;

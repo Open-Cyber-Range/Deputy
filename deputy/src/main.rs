@@ -16,7 +16,7 @@ enum Commands {
     Publish,
 }
 
-#[tokio::main]
+#[actix_rt::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
     let executor = Executor::try_new(Configuration::get_configuration()?)?;

@@ -1,8 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use colored::Colorize;
-use deputy::configuration::Configuration;
-use deputy::executor::Executor;
+use deputy::{configuration::Configuration, executor::Executor, helpers::print_error_message};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -26,7 +24,7 @@ async fn main() -> Result<()> {
         Commands::Publish => executor.publish().await,
     };
     if let Err(error) = result {
-        eprintln!("{} {}", "Error:".red(), error);
+        print_error_message(error);
         std::process::exit(1);
     }
 

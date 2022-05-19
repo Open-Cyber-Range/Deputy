@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::configuration::Configuration;
 use crate::constants::SMALL_PACKAGE_LIMIT;
-use crate::helpers::find_toml;
+use crate::helpers::{find_toml, print_success_message};
 use anyhow::Result;
 use deputy_library::package::Package;
 use std::env::current_dir;
@@ -37,6 +37,7 @@ impl Executor {
                 .stream_large_package(package.try_into()?)
                 .await?;
         }
+        print_success_message("Package published");
         Ok(())
     }
 }

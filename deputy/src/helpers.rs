@@ -1,5 +1,6 @@
 use crate::constants::PACKAGE_TOML;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
+use colored::Colorize;
 use std::path::PathBuf;
 
 pub fn find_toml(current_path: PathBuf) -> Result<PathBuf> {
@@ -11,6 +12,14 @@ pub fn find_toml(current_path: PathBuf) -> Result<PathBuf> {
     } else {
         Err(anyhow!("Could not find package.toml"))
     }
+}
+
+pub fn print_success_message(message: &str) {
+    println!("{} {}", "Success:".green(), message);
+}
+
+pub fn print_error_message(error: Error) {
+    eprintln!("{} {}", "Error:".red(), error);
 }
 
 #[cfg(test)]

@@ -57,7 +57,7 @@ mod tests {
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
-        println!("asddsasda");
+
         let (server_configuration, server_address) = generate_server_test_configuration(9091)?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address)?;

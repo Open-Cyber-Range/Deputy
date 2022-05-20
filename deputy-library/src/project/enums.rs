@@ -58,3 +58,9 @@ pub enum Architecture {
     #[serde(other)]
     Unknown,
 }
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub enum VirtualMachineType {
+    OVA,
+}

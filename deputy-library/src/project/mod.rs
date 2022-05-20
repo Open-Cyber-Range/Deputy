@@ -5,6 +5,8 @@ use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::PathBuf};
 
+use self::enums::VirtualMachineType;
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Project {
     pub package: Body,
@@ -18,6 +20,9 @@ pub struct VirtualMachine {
     pub operating_system: OperatingSystem,
     #[serde(default = "default_architecture")]
     pub architecture: Architecture,
+    #[serde(rename = "type")]
+    pub virtual_machine_type: VirtualMachineType,
+    file_path: String,
 }
 pub fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(&toml_path)?;

@@ -36,6 +36,8 @@ lazy_static! {
         type = "vm"
         [virtual-machine]
         architecture = "Arm64"
+        type = "OVA"
+        file_path = "src/some-image.ova"
         "#;
         
     pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 
@@ -125,6 +127,8 @@ impl TempArchiveBuilder {
                 [virtual-machine]
                 operating_system = "Ubuntu"
                 architecture = "arm64"
+                type = "OVA"
+                file_path = "/src/test_file.txt"
             "#;
         let target_file_ipsum = 
             br#"

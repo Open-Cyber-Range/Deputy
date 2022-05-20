@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::{
-    constants,
+    constants::{self},
     package::{Package, PackageMetadata},
     project::*,
 };
@@ -66,7 +66,7 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
-fn validate_type(content: Content) -> Result<()> {
+fn validate_type(content: &Content) -> Result<()> {
     let is_valid = match content.content_type {
         ContentType::VM => constants::VALID_VM_TYPES.contains(&&content.sub_type),
     };
@@ -85,13 +85,14 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
-    validate_type(deserialized_toml.content)?;
+    validate_type(&deserialized_toml.content)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test::TEST_VALID_PACKAGE_TOML_SCHEMA;
     use anyhow::Ok;
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
@@ -130,17 +131,8 @@ sub_type = "packer"
 
     #[test]
     fn positive_result_all_fields_correct() -> Result<()> {
-        let toml_content = br#"
-[package]
-name = "test_package_1-0-4"
-description = "This package does nothing at all, and we spent 300 manhours on it..."
-version = "1.0.4"
-authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
-[content]
-type = "vm"
-sub_type = "packer"
-"#;
-        let (file, _deserialized_toml) = create_temp_file(toml_content)?;
+        let (file, _deserialized_toml) =
+            create_temp_file(TEST_VALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         assert!(validate_package_toml(&file.path()).is_ok());
         file.close()?;
         Ok(())
@@ -176,7 +168,7 @@ type = "virtuelle machine"
 sub_type = "packer"
 "#;
         let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(deserialized_toml.content).is_err());
+        assert!(validate_type(&deserialized_toml.content).is_err());
         file.close().unwrap();
     }
 
@@ -194,7 +186,7 @@ type = "vm"
 sub_type = "something_wrong"
 "#;
         let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(deserialized_toml.content).is_err());
+        assert!(validate_type(&deserialized_toml.content).is_err());
         file.close().unwrap();
     }
 }

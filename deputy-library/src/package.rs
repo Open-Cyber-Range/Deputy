@@ -430,7 +430,6 @@ mod tests {
     fn metadata_is_converted_to_bytes() -> Result<()> {
         let package_metadata: &PackageMetadata = &TEST_PACKAGE_METADATA;
         let metadata_bytes = Vec::try_from(package_metadata)?;
-
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }
@@ -470,7 +469,6 @@ mod tests {
         let package = create_test_package()?;
         let package_bytes = Vec::try_from(package)?;
         insta::assert_debug_snapshot!(package_bytes);
-
         Ok(())
     }
 
@@ -502,7 +500,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 961);
+        assert_eq!(package.file.metadata()?.len(), 14);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

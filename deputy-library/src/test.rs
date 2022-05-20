@@ -22,7 +22,6 @@ lazy_static! {
         authors = ["Robert robert@exmaple.com"]
         [content]
         type = "vm"
-        sub_type = "packer"
         [virtual-machine]
         operating_system = "Invalid OS and missing Architecture"
         "#;
@@ -35,9 +34,7 @@ lazy_static! {
         authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
         [content]
         type = "vm"
-        sub_type = "packer"
         [virtual-machine]
-        operating_system = "Ubuntu"
         architecture = "Arm64"
         "#;
         
@@ -125,10 +122,9 @@ impl TempArchiveBuilder {
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
                 [content]
                 type = "vm"
-                sub_type = "packer"
                 [virtual-machine]
                 operating_system = "Ubuntu"
-                architecture = "Arm64"
+                architecture = "arm64"
             "#;
         let target_file_ipsum = 
             br#"

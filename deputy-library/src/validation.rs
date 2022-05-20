@@ -66,17 +66,6 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
-fn validate_type(content: &Content) -> Result<()> {
-    let is_valid = match content.content_type {
-        ContentType::VM => constants::VALID_VM_TYPES.contains(&&content.sub_type),
-    };
-
-    if !is_valid {
-        return Err(anyhow!("Sub-type mismatch with the type"));
-    }
-    Ok(())
-}
-
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
@@ -85,7 +74,6 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
-    validate_type(&deserialized_toml.content)?;
     Ok(())
 }
 
@@ -123,7 +111,6 @@ description = "description"
 version = "version 23"
 [content]
 type = "vm"
-sub_type = "packer"
 "#;
         let (file, deserialized_toml) = create_temp_file(toml_content)?;
         Ok((file, deserialized_toml))
@@ -152,41 +139,5 @@ sub_type = "packer"
         assert!(validate_version(deserialized_toml.package.version).is_err());
         file.close()?;
         Ok(())
-    }
-
-    #[test]
-    #[should_panic]
-    fn negative_result_content_type_field() {
-        std::panic::set_hook(Box::new(|_| {}));
-        let toml_content = br#"
-[package]
-name = "package"
-description = "Package description"
-version = "1.0.0"
-[content]
-type = "virtuelle machine"
-sub_type = "packer"
-"#;
-        let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(&deserialized_toml.content).is_err());
-        file.close().unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn negative_result_content_subtype_field() {
-        std::panic::set_hook(Box::new(|_| {}));
-        let toml_content = br#"
-[package]
-name = "package"
-description = "Package description"
-version = "1.0.0"
-[content]
-type = "vm"
-sub_type = "something_wrong"
-"#;
-        let (file, deserialized_toml) = create_temp_file(toml_content).unwrap();
-        assert!(validate_type(&deserialized_toml.content).is_err());
-        file.close().unwrap();
     }
 }

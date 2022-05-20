@@ -58,17 +58,10 @@ impl Body {
 pub struct Content {
     #[serde(rename = "type")]
     pub content_type: ContentType,
-    pub sub_type: SubType,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum ContentType {
     #[serde(alias = "vm")]
     VM,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum SubType {
-    #[serde(alias = "packer")]
-    Packer,
 }

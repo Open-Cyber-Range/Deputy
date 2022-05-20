@@ -1,4 +1,6 @@
-use crate::constants::{Architecture, OperatingSystem};
+mod enums;
+
+use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::PathBuf};

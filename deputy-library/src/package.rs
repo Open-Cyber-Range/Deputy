@@ -204,7 +204,7 @@ impl TryFrom<&[u8]> for PackageFile {
     }
 }
 
-impl<'a> TryFrom<Package> for Vec<u8> {
+impl TryFrom<Package> for Vec<u8> {
     type Error = anyhow::Error;
 
     fn try_from(package: Package) -> Result<Self> {
@@ -222,7 +222,7 @@ impl<'a> TryFrom<Package> for Vec<u8> {
 
 pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
 
-impl<'a> TryFrom<Package> for PackageStream {
+impl TryFrom<Package> for PackageStream {
     type Error = anyhow::Error;
 
     fn try_from(package: Package) -> Result<Self> {

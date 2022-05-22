@@ -1,6 +1,7 @@
 use crate::package::PackageMetadata;
 use anyhow::{Error, Ok, Result};
 use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
@@ -175,6 +176,7 @@ pub fn get_or_create_repository(
     if let Result::Ok(repository) = Repository::open(repository_configuration.clone().folder) {
         return Ok(repository);
     }
+    info!("Initializing the repository");
     initialize_repository(repository_configuration)
 }
 

@@ -1,12 +1,14 @@
 use crate::package::PackageMetadata;
-use anyhow::{Error, Ok, Result};
+use anyhow::{anyhow, Error, Ok, Result};
+use execute::Execute;
 use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
-use log::info;
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
+    process::Command,
 };
 
 static HEAD_REF: &str = "HEAD";
@@ -138,6 +140,25 @@ pub fn find_metadata_by_package_name(
     Ok(metadata_list)
 }
 
+fn update_repository_information(repository: &Repository) -> Result<()> {
+    let mut git_command = Command::new("git");
+    git_command.arg("update-server-info");
+    git_command.current_dir(repository.path());
+
+    if let Some(exit_code) = git_command.execute()? {
+        if exit_code == 0 {
+            debug!("git update-server-info executed successfully");
+            Ok(())
+        } else {
+            error!("Failed to exectute git update-server-info");
+            Err(anyhow!("Failed to exectute git update-server-info"))
+        }
+    } else {
+        error!("git update-server-info interrupted");
+        Err(anyhow!("git update-server-info interrupted"))
+    }
+}
+
 pub fn update_index_repository(
     repository: &Repository,
     package_metadata: &PackageMetadata,
@@ -147,6 +168,7 @@ pub fn update_index_repository(
     write_metadata_to_file(&file, package_metadata)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
     create_package_commit(repository, &file_path, package_metadata)?;
+    update_repository_information(repository)?;
     Ok(())
 }
 
@@ -167,6 +189,7 @@ fn initialize_repository(repository_configuration: &RepositoryConfiguration) -> 
         let sig = repository.signature()?;
         repository.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])?;
     }
+    update_repository_information(&repository)?;
     Ok(repository)
 }
 

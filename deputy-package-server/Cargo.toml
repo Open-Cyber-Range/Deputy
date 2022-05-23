@@ -13,7 +13,7 @@ copyright = "2022, CR14 <info@cr14.ee>"
 license-file = ["../LICENSE", "4"]
 extended-description = """\
 Deputy package server is a digital library server meant for storing deputy packages."""
-depends = "$auto, systemd"
+depends = "$auto, systemd, git"
 section = "utility"
 priority = "optional"
 assets = [

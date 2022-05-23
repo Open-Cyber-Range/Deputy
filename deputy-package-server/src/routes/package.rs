@@ -3,6 +3,7 @@ use crate::{
     AppState,
 };
 use actix_files::NamedFile;
+use actix_http::error::PayloadError;
 use actix_web::{
     get, put,
     web::{Bytes, Data, Path, Payload},
@@ -12,7 +13,7 @@ use deputy_library::{
     package::{Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
 use std::path::PathBuf;
@@ -31,6 +32,16 @@ fn check_for_version_error(
         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
     }
 
+    Ok(())
+}
+
+async fn drain_stream(
+    stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
+) -> Result<(), Error> {
+    stream
+        .filter_map(|x| async move { x.ok().map(Ok) })
+        .forward(futures::sink::drain())
+        .await?;
     Ok(())
 }
 
@@ -69,10 +80,15 @@ pub async fn add_package_streaming(
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
             error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
-        })?
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        result?
     } else {
         error!("Invalid stream chunk: No metadata");
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
@@ -80,7 +96,10 @@ pub async fn add_package_streaming(
 
     let folder = &app_state.package_folder;
     let repository = &app_state.repository;
-    check_for_version_error(&metadata, repository)?;
+    if let Err(error) = check_for_version_error(&metadata, repository) {
+        drain_stream(body).await?;
+        return Err(error);
+    }
 
     let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
         error!("Failed to save the file: {error}");

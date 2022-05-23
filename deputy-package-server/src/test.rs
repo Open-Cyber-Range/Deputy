@@ -2,7 +2,7 @@ use actix_web::{
     web::{scope, Data},
     App, HttpServer,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Error, Result};
 use deputy_library::repository::{get_or_create_repository, RepositoryConfiguration};
 use rand::Rng;
 use std::path::PathBuf;
@@ -12,7 +12,14 @@ use crate::{
     routes::package::{add_package, download_package},
     AppState,
 };
+use futures::TryFutureExt;
 use lazy_static::lazy_static;
+use std::time::Duration;
+use tokio::{
+    sync::oneshot::{channel, Sender},
+    time::timeout,
+    try_join,
+};
 
 lazy_static! {
     pub static ref CONFIGURATION: Configuration = Configuration {
@@ -26,12 +33,22 @@ lazy_static! {
         package_folder: "/tmp/test-packages".to_string(),
     };
 }
+
 pub fn generate_random_string(length: usize) -> Result<String> {
     let random_bytes = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(length)
         .collect::<Vec<u8>>();
     Ok(String::from_utf8(random_bytes)?)
+}
+
+pub fn generate_server_test_configuration(port: u16) -> Result<(Configuration, String)> {
+    let mut configuration = CONFIGURATION.clone();
+    configuration.port = port;
+    configuration.repository.folder = format!("/tmp/test-repo-{}", generate_random_string(10)?);
+    configuration.package_folder = format!("/tmp/test-packages-{}", generate_random_string(10)?);
+    let server_address = format!("http://{}:{}", configuration.host, configuration.port);
+    Ok((configuration, server_address))
 }
 
 pub fn get_predictable_temporary_folders(randomizer: String) -> Result<(String, String)> {
@@ -75,28 +92,39 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         package_folder: package_folder.to_str().unwrap().to_string(),
     }))
 }
+
 #[actix_web::main]
-async fn initialize_test_server(configuration: Configuration) -> Result<()> {
-    HttpServer::new(move || {
-        let package_folder = configuration.package_folder.clone();
-        if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-            let app_data = Data::new(AppState {
-                repository,
-                package_folder,
-            });
-            return App::new()
-                .app_data(app_data)
-                .service(scope("/api/v1").service(add_package))
-                .service(scope("/api/v1").service(download_package))
+async fn initialize_test_server(configuration: Configuration, tx: Sender<()>) -> Result<()> {
+    try_join!(
+        HttpServer::new(move || {
+            let package_folder = configuration.package_folder.clone();
+            if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
+                let app_data = Data::new(AppState {
+                    repository,
+                    package_folder,
+                });
+                return App::new()
+                    .app_data(app_data)
+                    .service(scope("/api/v1").service(add_package))
+                    .service(scope("/api/v1").service(download_package));
+            }
+            panic!("Failed to get the repository for keeping the index");
+        })
+        .bind((configuration.host, configuration.port))?
+        .run()
+        .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
+        async move {
+            tx.send(())
+                .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
+            Ok::<(), Error>(())
         }
-        panic!("Failed to get the repository for keeping the index");
-    })
-    .bind((configuration.host, configuration.port))?
-    .run()
-    .await?;
+    )?;
     Ok(())
 }
-pub fn start_test_server(configuration: Configuration) {
-    std::thread::spawn(|| initialize_test_server(configuration));
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+
+pub async fn start_test_server(configuration: Configuration) -> Result<()> {
+    let (tx, rx) = channel::<()>();
+    std::thread::spawn(|| initialize_test_server(configuration, tx));
+    timeout(Duration::from_millis(1000), rx).await??;
+    Ok(())
 }

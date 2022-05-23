@@ -1,36 +1,32 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use deputy::configuration::Configuration;
-use deputy_library::package::create_and_send_package_file;
-use std::env;
+use deputy::{configuration::Configuration, executor::Executor, helpers::print_error_message};
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
 #[clap(name = "deputy")]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 enum Commands {
     Publish,
-    Version,
 }
 
-#[tokio::main]
+#[actix_rt::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let client = reqwest::Client::new();
-    let api = &Configuration::get_configuration()?.repository.repositories[0].api;
+    let executor = Executor::try_new(Configuration::get_configuration()?)?;
 
-    match args.command {
-        Commands::Publish {} => {
-            create_and_send_package_file(env::current_dir()?, client, api).await?;
-            Ok(())
-        }
-        Commands::Version {} => {
-            println!("{}", env!("CARGO_PKG_VERSION"));
-            Ok(())
-        }
+    let result = match args.command {
+        Commands::Publish => executor.publish().await,
+    };
+    if let Err(error) = result {
+        print_error_message(error);
+        std::process::exit(1);
     }
+
+    Ok(())
 }

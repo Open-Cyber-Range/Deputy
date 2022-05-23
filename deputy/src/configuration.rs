@@ -1,26 +1,26 @@
-use deputy_library::constants::CONFIG_FILE_PATH_ENV_KEY;
+use crate::constants::CONFIG_FILE_PATH_ENV_KEY;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{env, fs::read_to_string};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Repository {
     pub dl: String,
     pub api: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Repositories {
     pub repositories: Vec<Repository>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Configuration {
     pub repository: Repositories,
 }
 
 impl Configuration {
-   pub fn get_configuration() -> Result<Configuration> {
+    pub fn get_configuration() -> Result<Configuration> {
         let configuration_path = env::var(CONFIG_FILE_PATH_ENV_KEY)?;
         let configuration_contents = read_to_string(configuration_path)?;
         Ok(toml::from_str(&configuration_contents)?)

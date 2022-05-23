@@ -11,6 +11,7 @@ actix-web = "4"
 anyhow = "1"
 async-trait = "0.1"
 bytes = "1"
+byte-unit = { version = "4", optional = true }
 env_logger = "0.9"
 fancy-regex = "0.10"
 futures = "0.3"
@@ -19,11 +20,12 @@ ignore = "0.4"
 insta = "1"
 lazy_static = "1"
 log = "0.4"
-reqwest = "0.11"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
+rand = { version = "0.8", optional = true }
+rayon = { version = "1", optional = true }
 tempfile = "3"
 thiserror = "1"
 tokio = { version = "1", features = ["fs"] }
@@ -32,6 +34,9 @@ toml = "0.5"
 zip = { version = "0.6", features = ["bzip2"] }
 zip-extensions = "0.6"
 
+[dev-dependencies]
+tokio = { version = "1", features = ["fs", "rt-multi-thread"] }
+
 [features]
-default = ["test"]
-test = []
+default = []
+test = ["byte-unit", "rand", "rayon"]

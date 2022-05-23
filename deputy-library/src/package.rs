@@ -1,7 +1,5 @@
 use crate::{
     archiver,
-    client::{find_toml, upload_package},
-    constants::{PACKAGE_TOML, PACKAGE_UPLOAD_PATH},
     project::Body,
     repository::{find_metadata_by_package_name, update_index_repository},
 };
@@ -15,11 +13,12 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{copy, BufReader, Read, Seek as _, SeekFrom, Write},
+    io::{copy, BufReader, Read, Write},
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     pin::Pin,
 };
+use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
@@ -51,32 +50,22 @@ impl PackageMetadata {
         }
         Ok(true)
     }
-
-    pub fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
-        let package_body = Body::create_from_toml(toml_path)?;
-        let archive_file = File::open(&archive_path)?;
-        let metadata = PackageMetadata {
-            name: package_body.name,
-            version: package_body.version,
-            checksum: PackageFile(archive_file).calculate_checksum()?,
-        };
-        Ok(metadata)
-    }
 }
 
 #[derive(Debug)]
-pub struct PackageFile(pub File);
+pub struct PackageFile(pub File, pub Option<TempPath>);
 
 impl PackageFile {
     fn save(&mut self, package_folder: String, name: String, version: String) -> Result<()> {
-        let mut content_buffer: Vec<u8> = Vec::new();
-        self.seek(SeekFrom::Start(0))?;
-        self.read_to_end(&mut content_buffer)?;
         let package_folder_path: PathBuf = [package_folder, name].iter().collect();
         fs::create_dir_all(package_folder_path.clone())?;
         let final_file_path: PathBuf = package_folder_path.join(version);
-        let mut file = File::create(final_file_path)?;
-        file.write_all(&content_buffer)?;
+        let original_path: PathBuf = self
+            .1
+            .as_ref()
+            .ok_or_else(|| anyhow!("Temporary file path not found"))?
+            .to_path_buf();
+        fs::copy(original_path, final_file_path)?;
         Ok(())
     }
 
@@ -95,9 +84,13 @@ impl PackageFile {
             file.write_all(&chunk?)?;
             file.flush()?;
         }
-
         let new_handler = file.reopen()?;
-        Ok(PackageFile(new_handler))
+        let temporary_path = file.into_temp_path();
+        Ok(PackageFile(new_handler, Some(temporary_path)))
+    }
+
+    pub(crate) fn get_size(&self) -> Result<u64> {
+        Ok(self.metadata()?.len())
     }
 }
 
@@ -132,6 +125,32 @@ impl Package {
             ));
         }
         Ok(())
+    }
+
+    fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let archive_file = File::open(&archive_path)?;
+        let metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            checksum: PackageFile(archive_file, None).calculate_checksum()?,
+        };
+        Ok(metadata)
+    }
+
+    pub fn from_file(package_toml_path: PathBuf) -> Result<Self> {
+        let archive_path = archiver::create_package(&package_toml_path)?;
+        let metadata = Self::gather_metadata(package_toml_path, &archive_path)?;
+        let file = File::open(&archive_path)?;
+        let package = Package {
+            metadata,
+            file: PackageFile(file, None),
+        };
+        Ok(package)
+    }
+
+    pub fn get_size(&self) -> Result<u64> {
+        self.file.get_size()
     }
 }
 
@@ -198,9 +217,9 @@ impl TryFrom<&[u8]> for PackageFile {
         let mut file = tempfile::NamedTempFile::new()?;
         file.write_all(metadata_bytes)?;
         file.flush()?;
-
         let new_handler = file.reopen()?;
-        Ok(PackageFile(new_handler))
+        let temporary_path = file.into_temp_path();
+        Ok(PackageFile(new_handler, Some(temporary_path)))
     }
 }
 
@@ -277,35 +296,6 @@ impl TryFrom<&[u8]> for Package {
 
         Ok(Package { metadata, file })
     }
-}
-
-pub fn create_package_from_toml(toml_path: PathBuf) -> Result<Package> {
-    let package_root = toml_path
-        .parent()
-        .ok_or_else(|| anyhow!("Directory error"))?;
-    let archive_path = archiver::create_package(package_root.to_path_buf())?;
-    let metadata = PackageMetadata::gather_metadata(toml_path, &archive_path)?;
-    let file = File::open(&archive_path)?;
-    let package = Package {
-        metadata,
-        file: PackageFile(file),
-    };
-    Ok(package)
-}
-
-pub async fn create_and_send_package_file(
-    execution_directory: PathBuf,
-    client: reqwest::Client,
-    api: &str,
-) -> Result<()> {
-    let package_toml = PathBuf::from(PACKAGE_TOML);
-    let toml_path = [&execution_directory, &package_toml].iter().collect();
-    let toml_path = find_toml(toml_path)?;
-    let package = create_package_from_toml(toml_path)?;
-    let package_bytes = Vec::try_from(package)?;
-    let put_uri = format!("{}{}", api, PACKAGE_UPLOAD_PATH);
-    upload_package(put_uri.as_str(), package_bytes, client).await?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -440,7 +430,6 @@ mod tests {
     fn metadata_is_converted_to_bytes() -> Result<()> {
         let package_metadata: &PackageMetadata = &TEST_PACKAGE_METADATA;
         let metadata_bytes = Vec::try_from(package_metadata)?;
-
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }
@@ -456,10 +445,10 @@ mod tests {
 
     #[test]
     fn file_is_converted_to_bytes() -> Result<()> {
-        let temporary_file = create_readable_temporary_file("Some content\n")?;
-        let metadata_bytes = Vec::try_from(PackageFile(temporary_file))?;
+        let (temporary_file, path) = create_readable_temporary_file("Some content\n")?;
+        let file_bytes = Vec::try_from(PackageFile(temporary_file, Some(path)))?;
 
-        insta::assert_debug_snapshot!(metadata_bytes);
+        insta::assert_debug_snapshot!(file_bytes);
         Ok(())
     }
 
@@ -480,7 +469,6 @@ mod tests {
         let package = create_test_package()?;
         let package_bytes = Vec::try_from(package)?;
         insta::assert_debug_snapshot!(package_bytes);
-
         Ok(())
     }
 
@@ -512,7 +500,7 @@ mod tests {
         let bytes = TEST_PACKAGE_BYTES.clone();
         let package = Package::try_from(&bytes as &[u8])?;
 
-        assert_eq!(package.file.metadata()?.len(), 961);
+        assert_eq!(package.file.metadata()?.len(), 14);
         insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }

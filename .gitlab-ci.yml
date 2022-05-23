@@ -12,7 +12,9 @@ lint-and-test:
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
     reports:
-      cobertura: cobertura.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
   only:
     - develop
     - master

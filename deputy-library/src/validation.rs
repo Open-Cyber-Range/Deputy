@@ -154,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_operating_system_field_is_given_value_unknwon() -> Result<()> {
+    fn invalid_operating_system_field_is_given_value_unknown() -> Result<()> {
         let (file, deserialized_toml) =
             create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = deserialized_toml.virtual_machine {

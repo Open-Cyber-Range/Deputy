@@ -24,6 +24,8 @@ lazy_static! {
         type = "vm"
         [virtual-machine]
         operating_system = "Invalid OS and missing Architecture"
+        type = "OVA"
+        file_path = "src/some-image.ova"
         "#;
 
     pub static ref TEST_VALID_PACKAGE_TOML_SCHEMA: &'static str = r#"

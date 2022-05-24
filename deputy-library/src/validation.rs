@@ -144,31 +144,31 @@ mod tests {
 
     #[test]
     fn missing_architecture_field_is_given_value_none() -> Result<()> {
-        let (_file, deserialized_toml) =
+        let (file, deserialized_toml) =
             create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = &deserialized_toml.virtual_machine {
             assert!(virtual_machine.architecture.is_none());
         }   
-        _file.close()?;
+        file.close()?;
         Ok(())
     }
 
     #[test]
     fn invalid_operating_system_field_is_given_value_unknwon() -> Result<()> {
-        let (_file, deserialized_toml) =
+        let (file, deserialized_toml) =
             create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = deserialized_toml.virtual_machine {
             if let Some(operating_system) = virtual_machine.operating_system {
                 assert_eq!(operating_system, OperatingSystem::Unknown);
         }
     }
-        _file.close()?;
+        file.close()?;
         Ok(())
     }
 
     #[test]
     fn valid_operating_system_and_architecture_fields_are_parsed_correctly() -> Result<()> {
-        let (_file, deserialized_toml) =
+        let (file, deserialized_toml) =
             create_temp_file(TEST_VALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = deserialized_toml.virtual_machine {
             if let Some(operating_system) = virtual_machine.operating_system {
@@ -178,7 +178,7 @@ mod tests {
                 assert_eq!(architecture, Architecture::arm64);
         }
     }
-        _file.close()?;
+        file.close()?;
         Ok(())
     }
 }

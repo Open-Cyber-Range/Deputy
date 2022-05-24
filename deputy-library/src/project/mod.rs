@@ -29,19 +29,13 @@ pub fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyh
 
 #[derive(Debug)]
 enum Values<T> {
-    Missing,
     Null,
     Value(T),
 }
 
-impl<T> Default for Values<T> {
-    fn default() -> Self {
-        Values::Missing
-    }
-}
-
 impl<T> From<Option<T>> for Values<T> {
-    fn from(opt: Option<T>) -> Values<T> {
+    fn from(opt: Option<T>) -> Values<T>
+    {
         match opt {
             Some(v) => Values::Value(v),
             None => Values::Null,

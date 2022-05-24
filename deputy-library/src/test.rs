@@ -35,6 +35,7 @@ lazy_static! {
         [content]
         type = "vm"
         [virtual-machine]
+        operating_system = "Debian"
         architecture = "arm64"
         type = "OVA"
         file_path = "src/some-image.ova"

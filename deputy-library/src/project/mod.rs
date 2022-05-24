@@ -1,4 +1,4 @@
-mod enums;
+pub(crate) mod enums;
 
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{Ok, Result};

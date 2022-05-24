@@ -147,8 +147,7 @@ mod tests {
         let (_file, deserialized_toml) =
             create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = &deserialized_toml.virtual_machine {
-            println!("{:?}", deserialized_toml);
-                assert!(virtual_machine.architecture.is_none());
+            assert!(virtual_machine.architecture.is_none());
         }   
         _file.close()?;
         Ok(())

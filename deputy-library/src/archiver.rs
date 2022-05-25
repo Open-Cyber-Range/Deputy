@@ -33,7 +33,9 @@ where
     T: Write + Seek,
 {
     let mut zip = zip::ZipWriter::new(writer);
-    let options = FileOptions::default().compression_method(CompressionMethod::Bzip2);
+    let options = FileOptions::default()
+        .compression_method(CompressionMethod::Bzip2)
+        .large_file(true);
 
     let mut buffer = Vec::new();
     for entry in directory_iterator {

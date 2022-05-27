@@ -29,6 +29,7 @@ impl Client {
         let mut response = self
             .client
             .put(put_uri)
+            .timeout(std::time::Duration::from_secs(60))
             .send_stream(stream)
             .await
             .map_err(|error| anyhow!("Failed to upload package: {}", error))?;

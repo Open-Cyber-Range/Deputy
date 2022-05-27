@@ -1,11 +1,19 @@
-use crate::{project::Project, validation};
+use crate::{constants::COMPERSSION_CHUNK_SIZE, project::Project, validation};
 use anyhow::{anyhow, Result};
+use gzp::{
+    deflate::Mgzip,
+    par::{
+        compress::{ParCompress, ParCompressBuilder},
+        decompress::{ParDecompress, ParDecompressBuilder},
+    },
+    Compression, ZWriter,
+};
 use ignore::{DirEntry, WalkBuilder};
-use std::fs::{create_dir_all, File};
-use std::io::{prelude::*, Seek, Write};
+use std::fs::{create_dir_all, remove_file, rename, File};
+use std::io::{prelude::*, Write};
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
-use zip::{write::FileOptions, CompressionMethod};
+use tar::Builder;
 
 fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
     let mut file = File::open(toml_path)?;
@@ -24,37 +32,71 @@ fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
     Ok(destination_file)
 }
 
-fn zip_dir<T>(
+type ParallelCompression = ParCompress<Mgzip>;
+type ParallelDecompression = ParDecompress<Mgzip>;
+
+pub fn decompress_archive(compressed_file_path: &Path) -> Result<PathBuf> {
+    let archive_path = compressed_file_path.with_extension("tar");
+    let mut archive_file = File::create(&archive_path)?;
+    let compressed_file = File::open(compressed_file_path)?;
+    let mut parallel_decompressor: ParallelDecompression = ParDecompressBuilder::new()
+        .num_threads(num_cpus::get())?
+        .from_reader(compressed_file);
+    let mut buffer = Vec::with_capacity(COMPERSSION_CHUNK_SIZE);
+    loop {
+        let mut limit = (&mut parallel_decompressor).take(COMPERSSION_CHUNK_SIZE as u64);
+        limit.read_to_end(&mut buffer)?;
+        if buffer.is_empty() {
+            break;
+        }
+        archive_file.write_all(&buffer)?;
+        buffer.clear();
+    }
+    Ok(archive_path)
+}
+
+fn compress_archive(archive_path: &Path) -> Result<PathBuf> {
+    let archive_file = File::open(&archive_path)?;
+    let compressed_file_path = archive_path.with_extension("tar.gz");
+    let compressed_file = File::create(&compressed_file_path)?;
+    let mut parallel_compressor: ParallelCompression = ParCompressBuilder::new()
+        .num_threads(num_cpus::get())?
+        .compression_level(Compression::none())
+        .from_writer(compressed_file);
+    let mut buffer = Vec::with_capacity(COMPERSSION_CHUNK_SIZE);
+    loop {
+        let mut limit = (&archive_file).take(COMPERSSION_CHUNK_SIZE as u64);
+        limit.read_to_end(&mut buffer)?;
+        if buffer.is_empty() {
+            break;
+        }
+        parallel_compressor.write_all(&buffer)?;
+        buffer.clear();
+    }
+    parallel_compressor.finish()?;
+    Ok(compressed_file_path)
+}
+
+fn create_archive(
     directory_iterator: &mut dyn Iterator<Item = DirEntry>,
     prefix: &str,
-    writer: T,
-) -> zip::result::ZipResult<()>
-where
-    T: Write + Seek,
-{
-    let mut zip = zip::ZipWriter::new(writer);
-    let options = FileOptions::default()
-        .compression_method(CompressionMethod::Bzip2)
-        .large_file(true);
+    destination_file_path: &Path,
+) -> Result<PathBuf> {
+    let archive_path = destination_file_path.with_extension("tar");
+    let destination_file = File::create(&archive_path)?;
+    let mut archiver = Builder::new(destination_file);
 
-    let mut buffer = Vec::new();
     for entry in directory_iterator {
         let path = entry.path();
         let name = path.strip_prefix(Path::new(prefix)).unwrap();
 
         if path.is_file() {
-            zip.start_file(name.to_string_lossy(), options)?;
-            let mut f = File::open(path)?;
-
-            f.read_to_end(&mut buffer)?;
-            zip.write_all(&*buffer)?;
-            buffer.clear();
-        } else if !name.as_os_str().is_empty() {
-            zip.add_directory(name.to_string_lossy(), options)?;
+            archiver.append_path_with_name(path, name)?;
         }
     }
-    zip.finish()?;
-    Ok(())
+
+    archiver.finish()?;
+    Ok(archive_path)
 }
 
 /// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
@@ -81,9 +123,6 @@ pub fn create_package(toml_path: &PathBuf) -> Result<PathBuf> {
         .to_owned();
     validation::validate_package_toml(toml_path)?;
 
-    let destination_file_path = get_destination_file_path(toml_path)?;
-    let zip_file = File::create(&destination_file_path)?;
-
     let mut walkdir = WalkBuilder::new(&root_directory);
     walkdir.filter_entry(|entry| !entry.path().ends_with("target"));
 
@@ -91,11 +130,15 @@ pub fn create_package(toml_path: &PathBuf) -> Result<PathBuf> {
         .to_str()
         .ok_or_else(|| anyhow!("Path UTF-8 validation error"))?;
 
-    zip_dir(
+    let destination_file_path = get_destination_file_path(toml_path)?;
+    let archive_path = create_archive(
         &mut walkdir.build().filter_map(|e| e.ok()),
         root_directory,
-        zip_file,
+        &destination_file_path,
     )?;
+    let compressed_file_path = compress_archive(&archive_path)?;
+    remove_file(&archive_path)?;
+    rename(&compressed_file_path, &destination_file_path)?;
 
     Ok(destination_file_path)
 }
@@ -105,8 +148,8 @@ mod tests {
     use super::*;
     use crate::test::TempArchive;
     use anyhow::Result;
+    use tar::Archive;
     use tempfile::Builder;
-    use zip_extensions::*;
 
     #[test]
     fn archive_was_created() -> Result<()> {
@@ -128,15 +171,16 @@ mod tests {
     fn target_folder_exists_and_was_excluded_from_archive() -> Result<()> {
         let temp_project = TempArchive::builder().build()?;
         let toml_file_path = temp_project.toml_file.path().to_path_buf();
-        let archive_path = get_destination_file_path(&toml_file_path)?;
 
-        create_package(&toml_file_path)?;
+        let compressed_file_path = create_package(&toml_file_path)?;
+        let archive_path = decompress_archive(&compressed_file_path)?;
         let extraction_dir = Builder::new()
             .prefix("extracts")
             .rand_bytes(0)
             .tempdir_in(&temp_project.target_dir)
             .unwrap();
-        zip_extract(&archive_path, &extraction_dir.path().to_path_buf())?;
+        let mut archive = Archive::new(File::open(&archive_path)?);
+        archive.unpack(extraction_dir.path())?;
 
         let target_dir_exists = temp_project.target_dir.path().is_dir();
         let extracted_target_dir_exists = extraction_dir.path().join("/target").exists();

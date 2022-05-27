@@ -7,14 +7,14 @@ use std::{fs::File, io::Read, path::PathBuf};
 
 use self::enums::VirtualMachineType;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Project {
     pub package: Body,
     pub content: Content,
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
 }
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
     #[serde(default = "default_os")]
     pub operating_system: OperatingSystem,
@@ -40,7 +40,7 @@ pub fn default_architecture() -> Architecture {
     Architecture::Unknown
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Body {
     pub name: String,
     pub description: String,
@@ -61,13 +61,13 @@ impl Body {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Content {
     #[serde(rename = "type")]
     pub content_type: ContentType,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ContentType {
     #[serde(alias = "vm")]
     VM,

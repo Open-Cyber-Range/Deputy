@@ -6,3 +6,4 @@ lazy_static! {
 }
 
 pub const SHA256_LENGTH: usize = 64;
+pub const COMPERSSION_CHUNK_SIZE: usize = 131_072;

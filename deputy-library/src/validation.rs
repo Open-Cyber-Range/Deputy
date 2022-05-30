@@ -80,7 +80,8 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::TEST_VALID_PACKAGE_TOML_SCHEMA;
+    use crate::test::{TEST_VALID_PACKAGE_TOML_SCHEMA, TEST_INVALID_PACKAGE_TOML_SCHEMA};
+    use crate::project::enums::{OperatingSystem, Architecture};
     use anyhow::Ok;
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
@@ -105,13 +106,13 @@ mod tests {
 
     fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Project)> {
         let toml_content = br#"
-[package]
-name = "this is incorrect formatting"
-description = "description"
-version = "version 23"
-[content]
-type = "vm"
-"#;
+            [package]
+            name = "this is incorrect formatting"
+            description = "description"
+            version = "version 23"
+            [content]
+            type = "vm"
+            "#;
         let (file, deserialized_toml) = create_temp_file(toml_content)?;
         Ok((file, deserialized_toml))
     }
@@ -137,6 +138,46 @@ type = "vm"
     fn negative_result_version_field() -> Result<()> {
         let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
         assert!(validate_version(deserialized_toml.package.version).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn missing_architecture_field_is_given_value_none() -> Result<()> {
+        let (file, deserialized_toml) =
+            create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
+        if let Some(virtual_machine) = &deserialized_toml.virtual_machine {
+            assert!(virtual_machine.architecture.is_none());
+        }   
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_operating_system_field_is_given_value_unknown() -> Result<()> {
+        let (file, deserialized_toml) =
+            create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
+        if let Some(virtual_machine) = deserialized_toml.virtual_machine {
+            if let Some(operating_system) = virtual_machine.operating_system {
+                assert_eq!(operating_system, OperatingSystem::Unknown);
+        }
+    }
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn valid_operating_system_and_architecture_fields_are_parsed_correctly() -> Result<()> {
+        let (file, deserialized_toml) =
+            create_temp_file(TEST_VALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
+        if let Some(virtual_machine) = deserialized_toml.virtual_machine {
+            if let Some(operating_system) = virtual_machine.operating_system {
+                assert_eq!(operating_system, OperatingSystem::Debian);
+        }
+            if let Some(architecture) = virtual_machine.architecture {
+                assert_eq!(architecture, Architecture::arm64);
+        }
+    }
         file.close()?;
         Ok(())
     }

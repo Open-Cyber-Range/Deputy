@@ -1,22 +1,17 @@
 use crate::constants::CONFIG_FILE_PATH_ENV_KEY;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{env, fs::read_to_string};
+use std::{collections::HashMap, env, fs::read_to_string};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct Repository {
-    pub dl: String,
+pub struct Registry {
+    pub index: String,
     pub api: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct Repositories {
-    pub repositories: Vec<Repository>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Configuration {
-    pub repository: Repositories,
+    pub registries: HashMap<String, Registry>,
 }
 
 impl Configuration {
@@ -29,6 +24,8 @@ impl Configuration {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::DEFAULT_REGISTRY_NAME;
+
     use super::*;
     use anyhow::Result;
     use std::io::Write;
@@ -36,8 +33,8 @@ mod tests {
 
     fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {
         let configuration_file_contents = br#"    
-                [repository]
-                repositories = [{ dl = "dllink", api = "apilink" }]"#;
+                [registries]
+                main-registry = { index = "registry-index", api = "apilink" }"#;
         let configuration_directory = tempdir()?;
         let mut configuration_file = Builder::new()
             .prefix("configuration")
@@ -50,20 +47,27 @@ mod tests {
 
     #[test]
     fn read_contents_from_configuration_file() -> Result<()> {
-        if env::var(CONFIG_FILE_PATH_ENV_KEY).is_err() {
-            let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
-            env::set_var(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
-            let configuration = Configuration::get_configuration()?;
-            env::remove_var(CONFIG_FILE_PATH_ENV_KEY);
-            configuration_directory.close()?;
-            assert_eq!(configuration.repository.repositories[0].api, "apilink");
-            assert_eq!(configuration.repository.repositories[0].dl, "dllink");
-            Ok(())
-        } else {
-            let configuration = Configuration::get_configuration()?;
-            assert!(!configuration.repository.repositories[0].api.is_empty());
-            assert!(!configuration.repository.repositories[0].dl.is_empty());
-            Ok(())
-        }
+        let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
+        env::set_var(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        let configuration = Configuration::get_configuration()?;
+        env::remove_var(CONFIG_FILE_PATH_ENV_KEY);
+        configuration_directory.close()?;
+        assert_eq!(
+            configuration
+                .registries
+                .get(DEFAULT_REGISTRY_NAME)
+                .unwrap()
+                .api,
+            "apilink"
+        );
+        assert_eq!(
+            configuration
+                .registries
+                .get(DEFAULT_REGISTRY_NAME)
+                .unwrap()
+                .index,
+            "registry-index"
+        );
+        Ok(())
     }
 }

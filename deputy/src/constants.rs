@@ -8,6 +8,7 @@ lazy_static! {
 
 pub const CONFIG_FILE_PATH_ENV_KEY: &str = "DEPUTY_CONFIG";
 pub const PACKAGE_TOML: &str = "package.toml";
+pub const DEFAULT_REGISTRY_NAME: &str = "main-registry";
 
 pub mod endpoints {
     pub const SMALL_PACKAGE_UPLOAD_PATH: &str = "/api/v1/package";

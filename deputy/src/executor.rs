@@ -6,6 +6,11 @@ use crate::helpers::{find_toml, print_success_message};
 use anyhow::Result;
 use deputy_library::package::Package;
 use std::env::current_dir;
+use std::{thread};
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::time::Duration;
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub struct Executor {
     configuration: Configuration,
@@ -38,14 +43,41 @@ impl Executor {
     }
 
     pub async fn publish(&self) -> Result<()> {
+        let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
+
+        let bar = ProgressBar::new(1);
+        bar.set_style(ProgressStyle::default_spinner()
+                .template("[{elapsed_precise}] {spinner} {msg}"));
+        thread::spawn(move || {
+            loop {
+                if let Ok(received) = receiver.try_recv() {
+                    let received_clone = received.clone();
+                    bar.set_message(received_clone);
+                    if received == "Done" {
+                        bar.finish();
+                        break;
+                    }
+                }
+                bar.inc(1);
+                // Sleep so that loading bar is more smooth
+                thread::sleep(Duration::from_millis(75));
+            }
+        });
+
+        sender.send(String::from("Finding toml")).unwrap();
         let package_toml = find_toml(current_dir()?)?;
+        sender.send(String::from("Creating package")).unwrap();
         let package = Package::from_file(package_toml)?;
+        sender.send(String::from("Creating client")).unwrap();
         let client = self.try_create_client(None)?;
+        sender.send(String::from("Uploading")).unwrap();
+
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
             client.upload_small_package(package.try_into()?).await?;
         } else {
             client.stream_large_package(package.try_into()?).await?;
         }
+        sender.send(String::from("Done")).unwrap();
         print_success_message("Package published");
         Ok(())
     }

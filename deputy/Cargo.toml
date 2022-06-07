@@ -17,6 +17,7 @@ colored = "2"
 deputy-library = { path = "../deputy-library" }
 deputy-package-server = { path = "../deputy-package-server" }
 git2 = "0.14"
+indicatif = "0.16.2"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0.5"

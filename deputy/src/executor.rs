@@ -2,15 +2,11 @@ use crate::client::Client;
 use crate::commands::FetchOptions;
 use crate::configuration::Configuration;
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
-use crate::helpers::{find_toml, print_success_message};
+use crate::helpers::{AdvanceProgressBar, find_toml, SpinnerProgressBar, print_success_message, ProgressStatus};
 use anyhow::Result;
 use deputy_library::package::Package;
 use std::env::current_dir;
-use std::{thread};
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
-use std::time::Duration;
-use indicatif::{ProgressBar, ProgressStyle};
+use actix::Actor;
 
 pub struct Executor {
     configuration: Configuration,
@@ -38,47 +34,24 @@ impl Executor {
                 "Default registry not found in configuration"
             ));
         };
-
         Ok(Client::new(api_url))
     }
 
     pub async fn publish(&self) -> Result<()> {
-        let (sender, receiver): (Sender<String>, Receiver<String>) = mpsc::channel();
-
-        let bar = ProgressBar::new(1);
-        bar.set_style(ProgressStyle::default_spinner()
-                .template("[{elapsed_precise}] {spinner} {msg}"));
-        thread::spawn(move || {
-            loop {
-                if let Ok(received) = receiver.try_recv() {
-                    let received_clone = received.clone();
-                    bar.set_message(received_clone);
-                    if received == "Done" {
-                        bar.finish();
-                        break;
-                    }
-                }
-                bar.inc(1);
-                // Sleep so that loading bar is more smooth
-                thread::sleep(Duration::from_millis(75));
-            }
-        });
-
-        sender.send(String::from("Finding toml")).unwrap();
+        let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Finding toml".to_string()))).await??;
         let package_toml = find_toml(current_dir()?)?;
-        sender.send(String::from("Creating package")).unwrap();
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating package".to_string()))).await??;
         let package = Package::from_file(package_toml)?;
-        sender.send(String::from("Creating client")).unwrap();
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating client".to_string()))).await??;
         let client = self.try_create_client(None)?;
-        sender.send(String::from("Uploading")).unwrap();
-
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Uploading".to_string()))).await??;
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
             client.upload_small_package(package.try_into()?).await?;
         } else {
             client.stream_large_package(package.try_into()?).await?;
         }
-        sender.send(String::from("Done")).unwrap();
-        print_success_message("Package published");
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::Done)).await??;
         Ok(())
     }
 

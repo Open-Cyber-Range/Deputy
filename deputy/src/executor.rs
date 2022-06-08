@@ -2,7 +2,7 @@ use crate::client::Client;
 use crate::commands::FetchOptions;
 use crate::configuration::Configuration;
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
-use crate::helpers::{AdvanceProgressBar, find_toml, SpinnerProgressBar, print_success_message, ProgressStatus};
+use crate::helpers::{AdvanceProgressBar, find_toml, SpinnerProgressBar, ProgressStatus};
 use anyhow::Result;
 use deputy_library::package::Package;
 use std::env::current_dir;

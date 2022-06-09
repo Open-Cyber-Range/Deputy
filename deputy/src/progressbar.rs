@@ -39,7 +39,7 @@ impl Handler<AdvanceProgressBar> for SpinnerProgressBar {
             },
             ProgressStatus::Done => {
                 self.0.set_style(ProgressStyle::default_spinner()
-                    .template("[{elapsed_precise}] {msg}"));
+                    .template("[{elapsed_precise}] \x1b[32m{msg}\x1b[0m"));
                 self.0.finish_with_message(final_message);
             }
         }

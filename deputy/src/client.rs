@@ -24,12 +24,12 @@ impl Client {
         Ok(anyhow!(error_message))
     }
 
-    pub async fn stream_large_package(&self, stream: PackageStream) -> Result<()> {
+    pub async fn stream_large_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
         let put_uri = format!("{}{}", self.api_base_url, LARGE_PACKAGE_UPLOAD_PATH);
         let mut response = self
             .client
             .put(put_uri)
-            .timeout(std::time::Duration::from_secs(60))
+            .timeout(std::time::Duration::from_secs(timeout))
             .send_stream(stream)
             .await
             .map_err(|error| anyhow!("Failed to upload package: {}", error))?;
@@ -43,11 +43,12 @@ impl Client {
         )?)
     }
 
-    pub async fn upload_small_package(&self, payload: Vec<u8>) -> Result<()> {
+    pub async fn upload_small_package(&self, payload: Vec<u8>, timeout: u64) -> Result<()> {
         let put_uri = format!("{}{}", self.api_base_url, SMALL_PACKAGE_UPLOAD_PATH);
         let mut response = self
             .client
             .put(put_uri)
+            .timeout(std::time::Duration::from_secs(timeout))
             .send_body(payload)
             .await
             .map_err(|error| anyhow!("Failed to upload package: {}", error))?;

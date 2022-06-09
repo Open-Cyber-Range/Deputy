@@ -18,3 +18,11 @@ pub struct FetchOptions {
     #[clap(short, long, help = "Registry to use for package fetching")]
     registry_name: Option<String>,
 }
+
+#[derive(Debug, Args)]
+pub struct PublishOptions {
+    #[clap(short, long, default_value_t = 60, help = "Timeout before publish fails")]
+    pub(crate) timeout: u64,
+    #[clap(short, long, default_value_t = 0, help = "Compression rate before upload")]
+    pub(crate) compression: u32,
+}

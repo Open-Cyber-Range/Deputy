@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
-    commands::FetchOptions, configuration::Configuration, executor::Executor,
+    commands::FetchOptions, commands::PublishOptions, configuration::Configuration, executor::Executor,
     helpers::print_error_message,
 };
 
@@ -13,9 +13,9 @@ pub struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
-    Publish,
+    Publish(PublishOptions),
     Fetch(FetchOptions),
 }
 
@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     let executor = Executor::try_new(Configuration::get_configuration()?)?;
 
     let result = match args.command {
-        Commands::Publish => executor.publish().await,
+        Commands::Publish(options) => executor.publish(options).await,
         Commands::Fetch(options) => executor.fetch(options).await,
     };
     if let Err(error) = result {

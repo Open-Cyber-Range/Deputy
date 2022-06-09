@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::commands::FetchOptions;
+use crate::commands::{FetchOptions, PublishOptions};
 use crate::configuration::Configuration;
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{AdvanceProgressBar, find_toml, SpinnerProgressBar, ProgressStatus};
@@ -37,19 +37,19 @@ impl Executor {
         Ok(Client::new(api_url))
     }
 
-    pub async fn publish(&self) -> Result<()> {
+    pub async fn publish(&self, options: PublishOptions) -> Result<()> {
         let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
         progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Finding toml".to_string()))).await??;
         let package_toml = find_toml(current_dir()?)?;
         progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating package".to_string()))).await??;
-        let package = Package::from_file(package_toml)?;
+        let package = Package::from_file(package_toml, options.compression)?;
         progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating client".to_string()))).await??;
         let client = self.try_create_client(None)?;
         progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Uploading".to_string()))).await??;
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            client.upload_small_package(package.try_into()?).await?;
+            client.upload_small_package(package.try_into()?, options.timeout).await?;
         } else {
-            client.stream_large_package(package.try_into()?).await?;
+            client.stream_large_package(package.try_into()?, options.timeout).await?;
         }
         progress_actor.send(AdvanceProgressBar(ProgressStatus::Done)).await??;
         Ok(())

@@ -28,7 +28,7 @@ mod tests {
             create_temp_configuration_file(&server_address)?;
         command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
 
-        let temp_package = Package::from_file(toml_path)?;
+        let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &server_configuration.package_folder,
@@ -63,7 +63,7 @@ mod tests {
             create_temp_configuration_file(&server_address)?;
         command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
 
-        let temp_package = Package::from_file(toml_path)?;
+        let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &server_configuration.package_folder,
@@ -159,7 +159,7 @@ mod tests {
         let (configuration, server_address) = generate_server_test_configuration(9092)?;
         start_test_server(configuration).await?;
         let client = Client::new(server_address);
-        let response = client.upload_small_package(invalid_package_bytes).await;
+        let response = client.upload_small_package(invalid_package_bytes, 60).await;
 
         assert!(response.is_err());
         Ok(())
@@ -172,7 +172,7 @@ mod tests {
         start_test_server(configuration.clone()).await?;
 
         let client = Client::new(server_address.to_string());
-        let response = client.upload_small_package(package_bytes).await;
+        let response = client.upload_small_package(package_bytes, 60).await;
         assert!(response.is_ok());
         fs::remove_dir_all(&configuration.package_folder)?;
         fs::remove_dir_all(&configuration.repository.folder)?;

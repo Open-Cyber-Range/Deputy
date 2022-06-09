@@ -18,7 +18,6 @@ colored = "2"
 deputy-library = { path = "../deputy-library" }
 deputy-package-server = { path = "../deputy-package-server" }
 git2 = "0.14"
-gzp = { version = "0.9", default-features = false, features = ["deflate_rust"] }
 indicatif = "0.16"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"] }

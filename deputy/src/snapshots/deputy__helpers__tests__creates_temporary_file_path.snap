@@ -1,0 +1,5 @@
+---
+source: deputy/src/helpers.rs
+expression: temporary_path
+---
+/tmp/Shakespeare/0.5.0

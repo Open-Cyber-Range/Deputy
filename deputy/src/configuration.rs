@@ -10,8 +10,15 @@ pub struct Registry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct PackageDownload {
+    pub index_path: String,
+    pub download_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Configuration {
     pub registries: HashMap<String, Registry>,
+    pub package: PackageDownload,
 }
 
 impl Configuration {
@@ -34,7 +41,12 @@ mod tests {
     fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {
         let configuration_file_contents = br#"    
                 [registries]
-                main-registry = { index = "registry-index", api = "apilink" }"#;
+                main-registry = { index = "registry-index", api = "apilink" }
+                
+                [package]
+                index_path = "./index"
+                download_path = "./download"
+                "#;
         let configuration_directory = tempdir()?;
         let mut configuration_file = Builder::new()
             .prefix("configuration")
@@ -68,6 +80,7 @@ mod tests {
                 .index,
             "registry-index"
         );
+        assert_eq!(configuration.package.index_path, "./index");
         Ok(())
     }
 }

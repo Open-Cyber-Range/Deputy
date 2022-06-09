@@ -158,7 +158,7 @@ mod tests {
         let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
         let (configuration, server_address) = generate_server_test_configuration(9092)?;
         start_test_server(configuration).await?;
-        let client = Client::new(server_address);
+        let client = Client::try_new(server_address)?;
         let response = client.upload_small_package(invalid_package_bytes).await;
 
         assert!(response.is_err());
@@ -171,7 +171,7 @@ mod tests {
         let (configuration, server_address) = generate_server_test_configuration(9093)?;
         start_test_server(configuration.clone()).await?;
 
-        let client = Client::new(server_address.to_string());
+        let client = Client::try_new(server_address.to_string())?;
         let response = client.upload_small_package(package_bytes).await;
         assert!(response.is_ok());
         fs::remove_dir_all(&configuration.package_folder)?;

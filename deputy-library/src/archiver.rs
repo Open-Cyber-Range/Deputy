@@ -13,7 +13,7 @@ use std::fs::{create_dir_all, remove_file, rename, File};
 use std::io::{prelude::*, Write};
 use std::iter::Iterator;
 use std::path::{Path, PathBuf};
-use tar::Builder;
+use tar::{Archive, Builder};
 
 fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
     let mut file = File::open(toml_path)?;
@@ -97,6 +97,15 @@ fn create_archive(
 
     archiver.finish()?;
     Ok(archive_path)
+}
+
+pub fn unpack_archive(archive_path: &Path, destination: &Path) -> Result<()> {
+    let archive_file = File::open(archive_path)?;
+    let mut archiver = Archive::new(archive_file);
+    create_dir_all(destination)?;
+    archiver.unpack(destination)?;
+
+    Ok(())
 }
 
 /// Creates an archive of the given directory if it contains a valid `package.toml` file in its root

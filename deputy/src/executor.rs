@@ -2,7 +2,10 @@ use crate::client::Client;
 use crate::commands::FetchOptions;
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
-use crate::helpers::{create_temporary_package_download_path, find_toml, print_success_message};
+use crate::helpers::{
+    create_temporary_package_download_path, find_toml, get_download_target_name,
+    print_success_message, unpack_package_file,
+};
 use anyhow::Result;
 use deputy_library::repository::find_largest_matching_version;
 use deputy_library::{
@@ -11,7 +14,7 @@ use deputy_library::{
 };
 use git2::Repository;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
-use tokio::fs::copy;
+use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,
@@ -96,9 +99,12 @@ impl Executor {
         client
             .download_package(&options.package_name, &version, &temporary_package_path)
             .await?;
-        copy(
-            temporary_package_path,
-            PathBuf::from(&options.save_path).join(&version),
+        let unpacked_file_path =
+            unpack_package_file(&temporary_package_path, &options.unpack_level)?;
+
+        rename(
+            unpacked_file_path,
+            get_download_target_name(&options.unpack_level, &options.package_name, &version),
         )
         .await?;
         temporary_directory.close()?;

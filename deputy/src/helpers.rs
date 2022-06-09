@@ -1,8 +1,9 @@
-use crate::constants::PACKAGE_TOML;
+use crate::{commands::UnpackLevel, constants::PACKAGE_TOML};
 use anyhow::{anyhow, Error, Result};
 use awc::error::PayloadError;
 use bytes::Bytes;
 use colored::Colorize;
+use deputy_library::archiver::{decompress_archive, unpack_archive};
 use futures::{Stream, StreamExt};
 use std::{io::Write, path::PathBuf};
 use tempfile::TempDir;
@@ -44,6 +45,39 @@ pub fn create_temporary_package_download_path(
             .to_string(),
         temporary_directory,
     ))
+}
+
+pub fn get_download_target_name(unpack_level: &UnpackLevel, name: &str, version: &str) -> String {
+    match unpack_level {
+        UnpackLevel::Raw => format!("{}-{}.tar.gz", name, version),
+        UnpackLevel::Uncompressed => format!("{}-{}.tar", name, version),
+        UnpackLevel::Regular => format!("{}-{}", name, version),
+    }
+}
+
+pub fn unpack_package_file(
+    temporary_file_path: &str,
+    unpack_level: &UnpackLevel,
+) -> Result<String> {
+    match unpack_level {
+        UnpackLevel::Raw => Ok(temporary_file_path.to_string()),
+        UnpackLevel::Uncompressed => {
+            let decompresesed_path = decompress_archive(&PathBuf::from(temporary_file_path))?;
+            Ok(decompresesed_path
+                .to_str()
+                .ok_or_else(|| anyhow!("Failed to get decompressed path"))?
+                .to_string())
+        }
+        UnpackLevel::Regular => {
+            let decompresesed_path = decompress_archive(&PathBuf::from(temporary_file_path))?;
+            let destination_path = PathBuf::from(format!("{}-dir", temporary_file_path));
+            unpack_archive(&decompresesed_path, &destination_path)?;
+            Ok(destination_path
+                .to_str()
+                .ok_or_else(|| anyhow!("Failed to get destination path"))?
+                .to_string())
+        }
+    }
 }
 
 pub async fn create_file_from_stream(

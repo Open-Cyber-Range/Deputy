@@ -8,7 +8,7 @@ pub mod routes;
 #[cfg(feature = "test")]
 pub mod test;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AppState {
     pub repository: Arc<Mutex<Repository>>,
     pub package_folder: String,

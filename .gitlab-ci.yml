@@ -5,12 +5,10 @@ stages:
 lint-and-test:
   stage: build
   image: $DOCKER_REGISTRY_PULL/rust-builder
-  services:
-    - docker:19.03.12-dind
   script:
     - cargo clippy -- -Dwarnings
-    - cargo build --verbose
-    - cargo tarpaulin --skip-clean --verbose --out Xml
+    - cargo build
+    - cargo tarpaulin --skip-clean --out Xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
     reports:

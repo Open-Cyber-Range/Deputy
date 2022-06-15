@@ -13,7 +13,6 @@ async-trait = "0.1"
 bytes = "1"
 byte-unit = { version = "4", optional = true }
 env_logger = "0.9"
-execute = "0.2"
 fancy-regex = "0.10"
 futures = "0.3"
 git2 = "0.14"

@@ -24,7 +24,7 @@ use tokio::{
 
 lazy_static! {
     pub static ref CONFIGURATION: Configuration = Configuration {
-        host: "localhost".to_string(),
+        host: "127.0.0.1".to_string(),
         port: 9090,
         repository: RepositoryConfiguration {
             folder: "/tmp/test-repo".to_string(),
@@ -104,10 +104,11 @@ async fn initialize_test_server(configuration: Configuration, tx: Sender<()>) ->
         try_join!(
             HttpServer::new(move || {
                 let app_data = Data::new(app_data.clone());
-                App::new()
-                    .app_data(app_data)
-                    .service(scope("/api/v1").service(add_package))
-                    .service(scope("/api/v1").service(download_package))
+                App::new().app_data(app_data).service(
+                    scope("/api/v1")
+                        .service(add_package)
+                        .service(download_package),
+                )
             })
             .bind((configuration.host, configuration.port))?
             .workers(1)
@@ -128,7 +129,7 @@ async fn initialize_test_server(configuration: Configuration, tx: Sender<()>) ->
 pub async fn start_test_server(configuration: Configuration) -> Result<()> {
     let (tx, rx) = channel::<()>();
     tokio::spawn(async move { initialize_test_server(configuration, tx).await });
-    timeout(std::time::Duration::from_millis(100), rx).await??;
+    timeout(std::time::Duration::from_millis(1000), rx).await??;
 
     Ok(())
 }

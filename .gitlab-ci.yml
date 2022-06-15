@@ -5,6 +5,8 @@ stages:
 lint-and-test:
   stage: build
   image: $DOCKER_REGISTRY_PULL/rust-builder
+  services:
+    - docker:19.03.12-dind
   script:
     - cargo clippy -- -Dwarnings
     - cargo build --verbose

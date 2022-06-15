@@ -12,20 +12,22 @@ use deputy_package_server::{
     },
     AppState,
 };
+use futures::lock::Mutex;
 use log::error;
+use std::sync::Arc;
 
 async fn real_main() -> Result<()> {
     env_logger::init();
     let configuration = read_configuration(std::env::args().collect())?;
-
-    HttpServer::new(move || {
+    if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
         let package_folder = configuration.package_folder.clone();
-        if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-            let app_data = Data::new(AppState {
-                repository,
-                package_folder,
-            });
-            return App::new()
+        let app_state = AppState {
+            repository: Arc::new(Mutex::new(repository)),
+            package_folder,
+        };
+        HttpServer::new(move || {
+            let app_data = Data::new(app_state.clone());
+            App::new()
                 .app_data(app_data)
                 .service(status)
                 .service(version)
@@ -34,15 +36,15 @@ async fn real_main() -> Result<()> {
                         .service(add_package_streaming)
                         .service(add_package)
                         .service(download_package),
-                );
-        }
-        error!("Failed to get the repository for keeping the index");
-        panic!("Failed to get the repository for keeping the index");
-    })
-    .bind((configuration.host, configuration.port))?
-    .run()
-    .await?;
-    Ok(())
+                )
+        })
+        .bind((configuration.host, configuration.port))?
+        .run()
+        .await?;
+        return Ok(());
+    }
+    error!("Failed to get the repository for keeping the index");
+    panic!("Failed to get the repository for keeping the index");
 }
 
 #[actix_web::main]

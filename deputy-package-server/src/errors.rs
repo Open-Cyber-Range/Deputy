@@ -48,8 +48,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::PackageVersionValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageNameValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionConflict => StatusCode::CONFLICT,
-                PackageServerError::FileSave => StatusCode::INTERNAL_SERVER_ERROR,
-                PackageServerError::PackageSave => StatusCode::INTERNAL_SERVER_ERROR,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }
         StatusCode::INTERNAL_SERVER_ERROR

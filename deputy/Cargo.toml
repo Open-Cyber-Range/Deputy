@@ -30,7 +30,10 @@ url = "2"
 [dev-dependencies]
 assert_cmd = "2.0"
 deputy-library = { path = "../deputy-library", features = ["test"] }
+futures = "0.3"
 insta = "1"
 predicates = "2.1"
 rand = "0.8"
+shiplift = "0.7"
 tempfile = "3"
+tokio = { version = "1", features = ["fs", "time"], default-features = false }

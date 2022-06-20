@@ -1,4 +1,4 @@
 #!/bin/sh
 
-DEPUTY_CONFIG="/home/kaarel/.deputy/configuration.toml"
+DEPUTY_CONFIG="${HOME}/.deputy/configuration.toml"
 . /var/opt/deputy/bin/deputy

@@ -5,19 +5,11 @@ use bollard::{
     models::{HostConfig, PortBinding},
     Docker,
 };
+use deputy_library::test::generate_random_string;
 use futures::StreamExt;
-use rand::{distributions::Alphanumeric, Rng};
 use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
 
 const DOCKER_IMAGE_NAME: &str = "git-server-docker-mock";
-
-fn random_string(len: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(len)
-        .map(char::from)
-        .collect()
-}
 
 async fn create_image(docker: &Docker) -> Result<()> {
     let build_options = BuildImageOptions {
@@ -71,7 +63,7 @@ impl MockRepostioryServer {
             }),
             ..Default::default()
         };
-        let name = random_string(24);
+        let name = generate_random_string(24)?;
         docker
             .create_container::<String, String>(
                 Some(CreateContainerOptions { name: name.clone() }),

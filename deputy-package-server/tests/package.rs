@@ -6,13 +6,14 @@ mod tests {
     use actix_http::Payload;
     use actix_web::{body::to_bytes, test, web::Data, App};
     use anyhow::Result;
-    use deputy_library::{package::PackageStream, test::create_test_package};
+    use deputy_library::{
+        package::PackageStream,
+        test::{create_test_package, generate_random_string},
+    };
     use deputy_package_server::{
         routes::package::add_package,
         routes::package::{add_package_streaming, download_package},
-        test::{
-            create_predictable_temporary_folders, create_test_app_state, generate_random_string,
-        },
+        test::{create_predictable_temporary_folders, create_test_app_state},
         AppState,
     };
     use std::path::PathBuf;

@@ -1,20 +1,21 @@
-use actix_web::{
-    web::{scope, Data},
-    App, HttpServer,
-};
-use anyhow::{anyhow, Error, Result};
-use deputy_library::repository::{get_or_create_repository, RepositoryConfiguration};
-use rand::Rng;
-use std::path::PathBuf;
-
 use crate::{
     configuration::Configuration,
     routes::package::{add_package, download_package},
     AppState,
 };
+use actix_web::{
+    web::{scope, Data},
+    App, HttpServer,
+};
+use anyhow::{anyhow, Error, Result};
+use deputy_library::{
+    repository::{get_or_create_repository, RepositoryConfiguration},
+    test::generate_random_string,
+};
 use futures::lock::Mutex;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::{
     sync::oneshot::{channel, Sender},
@@ -33,14 +34,6 @@ lazy_static! {
         },
         package_folder: "/tmp/test-packages".to_string(),
     };
-}
-
-pub fn generate_random_string(length: usize) -> Result<String> {
-    let random_bytes = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(length)
-        .collect::<Vec<u8>>();
-    Ok(String::from_utf8(random_bytes)?)
 }
 
 pub fn generate_server_test_configuration(port: u16) -> Result<(Configuration, String)> {

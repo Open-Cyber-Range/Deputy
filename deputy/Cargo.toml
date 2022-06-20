@@ -1,12 +1,32 @@
 [package]
 name = "deputy"
+description = "Deputy CLI tool to interact with deputy packages"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package.metadata.deb]
+name = "deputy"
+maintainer = "Kaarel Allemann <kaarel.allemann@c14.ee>"
+copyright = "2022, CR14 <info@cr14.ee>"
+license-file = ["../LICENSE", "4"]
+extended-description = """\
+Deputy CLI tool to interact with deputy packages."""
+section = "utility"
+priority = "optional"
+assets = [
+  [
+    "target/release/deputy",
+    "/var/opt/deputy/bin/",
+    "755",
+  ],
+  [
+    "assets/deputy",
+    "/usr/bin/",
+    "755",
+  ],
+]
 
 [dependencies]
-actix-test = "0.0"
 actix-web = "4"
 actix-rt = "2"
 anyhow = "1"
@@ -28,6 +48,7 @@ toml = "0.5"
 url = "2"
 
 [dev-dependencies]
+actix-test = "0.0"
 assert_cmd = "2.0"
 bollard = "0.12"
 deputy-library = { path = "../deputy-library", features = ["test"] }

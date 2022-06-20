@@ -40,6 +40,17 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   only:
     - master
 
+build-and-upload-x86-64bit-linux-release-for-deputy-cli:
+  stage: build
+  needs: ["lint-and-test"]
+  image: $DOCKER_REGISTRY_PULL/rust-builder
+  script:
+    - cargo deb --target x86_64-unknown-linux-gnu -p deputy
+    - DEB_FILE=$(find ./target/x86_64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
+    - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
+  only:
+    - master
+
 staging:
   variables:
     DEPUTY_PACKAGE_SERVER: "1"

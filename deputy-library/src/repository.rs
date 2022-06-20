@@ -1,8 +1,10 @@
 use crate::constants::{INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE};
 use crate::package::PackageMetadata;
 use anyhow::{Error, Ok, Result};
-
-use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
+use git2::{
+    build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
+    Repository, RepositoryInitOptions,
+};
 use log::{debug, info};
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
@@ -198,12 +200,12 @@ fn initialize_repository(repository_configuration: &RepositoryConfiguration) -> 
 }
 
 fn fetch_commit<'a>(
-    repo: &'a git2::Repository,
+    repo: &'a Repository,
     refspecs: &[&str],
-    remote: &'a mut git2::Remote,
-) -> Result<git2::AnnotatedCommit<'a>> {
-    let mut fetch_options = git2::FetchOptions::new();
-    fetch_options.download_tags(git2::AutotagOption::All);
+    remote: &'a mut Remote,
+) -> Result<AnnotatedCommit<'a>> {
+    let mut fetch_options = FetchOptions::new();
+    fetch_options.download_tags(AutotagOption::All);
     remote.fetch(refspecs, Some(&mut fetch_options), None)?;
     let fetch_head = repo.find_reference("FETCH_HEAD")?;
     Ok(repo.reference_to_annotated_commit(&fetch_head)?)
@@ -211,8 +213,8 @@ fn fetch_commit<'a>(
 
 fn fast_forward(
     repo: &Repository,
-    reference: &mut git2::Reference,
-    commit: &git2::AnnotatedCommit,
+    reference: &mut Reference,
+    commit: &AnnotatedCommit,
 ) -> Result<()> {
     let name = match reference.name() {
         Some(s) => s.to_string(),
@@ -221,14 +223,14 @@ fn fast_forward(
     let message = format!("Fast-Forward: Setting {} to id: {}", name, commit.id());
     reference.set_target(commit.id(), &message)?;
     repo.set_head(&name)?;
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
+    repo.checkout_head(Some(CheckoutBuilder::default().force()))?;
     Ok(())
 }
 
 fn normal_merge(
     repository: &Repository,
-    local: &git2::AnnotatedCommit,
-    remote: &git2::AnnotatedCommit,
+    local: &AnnotatedCommit,
+    remote: &AnnotatedCommit,
 ) -> Result<()> {
     let local_tree = repository.find_commit(local.id())?.tree()?;
     let remote_tree = repository.find_commit(remote.id())?.tree()?;
@@ -262,7 +264,7 @@ fn normal_merge(
 fn merge_commit<'a>(
     repository: &'a Repository,
     remote_branch: &str,
-    fetch_commit: git2::AnnotatedCommit<'a>,
+    fetch_commit: AnnotatedCommit<'a>,
 ) -> Result<()> {
     let analysis = repository.merge_analysis(&[&fetch_commit])?;
 
@@ -279,7 +281,7 @@ fn merge_commit<'a>(
         )?;
         repository.set_head(&refname)?;
         repository.checkout_head(Some(
-            git2::build::CheckoutBuilder::default()
+            CheckoutBuilder::default()
                 .allow_conflicts(true)
                 .conflict_style_merge(true)
                 .force(),

@@ -1,20 +1,22 @@
-use actix_web::{
-    web::{scope, Data},
-    App, HttpServer,
-};
-use anyhow::{anyhow, Error, Result};
-use deputy_library::repository::{get_or_create_repository, RepositoryConfiguration};
-use rand::Rng;
-use std::path::PathBuf;
-
 use crate::{
     configuration::Configuration,
     routes::package::{add_package, download_package},
     AppState,
 };
+use actix_web::{
+    web::{scope, Data},
+    App, HttpServer,
+};
+use anyhow::{anyhow, Error, Result};
+use deputy_library::{
+    repository::{get_or_create_repository, RepositoryConfiguration},
+    test::generate_random_string,
+};
+use futures::lock::Mutex;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
-use std::time::Duration;
+use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::{
     sync::oneshot::{channel, Sender},
     time::timeout,
@@ -23,7 +25,7 @@ use tokio::{
 
 lazy_static! {
     pub static ref CONFIGURATION: Configuration = Configuration {
-        host: "localhost".to_string(),
+        host: "127.0.0.1".to_string(),
         port: 9090,
         repository: RepositoryConfiguration {
             folder: "/tmp/test-repo".to_string(),
@@ -32,14 +34,6 @@ lazy_static! {
         },
         package_folder: "/tmp/test-packages".to_string(),
     };
-}
-
-pub fn generate_random_string(length: usize) -> Result<String> {
-    let random_bytes = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(length)
-        .collect::<Vec<u8>>();
-    Ok(String::from_utf8(random_bytes)?)
 }
 
 pub fn generate_server_test_configuration(port: u16) -> Result<(Configuration, String)> {
@@ -88,43 +82,47 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     let repository = get_or_create_repository(&repository_configuration)?;
 
     Ok(Data::new(AppState {
-        repository,
+        repository: Arc::new(Mutex::new(repository)),
         package_folder: package_folder.to_str().unwrap().to_string(),
     }))
 }
 
-#[actix_web::main]
 async fn initialize_test_server(configuration: Configuration, tx: Sender<()>) -> Result<()> {
-    try_join!(
-        HttpServer::new(move || {
-            let package_folder = configuration.package_folder.clone();
-            if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-                let app_data = Data::new(AppState {
-                    repository,
-                    package_folder,
-                });
-                return App::new()
-                    .app_data(app_data)
-                    .service(scope("/api/v1").service(add_package))
-                    .service(scope("/api/v1").service(download_package));
+    let package_folder = configuration.package_folder.clone();
+    if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
+        let app_data = AppState {
+            repository: Arc::new(Mutex::new(repository)),
+            package_folder,
+        };
+        try_join!(
+            HttpServer::new(move || {
+                let app_data = Data::new(app_data.clone());
+                App::new().app_data(app_data).service(
+                    scope("/api/v1")
+                        .service(add_package)
+                        .service(download_package),
+                )
+            })
+            .bind((configuration.host, configuration.port))?
+            .workers(1)
+            .run()
+            .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
+            async move {
+                tx.send(())
+                    .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
+                Ok::<(), Error>(())
             }
-            panic!("Failed to get the repository for keeping the index");
-        })
-        .bind((configuration.host, configuration.port))?
-        .run()
-        .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
-        async move {
-            tx.send(())
-                .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
-            Ok::<(), Error>(())
-        }
-    )?;
-    Ok(())
+        )?;
+        return Ok(());
+    }
+
+    Err(anyhow!("Failed to create the repository"))
 }
 
 pub async fn start_test_server(configuration: Configuration) -> Result<()> {
     let (tx, rx) = channel::<()>();
-    std::thread::spawn(|| initialize_test_server(configuration, tx));
-    timeout(Duration::from_millis(1000), rx).await??;
+    tokio::spawn(async move { initialize_test_server(configuration, tx).await });
+    timeout(std::time::Duration::from_millis(1000), rx).await??;
+
     Ok(())
 }

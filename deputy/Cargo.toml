@@ -11,20 +11,29 @@ actix-web = "4"
 actix-rt = "2"
 anyhow = "1"
 awc = "3"
+bytes = "1"
 byte-unit = "4"
 clap = { version = "3", features = ["derive"] }
 colored = "2"
 deputy-library = { path = "../deputy-library" }
 deputy-package-server = { path = "../deputy-package-server" }
 git2 = "0.14"
+futures = "0.3"
 lazy_static = "1"
-serde = { version = "1", features = ["derive"] }
-toml = "0.5"
 log = "0.4"
+serde = { version = "1", features = ["derive"] }
+tempfile = "3"
+tokio = { version = "1", features = ["fs"], default-features = false }
+toml = "0.5"
+url = "2"
 
 [dev-dependencies]
 assert_cmd = "2.0"
+bollard = "0.12"
 deputy-library = { path = "../deputy-library", features = ["test"] }
+futures = "0.3"
+insta = "1"
 predicates = "2.1"
 rand = "0.8"
 tempfile = "3"
+tokio = { version = "1", features = ["fs", "time"], default-features = false }

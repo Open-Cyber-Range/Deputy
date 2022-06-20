@@ -1,10 +1,16 @@
 use anyhow::Result;
+use deputy::constants::DEFAULT_REGISTRY_NAME;
 use std::io::Write;
 use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
 
-pub fn create_temp_configuration_file(api_address: &str) -> Result<(TempDir, NamedTempFile)> {
-    let configuration_file_contents =
-        format!("[repository]\nrepositories = [{{ dl = \"dllink\", api = \"{api_address}\" }}]",);
+pub fn create_temp_configuration_file(
+    api_address: &str,
+    index_repository: &str,
+) -> Result<(TempDir, NamedTempFile)> {
+    let configuration_file_contents = format!(
+        "[registries]\n{DEFAULT_REGISTRY_NAME} = {{ index = \"{index_repository}\", api = \"{api_address}\" }}\n[package]\nindex_path = \"./index\"\ndownload_path = \"./download\"",
+    );
+
     let configuration_directory = tempdir()?;
     let mut configuration_file = Builder::new()
         .prefix("configuration")

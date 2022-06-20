@@ -7,8 +7,8 @@ lint-and-test:
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
-    - cargo build --verbose
-    - cargo tarpaulin --skip-clean --verbose --out Xml
+    - cargo build
+    - cargo tarpaulin --skip-clean --out Xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
     reports:

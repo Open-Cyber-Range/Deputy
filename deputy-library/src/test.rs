@@ -5,7 +5,7 @@ use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir, NamedTempFile, TempPath};
 use byte_unit::Byte;
 use crate::package::{Package, PackageFile, PackageMetadata};
-use rand;
+use rand::Rng;
 
 lazy_static! {
     pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
@@ -244,3 +244,10 @@ pub fn get_last_commit_message(repo: &Repository) -> String {
     head.message().unwrap().to_string()
 }
 
+pub fn generate_random_string(length: usize) -> Result<String> {
+    let random_bytes = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(length)
+        .collect::<Vec<u8>>();
+    Ok(String::from_utf8(random_bytes)?)
+}

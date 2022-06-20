@@ -1,14 +1,17 @@
+use crate::constants::{INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE};
 use crate::package::PackageMetadata;
-use anyhow::{anyhow, Error, Ok, Result};
-use execute::Execute;
-use git2::{build::CheckoutBuilder, Repository, RepositoryInitOptions};
-use log::{debug, error, info};
+use anyhow::{Error, Ok, Result};
+use git2::{
+    build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
+    Repository, RepositoryInitOptions,
+};
+use log::{debug, info};
+use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{create_dir_all, File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
-    process::Command,
 };
 
 static HEAD_REF: &str = "HEAD";
@@ -140,23 +143,26 @@ pub fn find_metadata_by_package_name(
     Ok(metadata_list)
 }
 
-fn update_repository_information(repository: &Repository) -> Result<()> {
-    let mut git_command = Command::new("git");
-    git_command.arg("update-server-info");
-    git_command.current_dir(repository.path());
+pub fn find_largest_matching_version(
+    repository: &Repository,
+    name: &str,
+    version_requirement: &str,
+) -> Result<Option<String>> {
+    let version_requirement = VersionReq::parse(version_requirement)?;
+    let metadata_list = find_metadata_by_package_name(repository, name)?;
 
-    if let Some(exit_code) = git_command.execute()? {
-        if exit_code == 0 {
-            debug!("git update-server-info executed successfully");
-            Ok(())
-        } else {
-            error!("Failed to exectute git update-server-info");
-            Err(anyhow!("Failed to exectute git update-server-info"))
-        }
-    } else {
-        error!("git update-server-info interrupted");
-        Err(anyhow!("git update-server-info interrupted"))
-    }
+    let mut latest_metadata = metadata_list
+        .iter()
+        .map(|metadata| Ok(Version::parse(&metadata.version)?))
+        .collect::<Result<Vec<Version>>>()?;
+    latest_metadata.sort();
+    latest_metadata.reverse();
+    let largest_version = latest_metadata
+        .iter()
+        .find(|version| version_requirement.matches(version))
+        .map(|version| version.to_string());
+
+    Ok(largest_version)
 }
 
 pub fn update_index_repository(
@@ -168,14 +174,14 @@ pub fn update_index_repository(
     write_metadata_to_file(&file, package_metadata)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
     create_package_commit(repository, &file_path, package_metadata)?;
-    update_repository_information(repository)?;
+
     Ok(())
 }
 
 fn initialize_repository(repository_configuration: &RepositoryConfiguration) -> Result<Repository> {
     let mut opts = RepositoryInitOptions::new();
 
-    opts.initial_head("master");
+    opts.initial_head(INDEX_REPOSITORY_BRANCH);
     let path = Path::new(&repository_configuration.folder);
     let repository = Repository::init_opts(path, &opts)?;
     {
@@ -189,8 +195,102 @@ fn initialize_repository(repository_configuration: &RepositoryConfiguration) -> 
         let sig = repository.signature()?;
         repository.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])?;
     }
-    update_repository_information(&repository)?;
+
     Ok(repository)
+}
+
+fn fetch_commit<'a>(
+    repo: &'a Repository,
+    refspecs: &[&str],
+    remote: &'a mut Remote,
+) -> Result<AnnotatedCommit<'a>> {
+    let mut fetch_options = FetchOptions::new();
+    fetch_options.download_tags(AutotagOption::All);
+    remote.fetch(refspecs, Some(&mut fetch_options), None)?;
+    let fetch_head = repo.find_reference("FETCH_HEAD")?;
+    Ok(repo.reference_to_annotated_commit(&fetch_head)?)
+}
+
+fn fast_forward(
+    repo: &Repository,
+    reference: &mut Reference,
+    commit: &AnnotatedCommit,
+) -> Result<()> {
+    let name = match reference.name() {
+        Some(s) => s.to_string(),
+        None => String::from_utf8_lossy(reference.name_bytes()).to_string(),
+    };
+    let message = format!("Fast-Forward: Setting {} to id: {}", name, commit.id());
+    reference.set_target(commit.id(), &message)?;
+    repo.set_head(&name)?;
+    repo.checkout_head(Some(CheckoutBuilder::default().force()))?;
+    Ok(())
+}
+
+fn normal_merge(
+    repository: &Repository,
+    local: &AnnotatedCommit,
+    remote: &AnnotatedCommit,
+) -> Result<()> {
+    let local_tree = repository.find_commit(local.id())?.tree()?;
+    let remote_tree = repository.find_commit(remote.id())?.tree()?;
+    let ancestor = repository
+        .find_commit(repository.merge_base(local.id(), remote.id())?)?
+        .tree()?;
+    let mut merge_index = repository.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
+
+    if merge_index.has_conflicts() {
+        repository.checkout_index(Some(&mut merge_index), None)?;
+        return Ok(());
+    }
+    let result_tree = repository.find_tree(merge_index.write_tree_to(repository)?)?;
+
+    let message = format!("Merge: {} into {}", remote.id(), local.id());
+    let signature = repository.signature()?;
+    let local_commit = repository.find_commit(local.id())?;
+    let remote_commit = repository.find_commit(remote.id())?;
+    let _merge_commit = repository.commit(
+        Some("HEAD"),
+        &signature,
+        &signature,
+        &message,
+        &result_tree,
+        &[&local_commit, &remote_commit],
+    )?;
+    repository.checkout_head(None)?;
+    Ok(())
+}
+
+fn merge_commit<'a>(
+    repository: &'a Repository,
+    remote_branch: &str,
+    fetch_commit: AnnotatedCommit<'a>,
+) -> Result<()> {
+    let analysis = repository.merge_analysis(&[&fetch_commit])?;
+
+    if analysis.0.is_fast_forward() {
+        let refname = format!("refs/heads/{}", remote_branch);
+        if let core::result::Result::Ok(mut reference) = repository.find_reference(&refname) {
+            fast_forward(repository, &mut reference, &fetch_commit)?;
+        }
+        repository.reference(
+            &refname,
+            fetch_commit.id(),
+            true,
+            &format!("Setting {} to {}", remote_branch, fetch_commit.id()),
+        )?;
+        repository.set_head(&refname)?;
+        repository.checkout_head(Some(
+            CheckoutBuilder::default()
+                .allow_conflicts(true)
+                .conflict_style_merge(true)
+                .force(),
+        ))?;
+    } else if analysis.0.is_normal() {
+        let head_commit = repository.reference_to_annotated_commit(&repository.head()?)?;
+        normal_merge(repository, &head_commit, &fetch_commit)?;
+    }
+    Ok(())
 }
 
 pub fn get_or_create_repository(
@@ -201,6 +301,21 @@ pub fn get_or_create_repository(
     }
     info!("Initializing the repository");
     initialize_repository(repository_configuration)
+}
+
+pub fn get_or_clone_repository(url: &str, target_path: PathBuf) -> Result<Repository> {
+    if let Result::Ok(repository) = Repository::open(target_path.clone()) {
+        return Ok(repository);
+    }
+    debug!("Cloning the repository from {url} at: {:?}", target_path);
+    Ok(Repository::clone(url, target_path)?)
+}
+
+pub fn pull_from_remote(repository: &Repository) -> Result<()> {
+    let mut remote = repository.find_remote(INDEX_REPOSITORY_REMOTE)?;
+    let commit = fetch_commit(repository, &[INDEX_REPOSITORY_BRANCH], &mut remote)?;
+    merge_commit(repository, INDEX_REPOSITORY_BRANCH, commit)?;
+    Ok(())
 }
 
 #[cfg(test)]

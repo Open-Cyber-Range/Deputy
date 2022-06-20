@@ -57,7 +57,8 @@ pub async fn add_package(
         ServerResponseError(PackageServerError::PackageParse.into())
     })?;
     let folder = &app_state.package_folder;
-    let repository = &app_state.repository;
+    let repository = &app_state.repository.lock().await;
+
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
@@ -95,7 +96,7 @@ pub async fn add_package_streaming(
     };
 
     let folder = &app_state.package_folder;
-    let repository = &app_state.repository;
+    let repository = &app_state.repository.lock().await;
     if let Err(error) = check_for_version_error(&metadata, repository) {
         drain_stream(body).await?;
         return Err(error);

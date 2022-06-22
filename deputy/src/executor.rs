@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::commands::FetchOptions;
+use crate::commands::{ChecksumOptions, FetchOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
@@ -7,7 +7,7 @@ use crate::helpers::{
     print_success_message, unpack_package_file,
 };
 use anyhow::Result;
-use deputy_library::repository::find_largest_matching_version;
+use deputy_library::repository::find_matching_metadata;
 use deputy_library::{
     package::Package,
     repository::{get_or_clone_repository, pull_from_remote},
@@ -56,6 +56,12 @@ impl Executor {
         Ok(())
     }
 
+    fn get_registry(&self, registry_name: &str) -> Result<&Repository> {
+        self.repositories
+            .get(registry_name)
+            .ok_or_else(|| anyhow::anyhow!("Registry not found"))
+    }
+
     pub fn try_new(configuration: Configuration) -> Result<Self> {
         let repositories = Executor::get_or_create_registry_repositories(
             configuration.registries.clone(),
@@ -82,15 +88,13 @@ impl Executor {
 
     pub async fn fetch(&self, options: FetchOptions) -> Result<()> {
         self.update_registry_repositories()?;
-        let registry_repository = self
-            .repositories
-            .get(&options.registry_name)
-            .ok_or_else(|| anyhow::anyhow!("Registry not found"))?;
-        let version = find_largest_matching_version(
+        let registry_repository = self.get_registry(&options.registry_name)?;
+        let version = find_matching_metadata(
             registry_repository,
             &options.package_name,
             &options.version_requirement,
         )?
+        .map(|metadata| metadata.version)
         .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
 
         let client = self.try_create_client(options.registry_name.clone())?;
@@ -109,6 +113,20 @@ impl Executor {
         .await?;
         temporary_directory.close()?;
 
+        Ok(())
+    }
+
+    pub fn checksum(&self, options: ChecksumOptions) -> Result<()> {
+        self.update_registry_repositories()?;
+        let registry = self.get_registry(&options.registry_name)?;
+        let checksum = find_matching_metadata(
+            registry,
+            &options.package_name,
+            &options.version_requirement,
+        )?
+        .map(|metadata| metadata.checksum)
+        .ok_or_else(|| anyhow::anyhow!("No checksum matching requirements found"))?;
+        println!("{checksum}");
         Ok(())
     }
 }

@@ -143,26 +143,26 @@ pub fn find_metadata_by_package_name(
     Ok(metadata_list)
 }
 
-pub fn find_largest_matching_version(
+pub fn find_matching_metadata(
     repository: &Repository,
     name: &str,
     version_requirement: &str,
-) -> Result<Option<String>> {
+) -> Result<Option<PackageMetadata>> {
     let version_requirement = VersionReq::parse(version_requirement)?;
     let metadata_list = find_metadata_by_package_name(repository, name)?;
 
     let mut latest_metadata = metadata_list
         .iter()
-        .map(|metadata| Ok(Version::parse(&metadata.version)?))
-        .collect::<Result<Vec<Version>>>()?;
-    latest_metadata.sort();
+        .map(|metadata| Ok((Version::parse(&metadata.version)?, metadata)))
+        .collect::<Result<Vec<(Version, &PackageMetadata)>>>()?;
+    latest_metadata.sort_by(|a, b| a.0.cmp(&b.0));
     latest_metadata.reverse();
-    let largest_version = latest_metadata
+    let matching_metadata = latest_metadata
         .iter()
-        .find(|version| version_requirement.matches(version))
-        .map(|version| version.to_string());
+        .find(|(version, _)| version_requirement.matches(version))
+        .map(|(_, metadata)| metadata.to_owned().to_owned());
 
-    Ok(largest_version)
+    Ok(matching_metadata)
 }
 
 pub fn update_index_repository(

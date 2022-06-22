@@ -28,3 +28,17 @@ pub struct FetchOptions {
     )]
     pub registry_name: String,
 }
+
+#[derive(Debug, Args)]
+pub struct ChecksumOptions {
+    pub package_name: String,
+    #[clap(short, long, default_value = DEFAULT_PACKAGE_VERSION_REQUIREMENT, help = "Version of the package to fetch")]
+    pub version_requirement: String,
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for package fetching"
+    )]
+    pub registry_name: String,
+}

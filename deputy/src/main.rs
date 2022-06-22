@@ -1,22 +1,25 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
-    commands::FetchOptions, configuration::Configuration, executor::Executor,
+    commands::{ChecksumOptions, FetchOptions},
+    configuration::Configuration,
+    executor::Executor,
     helpers::print_error_message,
 };
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 #[clap(name = "deputy")]
-pub struct Cli {
+struct Cli {
     #[clap(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand)]
-pub enum Commands {
+enum Commands {
     Publish,
     Fetch(FetchOptions),
+    Checksum(ChecksumOptions),
 }
 
 #[actix_rt::main]
@@ -27,6 +30,7 @@ async fn main() -> Result<()> {
     let result = match args.command {
         Commands::Publish => executor.publish().await,
         Commands::Fetch(options) => executor.fetch(options).await,
+        Commands::Checksum(options) => executor.checksum(options),
     };
     if let Err(error) = result {
         print_error_message(error);

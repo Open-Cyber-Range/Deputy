@@ -1,12 +1,14 @@
 use crate::client::Client;
-use crate::commands::{ChecksumOptions, FetchOptions};
+use crate::commands::{ChecksumOptions, FetchOptions, PublishOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
     create_temporary_package_download_path, find_toml, get_download_target_name,
     print_success_message, unpack_package_file,
 };
+use crate::progressbar::{SpinnerProgressBar, AdvanceProgressBar, ProgressStatus};
 use anyhow::Result;
+use actix::Actor;
 use deputy_library::repository::find_matching_metadata;
 use deputy_library::{
     package::Package,
@@ -73,16 +75,21 @@ impl Executor {
         })
     }
 
-    pub async fn publish(&self) -> Result<()> {
+    pub async fn publish(&self, options: PublishOptions) -> Result<()> {
+        let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Finding toml".to_string()))).await??;
         let package_toml = find_toml(current_dir()?)?;
-        let package = Package::from_file(package_toml)?;
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating package".to_string()))).await??;
+        let package = Package::from_file(package_toml, options.compression)?;
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating client".to_string()))).await??;
         let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Uploading".to_string()))).await??;
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            client.upload_small_package(package.try_into()?).await?;
+            client.upload_small_package(package.try_into()?, options.timeout).await?;
         } else {
-            client.stream_large_package(package.try_into()?).await?;
+            client.stream_large_package(package.try_into()?, options.timeout).await?;
         }
-        print_success_message("Package published");
+        progress_actor.send(AdvanceProgressBar(ProgressStatus::Done)).await??;
         Ok(())
     }
 

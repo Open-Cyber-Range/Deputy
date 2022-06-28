@@ -138,8 +138,8 @@ impl Package {
         Ok(metadata)
     }
 
-    pub fn from_file(package_toml_path: PathBuf) -> Result<Self> {
-        let archive_path = archiver::create_package(&package_toml_path)?;
+    pub fn from_file(package_toml_path: PathBuf, compression: u32) -> Result<Self> {
+        let archive_path = archiver::create_package(&package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let package = Package {

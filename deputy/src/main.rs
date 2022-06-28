@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
-    commands::{ChecksumOptions, FetchOptions},
+    commands::{ChecksumOptions, FetchOptions, PublishOptions},
     configuration::Configuration,
     executor::Executor,
     helpers::print_error_message,
@@ -15,9 +15,9 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
-    Publish,
+    Publish(PublishOptions),
     Fetch(FetchOptions),
     Checksum(ChecksumOptions),
 }
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     let executor = Executor::try_new(Configuration::get_configuration()?)?;
 
     let result = match args.command {
-        Commands::Publish => executor.publish().await,
+        Commands::Publish(options) => executor.publish(options).await,
         Commands::Fetch(options) => executor.fetch(options).await,
         Commands::Checksum(options) => executor.checksum(options),
     };

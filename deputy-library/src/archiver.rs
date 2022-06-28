@@ -55,13 +55,13 @@ pub fn decompress_archive(compressed_file_path: &Path) -> Result<PathBuf> {
     Ok(archive_path)
 }
 
-fn compress_archive(archive_path: &Path) -> Result<PathBuf> {
+fn compress_archive(archive_path: &Path, compression: u32) -> Result<PathBuf> {
     let archive_file = File::open(&archive_path)?;
     let compressed_file_path = archive_path.with_extension("tar.gz");
     let compressed_file = File::create(&compressed_file_path)?;
     let mut parallel_compressor: ParallelCompression = ParCompressBuilder::new()
         .num_threads(num_cpus::get())?
-        .compression_level(Compression::none())
+        .compression_level(Compression::new(compression))
         .from_writer(compressed_file);
     let mut buffer = Vec::with_capacity(COMPERSSION_CHUNK_SIZE);
     loop {
@@ -125,7 +125,7 @@ pub fn unpack_archive(archive_path: &Path, destination: &Path) -> Result<()> {
 /// output_file.set_extension("package");
 /// assert!(output_file.is_file());
 /// ```
-pub fn create_package(toml_path: &PathBuf) -> Result<PathBuf> {
+pub fn create_package(toml_path: &PathBuf, compression: u32) -> Result<PathBuf> {
     let root_directory = toml_path
         .parent()
         .ok_or_else(|| anyhow!("Invalid or missing directory"))?
@@ -145,7 +145,7 @@ pub fn create_package(toml_path: &PathBuf) -> Result<PathBuf> {
         root_directory,
         &destination_file_path,
     )?;
-    let compressed_file_path = compress_archive(&archive_path)?;
+    let compressed_file_path = compress_archive(&archive_path, compression)?;
     remove_file(&archive_path)?;
     rename(&compressed_file_path, &destination_file_path)?;
 
@@ -167,7 +167,7 @@ mod tests {
         let toml_file_path = temp_project.toml_file.path().to_path_buf();
         let archive_path = get_destination_file_path(&toml_file_path)?;
 
-        create_package(&toml_file_path)?;
+        create_package(&toml_file_path, 0)?;
 
         let archive = Path::new(&archive_path);
         assert!(archive.is_file());
@@ -181,7 +181,7 @@ mod tests {
         let temp_project = TempArchive::builder().build()?;
         let toml_file_path = temp_project.toml_file.path().to_path_buf();
 
-        let compressed_file_path = create_package(&toml_file_path)?;
+        let compressed_file_path = create_package(&toml_file_path, 0)?;
         let archive_path = decompress_archive(&compressed_file_path)?;
         let extraction_dir = Builder::new()
             .prefix("extracts")

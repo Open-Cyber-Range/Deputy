@@ -3,8 +3,7 @@ use crate::commands::{ChecksumOptions, FetchOptions, PublishOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
-    create_temporary_package_download_path, find_toml, get_download_target_name,
-    print_success_message, unpack_package_file,
+    create_temporary_package_download_path, find_toml, get_download_target_name, unpack_package_file,
 };
 use crate::progressbar::{SpinnerProgressBar, AdvanceProgressBar, ProgressStatus};
 use anyhow::Result;

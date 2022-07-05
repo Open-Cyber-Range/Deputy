@@ -7,7 +7,6 @@ lint-and-test:
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
-    - cargo build
     - cargo tarpaulin --skip-clean --out Xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
@@ -20,15 +19,6 @@ lint-and-test:
     - master
     - merge_requests
 
-build-x86-64bit-windows-release:
-  stage: build
-  needs: ["lint-and-test"]
-  image: $DOCKER_REGISTRY_PULL/rust-builder
-  script:
-    - cargo build --release --target x86_64-pc-windows-gnu
-  only:
-    - master
-
 build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   stage: build
   needs: ["lint-and-test"]
@@ -38,7 +28,9 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
     - DEB_FILE=$(find ./target/x86_64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
     - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
   only:
-    - master
+    - /^deputy-package-server-.*$/
+  execpt:
+    - branches
 
 build-and-upload-x86-64bit-linux-release-for-deputy-cli:
   stage: build
@@ -49,7 +41,9 @@ build-and-upload-x86-64bit-linux-release-for-deputy-cli:
     - DEB_FILE=$(find ./target/x86_64-unknown-linux-gnu/debian/ -maxdepth 1 -type f -name "*.deb")
     - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
   only:
-    - master
+    - /^deputy-cli-.*$/
+  execpt:
+    - branches
 
 staging:
   variables:

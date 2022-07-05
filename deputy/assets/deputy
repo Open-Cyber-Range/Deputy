@@ -1,4 +1,3 @@
 #!/bin/sh
 
-DEPUTY_CONFIG="${HOME}/.deputy/configuration.toml"
-. /var/opt/deputy/bin/deputy
+DEPUTY_CONFIG="${HOME}/.deputy/configuration.toml" /var/opt/deputy/bin/deputy

@@ -55,3 +55,4 @@ staging:
     open-cyber-range/internal/support-docker-images
   only:
     - master
+    - tags

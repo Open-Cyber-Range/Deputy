@@ -27,6 +27,7 @@ assets = [
 ]
 
 [dependencies]
+actix = "0.13"
 actix-web = "4"
 actix-rt = "2"
 anyhow = "1"
@@ -39,6 +40,7 @@ deputy-library = { path = "../deputy-library" }
 deputy-package-server = { path = "../deputy-package-server" }
 git2 = "0.14"
 futures = "0.3"
+indicatif = "0.16"
 lazy_static = "1"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }

@@ -27,7 +27,7 @@ mod tests {
         start_test_server(configuration.clone()).await?;
         index_repository_mocker.start().await?;
         let client = Client::try_new(server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes.clone()).await;
+        let response = client.upload_small_package(package_bytes.clone(), 60).await;
         assert!(response.is_ok());
 
         let mut command = Command::cargo_bin("deputy")?;

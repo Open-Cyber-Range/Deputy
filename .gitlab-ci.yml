@@ -29,7 +29,7 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
     - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
   only:
     - /^deputy-package-server-.*$/
-  execpt:
+  except:
     - branches
 
 build-and-upload-x86-64bit-linux-release-for-deputy-cli:
@@ -42,7 +42,7 @@ build-and-upload-x86-64bit-linux-release-for-deputy-cli:
     - 'curl -u $OCR_DEPLOYMENT_USER:$OCR_DEPLOYMENT_PASSWORD -X POST -H "Content-Type: multipart/form-data" --data-binary "@$DEB_FILE" $OCR_APT_REPOSITORY'
   only:
     - /^deputy-cli-.*$/
-  execpt:
+  except:
     - branches
 
 staging:

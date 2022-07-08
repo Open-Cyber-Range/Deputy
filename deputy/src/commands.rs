@@ -61,6 +61,7 @@ pub struct PublishOptions {
     pub(crate) compression: u32,
 }
 
+#[derive(Debug, Args)]
 pub struct InfoOptions {
     pub package_toml_path: String,
     #[clap(short, long, help = "Pretty print output")]

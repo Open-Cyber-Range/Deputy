@@ -1,6 +1,5 @@
 use crate::client::Client;
-use crate::commands::{ChecksumOptions, FetchOptions, PublishOptions};
-use crate::commands::{FetchOptions, InfoOptions};
+use crate::commands::{ChecksumOptions, FetchOptions, InfoOptions, PublishOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
@@ -12,8 +11,8 @@ use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
     package::Package,
-    project::{create_project_from_toml_path, find_largest_matching_version},
-    repository::find_matching_metadata,
+    project::create_project_from_toml_path,
+    repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
 use path_absolutize::Absolutize;

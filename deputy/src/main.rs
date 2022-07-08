@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
+    commands::InfoOptions,
     commands::{ChecksumOptions, FetchOptions, PublishOptions},
-    commands::{FetchOptions, InfoOptions},
     configuration::Configuration,
     executor::Executor,
     helpers::print_error_message,

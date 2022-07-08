@@ -12,9 +12,6 @@ use deputy_package_server::{
 };
 use futures::StreamExt;
 use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
-use tempfile::{NamedTempFile, TempDir};
-
-use crate::common::create_temp_configuration_file;
 
 const DOCKER_IMAGE_NAME: &str = "git-server-docker-mock";
 
@@ -45,21 +42,14 @@ async fn create_image(docker: &Docker) -> Result<()> {
 pub struct MockRepositoryServer {
     name: String,
     docker: Docker,
-    server_address: String,
-    server_configuration: Configuration,
-    configuration_directory: TempDir,
-    configuration_file: NamedTempFile,
 }
 
 impl MockRepositoryServer {
-    pub async fn try_new() -> Result<Self> {
+    pub async fn try_new() -> Result<(Self, Configuration, String, String)> {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;
         let (server_configuration, server_address) = generate_server_test_configuration()?;
         let server_port = get_free_port()?;
-        let index_url = format!("http://localhost:{}/git/index.git", server_port);
-        let (configuration_directory, configuration_file) =
-            create_temp_configuration_file(&server_address, &index_url)?;
         let repository_mapping = format!(
             "{}/.git:/srv/git/index.git",
             &server_configuration.repository.folder
@@ -89,34 +79,16 @@ impl MockRepositoryServer {
             )
             .await?;
 
-        Ok(Self {
-            docker,
-            name,
-            server_address,
+        Ok((
+            Self { docker, name },
             server_configuration,
-            configuration_directory,
-            configuration_file,
-        })
+            server_address,
+            format!("http://localhost:{}/git/index.git", server_port),
+        ))
     }
 
-    pub fn get_configuration(&self) -> &Configuration {
-        &self.server_configuration
-    }
-
-    pub fn get_server_address(&self) -> &String {
-        &self.server_address
-    }
-
-    pub fn get_configuration_directory(&self) -> &TempDir {
-        &self.configuration_directory
-    }
-
-    pub fn get_configuration_file(&self) -> &NamedTempFile {
-        &self.configuration_file
-    }
-
-    pub async fn start(&self) -> Result<()> {
-        start_test_server(self.server_configuration.clone()).await?;
+    pub async fn start(&self, configuration: &Configuration) -> Result<()> {
+        start_test_server(configuration.clone()).await?;
         self.docker
             .start_container::<String>(&self.name, None)
             .await?;

@@ -3,6 +3,7 @@ mod repository;
 
 #[cfg(test)]
 mod tests {
+    use crate::common::create_temp_configuration_file;
     use crate::repository::MockRepositoryServer;
     use anyhow::Result;
     use assert_cmd::Command;
@@ -24,37 +25,33 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
 
-        let index_repository_mocker = MockRepositoryServer::try_new().await?;
+        let (index_repository_mocker, server_configuration, server_address, index_url) =
+            MockRepositoryServer::try_new().await?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address, &index_url)?;
 
-        command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &index_repository_mocker.get_configuration_file().path(),
-        );
+        command.env(CONFIG_FILE_PATH_ENV_KEY, configuration_file.path());
 
         let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
-            &index_repository_mocker.get_configuration().package_folder,
+            &server_configuration.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
         .iter()
         .collect();
 
-        index_repository_mocker.start().await?;
+        index_repository_mocker.start(&server_configuration).await?;
 
         command.assert().success();
         let saved_package_size = fs::metadata(saved_package_path)?.len();
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
-        fs::remove_dir_all(&index_repository_mocker.get_configuration().package_folder)?;
-        fs::remove_dir_all(
-            &index_repository_mocker
-                .get_configuration()
-                .repository
-                .folder,
-        )?;
+        fs::remove_dir_all(&server_configuration.package_folder)?;
+        fs::remove_dir_all(&server_configuration.repository.folder)?;
+        configuration_directory.close()?;
         index_repository_mocker.stop().await?;
 
         Ok(())
@@ -68,36 +65,31 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
 
-        let index_repository_mocker = MockRepositoryServer::try_new().await?;
-
-        command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &index_repository_mocker.get_configuration_file().path(),
-        );
+        let (index_repository_mocker, server_configuration, server_address, index_url) =
+            MockRepositoryServer::try_new().await?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address, &index_url)?;
+        command.env(CONFIG_FILE_PATH_ENV_KEY, configuration_file.path());
 
         let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
-            &index_repository_mocker.get_configuration().package_folder,
+            &server_configuration.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
         .iter()
         .collect();
 
-        index_repository_mocker.start().await?;
+        index_repository_mocker.start(&server_configuration).await?;
         command.assert().success();
         let saved_package_size = fs::metadata(saved_package_path)?.len();
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
-        fs::remove_dir_all(&index_repository_mocker.get_configuration().package_folder)?;
-        fs::remove_dir_all(
-            &index_repository_mocker
-                .get_configuration()
-                .repository
-                .folder,
-        )?;
+        fs::remove_dir_all(&server_configuration.package_folder)?;
+        fs::remove_dir_all(&server_configuration.repository.folder)?;
+        configuration_directory.close()?;
         index_repository_mocker.stop().await?;
         Ok(())
     }
@@ -106,19 +98,21 @@ mod tests {
     async fn error_on_missing_package_toml_file() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
-        let index_repository_mocker = MockRepositoryServer::try_new().await?;
 
-        index_repository_mocker.start().await?;
+        let (index_repository_mocker, server_configuration, server_address, index_url) =
+            MockRepositoryServer::try_new().await?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address, &index_url)?;
+
+        index_repository_mocker.start(&server_configuration).await?;
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_dir);
-        command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &index_repository_mocker.get_configuration_file().path(),
-        );
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
         command.assert().failure().stderr(predicate::str::contains(
             "Error: Could not find package.toml",
         ));
+        configuration_directory.close()?;
         index_repository_mocker.stop().await?;
         Ok(())
     }
@@ -126,7 +120,11 @@ mod tests {
     #[actix_web::test]
     async fn error_on_missing_package_toml_content() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let index_repository_mocker = MockRepositoryServer::try_new().await?;
+
+        let (index_repository_mocker, server_configuration, server_address, index_url) =
+            MockRepositoryServer::try_new().await?;
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address, &index_url)?;
 
         let _package_toml = Builder::new()
             .prefix("package")
@@ -135,18 +133,16 @@ mod tests {
             .tempfile_in(&temp_dir)?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
 
-        index_repository_mocker.start().await?;
+        index_repository_mocker.start(&server_configuration).await?;
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_dir);
-        command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &index_repository_mocker.get_configuration_file().path(),
-        );
+        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
         command
             .assert()
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
+        configuration_directory.close()?;
         index_repository_mocker.stop().await?;
         Ok(())
     }

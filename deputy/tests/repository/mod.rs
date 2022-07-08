@@ -5,9 +5,16 @@ use bollard::{
     models::{HostConfig, PortBinding},
     Docker,
 };
-use deputy_library::test::generate_random_string;
+use deputy_library::test::{generate_random_string, get_free_port};
+use deputy_package_server::{
+    configuration::Configuration,
+    test::{generate_server_test_configuration, start_test_server},
+};
 use futures::StreamExt;
 use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
+use tempfile::{NamedTempFile, TempDir};
+
+use crate::common::create_temp_configuration_file;
 
 const DOCKER_IMAGE_NAME: &str = "git-server-docker-mock";
 
@@ -35,17 +42,28 @@ async fn create_image(docker: &Docker) -> Result<()> {
     Ok(())
 }
 
-pub struct MockRepostioryServer {
+pub struct MockRepositoryServer {
     name: String,
-    index_url: String,
     docker: Docker,
+    server_address: String,
+    server_configuration: Configuration,
+    configuration_directory: TempDir,
+    configuration_file: NamedTempFile,
 }
 
-impl MockRepostioryServer {
-    pub async fn try_new(server_port: u16, repository_path: &str) -> Result<Self> {
+impl MockRepositoryServer {
+    pub async fn try_new() -> Result<Self> {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;
-        let repository_mapping = format!("{}/.git:/srv/git/index.git", repository_path);
+        let (server_configuration, server_address) = generate_server_test_configuration()?;
+        let server_port = get_free_port()?;
+        let index_url = format!("http://localhost:{}/git/index.git", server_port);
+        let (configuration_directory, configuration_file) =
+            create_temp_configuration_file(&server_address, &index_url)?;
+        let repository_mapping = format!(
+            "{}/.git:/srv/git/index.git",
+            &server_configuration.repository.folder
+        );
         let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
         ports.insert(
             "80/tcp".to_string(),
@@ -74,15 +92,31 @@ impl MockRepostioryServer {
         Ok(Self {
             docker,
             name,
-            index_url: format!("http://localhost:{}/git/index.git", server_port),
+            server_address,
+            server_configuration,
+            configuration_directory,
+            configuration_file,
         })
     }
 
-    pub fn get_index_url(&self) -> &str {
-        &self.index_url
+    pub fn get_configuration(&self) -> &Configuration {
+        &self.server_configuration
+    }
+
+    pub fn get_server_address(&self) -> &String {
+        &self.server_address
+    }
+
+    pub fn get_configuration_directory(&self) -> &TempDir {
+        &self.configuration_directory
+    }
+
+    pub fn get_configuration_file(&self) -> &NamedTempFile {
+        &self.configuration_file
     }
 
     pub async fn start(&self) -> Result<()> {
+        start_test_server(self.server_configuration.clone()).await?;
         self.docker
             .start_container::<String>(&self.name, None)
             .await?;

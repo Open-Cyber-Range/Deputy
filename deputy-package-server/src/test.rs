@@ -10,7 +10,7 @@ use actix_web::{
 use anyhow::{anyhow, Error, Result};
 use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
-    test::generate_random_string,
+    test::{generate_random_string, get_free_port},
 };
 use futures::lock::Mutex;
 use futures::TryFutureExt;
@@ -36,11 +36,19 @@ lazy_static! {
     };
 }
 
-pub fn generate_server_test_configuration(port: u16) -> Result<(Configuration, String)> {
+pub fn generate_server_test_configuration() -> Result<(Configuration, String)> {
     let mut configuration = CONFIGURATION.clone();
-    configuration.port = port;
-    configuration.repository.folder = format!("/tmp/test-repo-{}", generate_random_string(10)?);
-    configuration.package_folder = format!("/tmp/test-packages-{}", generate_random_string(10)?);
+    configuration.port = get_free_port()?;
+    configuration.repository.folder = format!(
+        "{}-{}",
+        configuration.repository.folder,
+        generate_random_string(10)?
+    );
+    configuration.package_folder = format!(
+        "{}-{}",
+        configuration.package_folder,
+        generate_random_string(10)?
+    );
     let server_address = format!("http://{}:{}", configuration.host, configuration.port);
     Ok((configuration, server_address))
 }

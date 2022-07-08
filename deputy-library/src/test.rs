@@ -5,6 +5,7 @@ use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir, NamedTempFile, TempPath};
 use byte_unit::Byte;
 use crate::package::{Package, PackageFile, PackageMetadata};
+use port_check::free_local_port;
 use rand::Rng;
 
 lazy_static! {
@@ -250,4 +251,8 @@ pub fn generate_random_string(length: usize) -> Result<String> {
         .take(length)
         .collect::<Vec<u8>>();
     Ok(String::from_utf8(random_bytes)?)
+}
+
+pub fn get_free_port() -> Result<u16> {
+    free_local_port().ok_or_else(|| anyhow!("Failed to assign free local port"))
 }

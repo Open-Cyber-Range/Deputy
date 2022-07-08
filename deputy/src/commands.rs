@@ -45,8 +45,24 @@ pub struct ChecksumOptions {
 
 #[derive(Debug, Args)]
 pub struct PublishOptions {
-    #[clap(short, long, default_value_t = 60, help = "Timeout before publish fails")]
+    #[clap(
+        short,
+        long,
+        default_value_t = 60,
+        help = "Timeout before publish fails"
+    )]
     pub(crate) timeout: u64,
-    #[clap(short, long, default_value_t = 0, help = "Compression rate before upload")]
+    #[clap(
+        short,
+        long,
+        default_value_t = 0,
+        help = "Compression rate before upload"
+    )]
     pub(crate) compression: u32,
+}
+
+pub struct InfoOptions {
+    pub package_toml_path: String,
+    #[clap(short, long, help = "Pretty print output")]
+    pub pretty: bool,
 }

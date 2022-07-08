@@ -1,19 +1,23 @@
 use crate::client::Client;
 use crate::commands::{ChecksumOptions, FetchOptions, PublishOptions};
+use crate::commands::{FetchOptions, InfoOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
-    create_temporary_package_download_path, find_toml, get_download_target_name, unpack_package_file,
+    create_temporary_package_download_path, find_toml, get_download_target_name,
+    unpack_package_file,
 };
-use crate::progressbar::{SpinnerProgressBar, AdvanceProgressBar, ProgressStatus};
-use anyhow::Result;
+use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
-use deputy_library::repository::find_matching_metadata;
+use anyhow::Result;
 use deputy_library::{
     package::Package,
-    repository::{get_or_clone_repository, pull_from_remote},
+    project::{create_project_from_toml_path, find_largest_matching_version},
+    repository::find_matching_metadata,
 };
 use git2::Repository;
+use path_absolutize::Absolutize;
+use std::path::Path;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
 use tokio::fs::rename;
 
@@ -76,19 +80,41 @@ impl Executor {
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
         let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
-        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Finding toml".to_string()))).await??;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Finding toml".to_string(),
+            )))
+            .await??;
         let package_toml = find_toml(current_dir()?)?;
-        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating package".to_string()))).await??;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Creating package".to_string(),
+            )))
+            .await??;
         let package = Package::from_file(package_toml, options.compression)?;
-        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Creating client".to_string()))).await??;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Creating client".to_string(),
+            )))
+            .await??;
         let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
-        progress_actor.send(AdvanceProgressBar(ProgressStatus::InProgress("Uploading".to_string()))).await??;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Uploading".to_string(),
+            )))
+            .await??;
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            client.upload_small_package(package.try_into()?, options.timeout).await?;
+            client
+                .upload_small_package(package.try_into()?, options.timeout)
+                .await?;
         } else {
-            client.stream_large_package(package.try_into()?, options.timeout).await?;
+            client
+                .stream_large_package(package.try_into()?, options.timeout)
+                .await?;
         }
-        progress_actor.send(AdvanceProgressBar(ProgressStatus::Done)).await??;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::Done))
+            .await??;
         Ok(())
     }
 
@@ -133,6 +159,17 @@ impl Executor {
         .map(|metadata| metadata.checksum)
         .ok_or_else(|| anyhow::anyhow!("No checksum matching requirements found"))?;
         println!("{checksum}");
+        Ok(())
+    }
+
+    pub fn info(&self, options: InfoOptions) -> Result<()> {
+        let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
+        let project = create_project_from_toml_path(package_toml_path.to_path_buf())?;
+        if options.pretty {
+            println!("{}", serde_json::to_string_pretty(&project)?);
+        } else {
+            println!("{}", serde_json::to_string(&project)?);
+        }
         Ok(())
     }
 }

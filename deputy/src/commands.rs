@@ -28,3 +28,10 @@ pub struct FetchOptions {
     )]
     pub registry_name: String,
 }
+
+#[derive(Debug, Args)]
+pub struct InfoOptions {
+    pub package_toml_path: String,
+    #[clap(short, long, help = "Pretty print output")]
+    pub pretty: bool,
+}

@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
-    commands::FetchOptions, configuration::Configuration, executor::Executor,
+    commands::{FetchOptions, InfoOptions},
+    configuration::Configuration,
+    executor::Executor,
     helpers::print_error_message,
 };
 
@@ -17,6 +19,7 @@ pub struct Cli {
 pub enum Commands {
     Publish,
     Fetch(FetchOptions),
+    Info(InfoOptions),
 }
 
 #[actix_rt::main]
@@ -27,6 +30,7 @@ async fn main() -> Result<()> {
     let result = match args.command {
         Commands::Publish => executor.publish().await,
         Commands::Fetch(options) => executor.fetch(options).await,
+        Commands::Info(options) => executor.info(options),
     };
     if let Err(error) = result {
         print_error_message(error);

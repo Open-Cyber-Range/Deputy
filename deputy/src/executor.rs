@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::commands::FetchOptions;
+use crate::commands::{FetchOptions, InfoOptions};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
 use crate::helpers::{
@@ -7,12 +7,15 @@ use crate::helpers::{
     print_success_message, unpack_package_file,
 };
 use anyhow::Result;
+use deputy_library::project::create_project_from_toml_path;
 use deputy_library::repository::find_largest_matching_version;
 use deputy_library::{
     package::Package,
     repository::{get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
+use path_absolutize::Absolutize;
+use std::path::Path;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
 use tokio::fs::rename;
 
@@ -109,6 +112,17 @@ impl Executor {
         .await?;
         temporary_directory.close()?;
 
+        Ok(())
+    }
+
+    pub fn info(&self, options: InfoOptions) -> Result<()> {
+        let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
+        let project = create_project_from_toml_path(package_toml_path.to_path_buf())?;
+        if options.pretty {
+            println!("{}", serde_json::to_string_pretty(&project)?);
+        } else {
+            println!("{}", serde_json::to_string(&project)?);
+        }
         Ok(())
     }
 }

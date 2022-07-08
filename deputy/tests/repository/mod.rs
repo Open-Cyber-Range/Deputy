@@ -39,12 +39,12 @@ async fn create_image(docker: &Docker) -> Result<()> {
     Ok(())
 }
 
-pub struct MockRepositoryServer {
+pub struct TestBackEnd {
     name: String,
     docker: Docker,
 }
 
-impl MockRepositoryServer {
+impl TestBackEnd {
     pub async fn try_new() -> Result<(Self, Configuration, String, String)> {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;

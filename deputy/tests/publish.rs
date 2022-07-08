@@ -4,7 +4,7 @@ mod repository;
 #[cfg(test)]
 mod tests {
     use crate::common::create_temp_configuration_file;
-    use crate::repository::MockRepositoryServer;
+    use crate::repository::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy::{client::Client, constants::CONFIG_FILE_PATH_ENV_KEY};
@@ -25,8 +25,8 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
 
-        let (index_repository_mocker, server_configuration, server_address, index_url) =
-            MockRepositoryServer::try_new().await?;
+        let (test_backend, server_configuration, server_address, index_url) =
+            TestBackEnd::try_new().await?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address, &index_url)?;
 
@@ -42,7 +42,7 @@ mod tests {
         .iter()
         .collect();
 
-        index_repository_mocker.start(&server_configuration).await?;
+        test_backend.start(&server_configuration).await?;
 
         command.assert().success();
         let saved_package_size = fs::metadata(saved_package_path)?.len();
@@ -52,7 +52,7 @@ mod tests {
         fs::remove_dir_all(&server_configuration.package_folder)?;
         fs::remove_dir_all(&server_configuration.repository.folder)?;
         configuration_directory.close()?;
-        index_repository_mocker.stop().await?;
+        test_backend.stop().await?;
 
         Ok(())
     }
@@ -65,8 +65,8 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
 
-        let (index_repository_mocker, server_configuration, server_address, index_url) =
-            MockRepositoryServer::try_new().await?;
+        let (test_backend, server_configuration, server_address, index_url) =
+            TestBackEnd::try_new().await?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address, &index_url)?;
         command.env(CONFIG_FILE_PATH_ENV_KEY, configuration_file.path());
@@ -81,7 +81,7 @@ mod tests {
         .iter()
         .collect();
 
-        index_repository_mocker.start(&server_configuration).await?;
+        test_backend.start(&server_configuration).await?;
         command.assert().success();
         let saved_package_size = fs::metadata(saved_package_path)?.len();
         assert_eq!(outbound_package_size, &saved_package_size);
@@ -90,7 +90,7 @@ mod tests {
         fs::remove_dir_all(&server_configuration.package_folder)?;
         fs::remove_dir_all(&server_configuration.repository.folder)?;
         configuration_directory.close()?;
-        index_repository_mocker.stop().await?;
+        test_backend.stop().await?;
         Ok(())
     }
 
@@ -99,12 +99,12 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
 
-        let (index_repository_mocker, server_configuration, server_address, index_url) =
-            MockRepositoryServer::try_new().await?;
+        let (test_backend, server_configuration, server_address, index_url) =
+            TestBackEnd::try_new().await?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address, &index_url)?;
 
-        index_repository_mocker.start(&server_configuration).await?;
+        test_backend.start(&server_configuration).await?;
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_dir);
@@ -113,7 +113,7 @@ mod tests {
             "Error: Could not find package.toml",
         ));
         configuration_directory.close()?;
-        index_repository_mocker.stop().await?;
+        test_backend.stop().await?;
         Ok(())
     }
 
@@ -121,8 +121,8 @@ mod tests {
     async fn error_on_missing_package_toml_content() -> Result<()> {
         let temp_dir = TempDir::new()?;
 
-        let (index_repository_mocker, server_configuration, server_address, index_url) =
-            MockRepositoryServer::try_new().await?;
+        let (test_backend, server_configuration, server_address, index_url) =
+            TestBackEnd::try_new().await?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address, &index_url)?;
 
@@ -133,7 +133,7 @@ mod tests {
             .tempfile_in(&temp_dir)?;
         let temp_dir = temp_dir.into_path().canonicalize()?;
 
-        index_repository_mocker.start(&server_configuration).await?;
+        test_backend.start(&server_configuration).await?;
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_dir);
@@ -143,7 +143,7 @@ mod tests {
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
         configuration_directory.close()?;
-        index_repository_mocker.stop().await?;
+        test_backend.stop().await?;
         Ok(())
     }
 

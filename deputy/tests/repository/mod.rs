@@ -6,10 +6,6 @@ use bollard::{
     Docker,
 };
 use deputy_library::test::{generate_random_string, get_free_port};
-use deputy_package_server::{
-    configuration::Configuration,
-    test::{generate_server_test_configuration, start_test_server},
-};
 use futures::StreamExt;
 use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
 
@@ -39,26 +35,22 @@ async fn create_image(docker: &Docker) -> Result<()> {
     Ok(())
 }
 
-pub struct TestBackEnd {
+pub struct TestRepositoryServer {
     name: String,
     docker: Docker,
 }
 
-impl TestBackEnd {
-    pub async fn try_new() -> Result<(Self, Configuration, String, String)> {
+impl TestRepositoryServer {
+    pub async fn try_new(repository_folder: &str) -> Result<(Self, String)> {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;
-        let (server_configuration, server_address) = generate_server_test_configuration()?;
-        let server_port = get_free_port()?;
-        let repository_mapping = format!(
-            "{}/.git:/srv/git/index.git",
-            &server_configuration.repository.folder
-        );
+        let repository_port = get_free_port()?;
+        let repository_mapping = format!("{}/.git:/srv/git/index.git", &repository_folder);
         let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
         ports.insert(
             "80/tcp".to_string(),
             Some(vec![PortBinding {
-                host_port: Some(format!("{}", server_port)),
+                host_port: Some(format!("{}", repository_port)),
                 host_ip: Some("0.0.0.0".to_string()),
             }]),
         );
@@ -81,14 +73,11 @@ impl TestBackEnd {
 
         Ok((
             Self { docker, name },
-            server_configuration,
-            server_address,
-            format!("http://localhost:{}/git/index.git", server_port),
+            format!("http://localhost:{}/git/index.git", repository_port),
         ))
     }
 
-    pub async fn start(&self, configuration: &Configuration) -> Result<()> {
-        start_test_server(configuration.clone()).await?;
+    pub async fn start(&self) -> Result<()> {
         self.docker
             .start_container::<String>(&self.name, None)
             .await?;

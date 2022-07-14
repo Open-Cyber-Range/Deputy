@@ -10,14 +10,13 @@ mod tests {
     use assert_cmd::Command;
     use deputy::{client::Client, constants::CONFIG_FILE_PATH_ENV_KEY};
     use deputy_library::test::TEST_PACKAGE_BYTES;
-    use std::fs;
     use tempfile::TempDir;
 
     #[actix_web::test]
     async fn get_package_checksum() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let package_bytes = TEST_PACKAGE_BYTES.clone();
-        let (configuration, server_address, index_url, test_backend) =
+        let (_configuration, server_address, index_url, test_backend) =
             TestBackEnd::setup_test_backend().await?;
         let (configuration_directory, configuration_file) =
             create_temp_configuration_file(&server_address, &index_url)?;
@@ -37,8 +36,6 @@ mod tests {
         configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
-        fs::remove_dir_all(&configuration.package_folder)?;
-        fs::remove_dir_all(&configuration.repository.folder)?;
         Ok(())
     }
 }

@@ -48,8 +48,6 @@ mod tests {
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
-        fs::remove_dir_all(&configuration.package_folder)?;
-        fs::remove_dir_all(&configuration.repository.folder)?;
         configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -86,8 +84,6 @@ mod tests {
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
-        fs::remove_dir_all(&configuration.package_folder)?;
-        fs::remove_dir_all(&configuration.repository.folder)?;
         configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -164,14 +160,12 @@ mod tests {
     #[actix_web::test]
     async fn accepts_valid_small_package() -> Result<()> {
         let package_bytes = TEST_PACKAGE_BYTES.clone();
-        let (configuration, server_address) = TestPackageServer::setup_test_server().await?;
+        let (_configuration, server_address) = TestPackageServer::setup_test_server().await?;
 
         let client = Client::try_new(server_address.to_string())?;
         let response = client.upload_small_package(package_bytes, 60).await;
 
         assert!(response.is_ok());
-        fs::remove_dir_all(&configuration.package_folder)?;
-        fs::remove_dir_all(&configuration.repository.folder)?;
         Ok(())
     }
 }

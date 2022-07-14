@@ -15,7 +15,8 @@ use deputy_library::{
 use futures::lock::Mutex;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::{
     sync::oneshot::{channel, Sender},
@@ -117,6 +118,17 @@ impl TestPackageServer {
 
     pub fn get_configuration_and_server_address(&self) -> (Configuration, String) {
         (self.configuration.clone(), self.server_address.clone())
+    }
+}
+
+impl Drop for TestPackageServer {
+    fn drop(&mut self) {
+        if Path::new(&self.configuration.package_folder).is_dir() {
+            fs::remove_dir_all(&self.configuration.package_folder).unwrap();
+        }
+        if Path::new(&self.configuration.repository.folder).is_dir() {
+            fs::remove_dir_all(&self.configuration.repository.folder).unwrap();
+        }
     }
 }
 

@@ -13,7 +13,6 @@ pub struct TestBackEnd {
     pub server_address: String,
 }
 
-#[allow(dead_code)]
 impl TestBackEnd {
     pub async fn setup_test_backend() -> Result<TestBackEnd> {
         let (configuration, server_address) = TestPackageServer::setup_test_server().await?;

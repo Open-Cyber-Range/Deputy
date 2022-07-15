@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  deputy-development:
+    image: deputy-development
+    build: ./deputy-development
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    volumes:
+      - ..:/workspace:cached
+    user: vscode
+
+  deputy-package-server:
+    image: nexus.ex.c-lab.ee:8003/deputy-package-server:latest
+    volumes:
+      - ./deputy-packages:/var/opt/deputy/deputy-package-server/package
+      - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
+    environment:
+      - RUST_LOG=debug
+
+  index-repository:
+    image: nexus.ex.c-lab.ee:8003/deputy-repository-server
+    volumes:
+      - ./deputy-repository/.git:/srv/git/index.git

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+DEPUTY_CONFIG="${HOME}/.deputy/configuration.toml" /workspace/target/debug/deputy "${@}"

@@ -1,8 +1,9 @@
-mod common;
+mod repository;
+mod test_backend;
 
 #[cfg(test)]
 mod tests {
-    use crate::common::create_temp_configuration_file;
+    use crate::test_backend::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::prelude::*;
     use deputy::constants::CONFIG_FILE_PATH_ENV_KEY;
@@ -13,7 +14,7 @@ mod tests {
     fn test_version() -> Result<()> {
         let mut command = Command::cargo_bin("deputy")?;
         let (configuration_directory, configuration_file) =
-            create_temp_configuration_file("does-not-matter", "does-not-matter")?;
+            TestBackEnd::create_temp_configuration_file("does-not-matter", "does-not-matter")?;
         command.arg("--version");
         command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
         command

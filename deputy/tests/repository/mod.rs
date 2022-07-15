@@ -40,6 +40,7 @@ pub struct TestRepositoryServer {
     docker: Docker,
 }
 
+#[allow(dead_code)]
 impl TestRepositoryServer {
     pub async fn try_new(repository_folder: &str) -> Result<(Self, String)> {
         let docker = Docker::connect_with_unix_defaults()?;

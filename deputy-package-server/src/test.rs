@@ -77,8 +77,8 @@ impl TestPackageServer {
 
     async fn initialize(&self, tx: Sender<()>) -> Result<()> {
         let configuration = self.configuration.clone();
-        let package_folder = self.configuration.package_folder.clone();
-        if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
+        let package_folder = configuration.package_folder;
+        if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
                 package_folder,

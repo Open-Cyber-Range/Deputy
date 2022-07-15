@@ -10,12 +10,13 @@ use actix_web::{
 use anyhow::{anyhow, Error, Result};
 use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
-    test::generate_random_string,
+    test::{generate_random_string, get_free_port},
 };
 use futures::lock::Mutex;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::{
     sync::oneshot::{channel, Sender},
@@ -36,13 +37,99 @@ lazy_static! {
     };
 }
 
-pub fn generate_server_test_configuration(port: u16) -> Result<(Configuration, String)> {
-    let mut configuration = CONFIGURATION.clone();
-    configuration.port = port;
-    configuration.repository.folder = format!("/tmp/test-repo-{}", generate_random_string(10)?);
-    configuration.package_folder = format!("/tmp/test-packages-{}", generate_random_string(10)?);
-    let server_address = format!("http://{}:{}", configuration.host, configuration.port);
-    Ok((configuration, server_address))
+pub struct TestPackageServer {
+    configuration: Configuration,
+    server_address: String,
+}
+
+impl TestPackageServer {
+    pub async fn setup_test_server() -> Result<(Configuration, String)> {
+        let test_server = Self::try_new()?;
+        let (configuration, server_address) = test_server.get_configuration_and_server_address();
+        test_server.start().await?;
+        Ok((configuration, server_address))
+    }
+
+    pub fn try_new() -> Result<Self> {
+        let (configuration, server_address) = Self::create_configuration()?;
+        Ok(Self {
+            configuration,
+            server_address,
+        })
+    }
+
+    fn create_configuration() -> Result<(Configuration, String)> {
+        let mut configuration = CONFIGURATION.clone();
+        configuration.port = get_free_port()?;
+        configuration.repository.folder = format!(
+            "{}-{}",
+            configuration.repository.folder,
+            generate_random_string(10)?
+        );
+        configuration.package_folder = format!(
+            "{}-{}",
+            configuration.package_folder,
+            generate_random_string(10)?
+        );
+        let server_address = format!("http://{}:{}", configuration.host, configuration.port);
+        Ok((configuration, server_address))
+    }
+
+    async fn initialize(&self, tx: Sender<()>) -> Result<()> {
+        let configuration = self.configuration.clone();
+        let package_folder = configuration.package_folder;
+        if let Ok(repository) = get_or_create_repository(&configuration.repository) {
+            let app_data = AppState {
+                repository: Arc::new(Mutex::new(repository)),
+                package_folder,
+            };
+            try_join!(
+                HttpServer::new(move || {
+                    let app_data = Data::new(app_data.clone());
+                    App::new().app_data(app_data).service(
+                        scope("/api/v1")
+                            .service(add_package)
+                            .service(download_package),
+                    )
+                })
+                .bind((configuration.host, configuration.port))?
+                .workers(1)
+                .run()
+                .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
+                async move {
+                    tx.send(())
+                        .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
+                    Ok::<(), Error>(())
+                }
+            )?;
+            return Ok(());
+        }
+
+        Err(anyhow!("Failed to create the repository"))
+    }
+
+    pub async fn start(self) -> Result<()> {
+        let (tx, rx) = channel::<()>();
+        tokio::spawn(async move { self.initialize(tx).await });
+        timeout(std::time::Duration::from_millis(1000), rx).await??;
+
+        Ok(())
+    }
+
+    pub fn get_configuration_and_server_address(&self) -> (Configuration, String) {
+        (self.configuration.clone(), self.server_address.clone())
+    }
+}
+
+impl Drop for TestPackageServer {
+    fn drop(&mut self) {
+        if Path::new(&self.configuration.package_folder).is_dir() {
+            fs::remove_dir_all(&self.configuration.package_folder).unwrap();
+        }
+        if Path::new(&self.configuration.repository.folder).is_dir() {
+            fs::remove_dir_all(&self.configuration.repository.folder).unwrap();
+        }
+    }
 }
 
 pub fn get_predictable_temporary_folders(randomizer: String) -> Result<(String, String)> {
@@ -85,44 +172,4 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         repository: Arc::new(Mutex::new(repository)),
         package_folder: package_folder.to_str().unwrap().to_string(),
     }))
-}
-
-async fn initialize_test_server(configuration: Configuration, tx: Sender<()>) -> Result<()> {
-    let package_folder = configuration.package_folder.clone();
-    if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-        let app_data = AppState {
-            repository: Arc::new(Mutex::new(repository)),
-            package_folder,
-        };
-        try_join!(
-            HttpServer::new(move || {
-                let app_data = Data::new(app_data.clone());
-                App::new().app_data(app_data).service(
-                    scope("/api/v1")
-                        .service(add_package)
-                        .service(download_package),
-                )
-            })
-            .bind((configuration.host, configuration.port))?
-            .workers(1)
-            .run()
-            .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
-            async move {
-                tx.send(())
-                    .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
-                Ok::<(), Error>(())
-            }
-        )?;
-        return Ok(());
-    }
-
-    Err(anyhow!("Failed to create the repository"))
-}
-
-pub async fn start_test_server(configuration: Configuration) -> Result<()> {
-    let (tx, rx) = channel::<()>();
-    tokio::spawn(async move { initialize_test_server(configuration, tx).await });
-    timeout(std::time::Duration::from_millis(1000), rx).await??;
-
-    Ok(())
 }

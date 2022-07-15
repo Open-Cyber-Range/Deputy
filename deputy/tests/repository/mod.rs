@@ -5,7 +5,7 @@ use bollard::{
     models::{HostConfig, PortBinding},
     Docker,
 };
-use deputy_library::test::generate_random_string;
+use deputy_library::test::{generate_random_string, get_free_port};
 use futures::StreamExt;
 use std::{collections::HashMap, fs::File, io::Read, path::PathBuf};
 
@@ -35,35 +35,20 @@ async fn create_image(docker: &Docker) -> Result<()> {
     Ok(())
 }
 
-pub struct MockRepostioryServer {
+pub struct TestRepositoryServer {
     name: String,
-    index_url: String,
     docker: Docker,
 }
 
-impl MockRepostioryServer {
-    pub async fn try_new(server_port: u16, repository_path: &str) -> Result<Self> {
+impl TestRepositoryServer {
+    pub async fn try_new(repository_folder: &str) -> Result<(Self, String)> {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;
-        let repository_mapping = format!("{}/.git:/srv/git/index.git", repository_path);
-        let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
-        ports.insert(
-            "80/tcp".to_string(),
-            Some(vec![PortBinding {
-                host_port: Some(format!("{}", server_port)),
-                host_ip: Some("0.0.0.0".to_string()),
-            }]),
-        );
-        let container_configuration = Config {
-            image: Some(DOCKER_IMAGE_NAME.to_string()),
-            host_config: Some(HostConfig {
-                binds: Some(vec![repository_mapping]),
-                port_bindings: Some(ports),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+        let repository_port = get_free_port()?;
+        let container_configuration =
+            Self::create_container_configuration(repository_folder, repository_port)?;
         let name = generate_random_string(24)?;
+
         docker
             .create_container::<String, String>(
                 Some(CreateContainerOptions { name: name.clone() }),
@@ -71,15 +56,34 @@ impl MockRepostioryServer {
             )
             .await?;
 
-        Ok(Self {
-            docker,
-            name,
-            index_url: format!("http://localhost:{}/git/index.git", server_port),
-        })
+        Ok((
+            Self { docker, name },
+            format!("http://localhost:{}/git/index.git", repository_port),
+        ))
     }
 
-    pub fn get_index_url(&self) -> &str {
-        &self.index_url
+    pub fn create_container_configuration(
+        repository_folder: &str,
+        repository_port: u16,
+    ) -> Result<Config<String>> {
+        let repository_mapping = format!("{}/.git:/srv/git/index.git", repository_folder);
+        let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
+        ports.insert(
+            "80/tcp".to_string(),
+            Some(vec![PortBinding {
+                host_port: Some(format!("{}", repository_port)),
+                host_ip: Some("0.0.0.0".to_string()),
+            }]),
+        );
+        Ok(Config {
+            image: Some(DOCKER_IMAGE_NAME.to_string()),
+            host_config: Some(HostConfig {
+                binds: Some(vec![repository_mapping]),
+                port_bindings: Some(ports),
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
     }
 
     pub async fn start(&self) -> Result<()> {

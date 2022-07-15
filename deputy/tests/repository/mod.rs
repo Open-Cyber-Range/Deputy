@@ -46,25 +46,10 @@ impl TestRepositoryServer {
         let docker = Docker::connect_with_unix_defaults()?;
         create_image(&docker).await?;
         let repository_port = get_free_port()?;
-        let repository_mapping = format!("{}/.git:/srv/git/index.git", &repository_folder);
-        let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
-        ports.insert(
-            "80/tcp".to_string(),
-            Some(vec![PortBinding {
-                host_port: Some(format!("{}", repository_port)),
-                host_ip: Some("0.0.0.0".to_string()),
-            }]),
-        );
-        let container_configuration = Config {
-            image: Some(DOCKER_IMAGE_NAME.to_string()),
-            host_config: Some(HostConfig {
-                binds: Some(vec![repository_mapping]),
-                port_bindings: Some(ports),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+        let container_configuration =
+            Self::create_container_configuration(repository_folder, repository_port)?;
         let name = generate_random_string(24)?;
+
         docker
             .create_container::<String, String>(
                 Some(CreateContainerOptions { name: name.clone() }),
@@ -76,6 +61,30 @@ impl TestRepositoryServer {
             Self { docker, name },
             format!("http://localhost:{}/git/index.git", repository_port),
         ))
+    }
+
+    pub fn create_container_configuration(
+        repository_folder: &str,
+        repository_port: u16,
+    ) -> Result<Config<String>> {
+        let repository_mapping = format!("{}/.git:/srv/git/index.git", repository_folder);
+        let mut ports: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
+        ports.insert(
+            "80/tcp".to_string(),
+            Some(vec![PortBinding {
+                host_port: Some(format!("{}", repository_port)),
+                host_ip: Some("0.0.0.0".to_string()),
+            }]),
+        );
+        Ok(Config {
+            image: Some(DOCKER_IMAGE_NAME.to_string()),
+            host_config: Some(HostConfig {
+                binds: Some(vec![repository_mapping]),
+                port_bindings: Some(ports),
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
     }
 
     pub async fn start(&self) -> Result<()> {

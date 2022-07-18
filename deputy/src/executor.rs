@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::commands::{ChecksumOptions, FetchOptions, InfoOptions, PublishOptions};
 use crate::configuration::{Configuration, Registry};
-use crate::constants::{DEFAULT_REGISTRY_NAME, SMALL_PACKAGE_LIMIT};
+use crate::constants::SMALL_PACKAGE_LIMIT;
 use crate::helpers::{
     create_temporary_package_download_path, find_toml, get_download_target_name,
     unpack_package_file,
@@ -45,9 +45,7 @@ impl Executor {
         let api_url = if let Some(registry) = self.configuration.registries.get(&registry_name) {
             registry.api.clone()
         } else {
-            return Err(anyhow::anyhow!(
-                "Default registry not found in configuration"
-            ));
+            return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
 
         Client::try_new(api_url)
@@ -96,7 +94,7 @@ impl Executor {
                 "Creating client".to_string(),
             )))
             .await??;
-        let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
+        let client = self.try_create_client(options.registry_name)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),

@@ -14,7 +14,7 @@ mod tests {
     async fn get_package_checksum() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let package_bytes = TEST_PACKAGE_BYTES.clone();
-        let test_backend = TestBackEnd::setup_test_backend().await?;
+        let test_backend = TestBackEnd::builder().build().await?;
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
         let response = client.upload_small_package(package_bytes.clone(), 60).await;

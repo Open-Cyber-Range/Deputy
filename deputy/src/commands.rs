@@ -59,6 +59,13 @@ pub struct PublishOptions {
         help = "Compression rate before upload"
     )]
     pub(crate) compression: u32,
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for publishing"
+    )]
+    pub registry_name: String,
 }
 
 #[derive(Debug, Args)]

@@ -1,7 +1,6 @@
 FROM nexus.ex.c-lab.ee:8003/rust-development:latest
 
-COPY ocr.gpg /usr/ocr.gpg
-RUN  apt-key add /usr/ocr.gpg
+RUN wget -qO - https://nexus.ex.c-lab.ee/repository/ocr-raw-hosted/ubuntu/gpg | apt-key add -
 RUN echo 'deb [arch=amd64] https://nexus.ex.c-lab.ee/repository/ocr-apt-hosted/ focal main' >> /etc/apt/sources.list.d/ocr.list
 
 RUN apt-get update && apt-get upgrade -y

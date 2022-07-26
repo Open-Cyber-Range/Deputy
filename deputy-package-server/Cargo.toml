@@ -8,7 +8,7 @@ edition = "2021"
 
 [package.metadata.deb]
 name = "deputy-package-server"
-maintainer = "Kaarel Allemann <kaarel.allemann@c14.ee>"
+maintainer = "Kaarel Allemann <developers@cr14.ee"
 copyright = "2022, CR14 <info@cr14.ee>"
 license-file = ["../LICENSE", "4"]
 extended-description = """\

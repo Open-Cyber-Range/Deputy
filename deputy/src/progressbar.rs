@@ -1,6 +1,6 @@
 use actix::{Actor, Context, Handler, Message};
-use indicatif::{ProgressBar, ProgressStyle};
 use anyhow::Result;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Debug)]
 pub enum ProgressStatus {
@@ -13,8 +13,9 @@ pub struct SpinnerProgressBar(ProgressBar, String);
 impl SpinnerProgressBar {
     pub fn new(final_message: String) -> Self {
         let bar = ProgressBar::new(1);
-        bar.set_style(ProgressStyle::default_spinner()
-            .template("[{elapsed_precise}] {spinner} {msg}"));
+        bar.set_style(
+            ProgressStyle::default_spinner().template("[{elapsed_precise}] {spinner} {msg}"),
+        );
         bar.enable_steady_tick(75);
         Self(bar, final_message)
     }
@@ -36,10 +37,10 @@ impl Handler<AdvanceProgressBar> for SpinnerProgressBar {
         match msg.0 {
             ProgressStatus::InProgress(progress_string) => {
                 self.0.set_message(progress_string);
-            },
+            }
             ProgressStatus::Done => {
                 self.0.set_style(ProgressStyle::default_spinner()
-                    .template("[{elapsed_precise}] \x1b[32m{msg}\x1b[0m"));
+                    .template("[{elapsed_precise}]  [{bar:40.cyan/blue}] ({pos}/{len}, ETA {eta}) \x1b[32m{msg}\x1b[0m"));
                 self.0.finish_with_message(final_message);
             }
         }

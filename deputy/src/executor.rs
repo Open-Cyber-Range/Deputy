@@ -1,5 +1,7 @@
 use crate::client::Client;
-use crate::commands::{ChecksumOptions, FetchOptions, InfoOptions, PublishOptions};
+use crate::commands::{
+    ChecksumOptions, FetchOptions, NormalizeVersionOptions, ParseTOMLOptions, PublishOptions,
+};
 use crate::configuration::{Configuration, Registry};
 use crate::constants::SMALL_PACKAGE_LIMIT;
 use crate::helpers::{
@@ -64,6 +66,21 @@ impl Executor {
             .ok_or_else(|| anyhow::anyhow!("Registry not found"))
     }
 
+    fn get_version(
+        &self,
+        registry_name: &str,
+        package_name: &str,
+        version_requirement: &str,
+    ) -> Result<String> {
+        self.update_registry_repositories()?;
+        let registry_repository = self.get_registry(registry_name)?;
+        let version =
+            find_matching_metadata(registry_repository, package_name, version_requirement)?
+                .map(|metadata| metadata.version)
+                .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
+        Ok(version)
+    }
+
     pub fn try_new(configuration: Configuration) -> Result<Self> {
         let repositories = Executor::get_or_create_registry_repositories(
             configuration.registries.clone(),
@@ -116,15 +133,11 @@ impl Executor {
     }
 
     pub async fn fetch(&self, options: FetchOptions) -> Result<()> {
-        self.update_registry_repositories()?;
-        let registry_repository = self.get_registry(&options.registry_name)?;
-        let version = find_matching_metadata(
-            registry_repository,
+        let version = self.get_version(
+            &options.registry_name,
             &options.package_name,
             &options.version_requirement,
-        )?
-        .map(|metadata| metadata.version)
-        .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
+        )?;
 
         let client = self.try_create_client(options.registry_name.clone())?;
         let (temporary_package_path, temporary_directory) =
@@ -159,7 +172,7 @@ impl Executor {
         Ok(())
     }
 
-    pub fn info(&self, options: InfoOptions) -> Result<()> {
+    pub fn parse_toml(&self, options: ParseTOMLOptions) -> Result<()> {
         let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
         let project = create_project_from_toml_path(package_toml_path.to_path_buf())?;
         if options.pretty {
@@ -167,6 +180,16 @@ impl Executor {
         } else {
             println!("{}", serde_json::to_string(&project)?);
         }
+        Ok(())
+    }
+
+    pub fn normalize_version(&self, options: NormalizeVersionOptions) -> Result<()> {
+        let version = self.get_version(
+            &options.registry_name,
+            &options.package_name,
+            &options.package_name,
+        )?;
+        println!("{}", version);
         Ok(())
     }
 }

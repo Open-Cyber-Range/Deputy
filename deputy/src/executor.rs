@@ -187,7 +187,7 @@ impl Executor {
         let version = self.get_version(
             &options.registry_name,
             &options.package_name,
-            &options.package_name,
+            &options.version_requirement,
         )?;
         println!("{}", version);
         Ok(())

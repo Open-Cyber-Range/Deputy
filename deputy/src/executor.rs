@@ -17,6 +17,7 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
+use std::time::Duration;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
 use tokio::fs::rename;
 
@@ -95,6 +96,7 @@ impl Executor {
             )))
             .await??;
         let client = self.try_create_client(options.registry_name)?;
+        tokio::time::sleep(Duration::from_secs(2)).await;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),
@@ -116,8 +118,24 @@ impl Executor {
     }
 
     pub async fn fetch(&self, options: FetchOptions) -> Result<()> {
+        let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Get the registry".to_string(),
+            )))
+            .await??;
         self.update_registry_repositories()?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Get the registry 2".to_string(),
+            )))
+            .await??;
         let registry_repository = self.get_registry(&options.registry_name)?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Get the registry 3".to_string(),
+            )))
+            .await??;
         let version = find_matching_metadata(
             registry_repository,
             &options.package_name,
@@ -129,9 +147,26 @@ impl Executor {
         let client = self.try_create_client(options.registry_name.clone())?;
         let (temporary_package_path, temporary_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "line151".to_string(),
+            )))
+            .await??;
         client
             .download_package(&options.package_name, &version, &temporary_package_path)
             .await?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Line159".to_string(),
+            )))
+            .await??;
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "line165".to_string(),
+            )))
+            .await??;
+
         let unpacked_file_path =
             unpack_package_file(&temporary_package_path, &options.unpack_level)?;
 
@@ -141,6 +176,10 @@ impl Executor {
         )
         .await?;
         temporary_directory.close()?;
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::Done))
+            .await??;
 
         Ok(())
     }

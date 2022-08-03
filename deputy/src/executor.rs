@@ -121,19 +121,19 @@ impl Executor {
         let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Get the registry".to_string(),
+                "Downloading".to_string(),
             )))
             .await??;
         self.update_registry_repositories()?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Get the registry 2".to_string(),
+                "Generate checksum".to_string(),
             )))
             .await??;
         let registry_repository = self.get_registry(&options.registry_name)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Get the registry 3".to_string(),
+                "Compare checksum".to_string(),
             )))
             .await??;
         let version = find_matching_metadata(
@@ -143,15 +143,9 @@ impl Executor {
         )?
         .map(|metadata| metadata.version)
         .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
-
         let client = self.try_create_client(options.registry_name.clone())?;
         let (temporary_package_path, temporary_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
-        progress_actor
-            .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "line151".to_string(),
-            )))
-            .await??;
         client
             .download_package(&options.package_name, &version, &temporary_package_path)
             .await?;
@@ -163,10 +157,9 @@ impl Executor {
         tokio::time::sleep(Duration::from_secs(2)).await;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "line165".to_string(),
+                "Decompress package".to_string(),
             )))
             .await??;
-
         let unpacked_file_path =
             unpack_package_file(&temporary_package_path, &options.unpack_level)?;
 

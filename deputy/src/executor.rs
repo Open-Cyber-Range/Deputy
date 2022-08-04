@@ -96,7 +96,6 @@ impl Executor {
             )))
             .await??;
         let client = self.try_create_client(options.registry_name)?;
-        tokio::time::sleep(Duration::from_secs(2)).await;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),
@@ -121,19 +120,19 @@ impl Executor {
         let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Downloading".to_string(),
+                "Updating the repository".to_string(),
             )))
             .await??;
         self.update_registry_repositories()?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Generate checksum".to_string(),
+                "Registering the repository".to_string(),
             )))
             .await??;
         let registry_repository = self.get_registry(&options.registry_name)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Compare checksum".to_string(),
+                "Fetching registry name".to_string(),
             )))
             .await??;
         let version = find_matching_metadata(
@@ -143,7 +142,17 @@ impl Executor {
         )?
         .map(|metadata| metadata.version)
         .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
+        progress_actor
+        .send(AdvanceProgressBar(ProgressStatus::InProgress(
+            "Creating client".to_string(),
+        )))
+        .await??;
         let client = self.try_create_client(options.registry_name.clone())?;
+        progress_actor
+        .send(AdvanceProgressBar(ProgressStatus::InProgress(
+            "Creating temporary path".to_string(),
+        )))
+        .await??;
         let (temporary_package_path, temporary_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
         client
@@ -151,13 +160,7 @@ impl Executor {
             .await?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Line159".to_string(),
-            )))
-            .await??;
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        progress_actor
-            .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Decompress package".to_string(),
+                "Decompressing the package".to_string(),
             )))
             .await??;
         let unpacked_file_path =
@@ -169,7 +172,6 @@ impl Executor {
         )
         .await?;
         temporary_directory.close()?;
-        tokio::time::sleep(Duration::from_secs(2)).await;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::Done))
             .await??;

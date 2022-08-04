@@ -17,7 +17,6 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
-use std::time::Duration;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
 use tokio::fs::rename;
 

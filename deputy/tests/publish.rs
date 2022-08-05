@@ -6,7 +6,7 @@ mod tests {
     use crate::test_backend::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::Command;
-    use deputy::{client::Client, constants::CONFIG_FILE_PATH_ENV_KEY};
+    use deputy::{client::Client, constants::CONFIGURATION_FOLDER_PATH_ENV_KEY};
     use deputy_library::{
         package::Package,
         test::{TempArchive, TEST_PACKAGE_BYTES},
@@ -27,8 +27,8 @@ mod tests {
         let test_backend = TestBackEnd::builder().build().await?;
 
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
 
         let temp_package = Package::from_file(toml_path, 0)?;
@@ -46,6 +46,7 @@ mod tests {
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -63,8 +64,8 @@ mod tests {
         let test_backend = TestBackEnd::builder().build().await?;
 
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
 
         let temp_package = Package::from_file(toml_path, 0)?;
@@ -82,6 +83,7 @@ mod tests {
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -99,13 +101,14 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_dir);
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
         command.assert().failure().stderr(predicate::str::contains(
             "Error: Could not find package.toml",
         ));
 
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -129,14 +132,15 @@ mod tests {
         command.arg("publish");
         command.current_dir(temp_dir);
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
         command
             .assert()
             .failure()
             .stderr(predicate::str::contains("Error: missing field `package`"));
 
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 
@@ -185,8 +189,8 @@ mod tests {
             .await?;
 
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
 
         let temp_package = Package::from_file(toml_path, 0)?;
@@ -204,6 +208,7 @@ mod tests {
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 

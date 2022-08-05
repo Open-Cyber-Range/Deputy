@@ -6,7 +6,7 @@ mod tests {
     use crate::test_backend::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::Command;
-    use deputy::{client::Client, constants::CONFIG_FILE_PATH_ENV_KEY};
+    use deputy::{client::Client, constants::CONFIGURATION_FOLDER_PATH_ENV_KEY};
     use deputy_library::test::TEST_PACKAGE_BYTES;
     use tempfile::TempDir;
 
@@ -24,11 +24,12 @@ mod tests {
         command.arg("fetch").arg("some-package-name");
         command.current_dir(&temp_dir);
         command.env(
-            CONFIG_FILE_PATH_ENV_KEY,
-            &test_backend.configuration_file.path(),
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &test_backend.configuration_directory.path(),
         );
         command.assert().success();
 
+        test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
 

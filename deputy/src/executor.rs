@@ -131,7 +131,11 @@ impl Executor {
         let registry_repository = self.get_registry(&options.registry_name)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
+<<<<<<< HEAD
                 "Fetch the version".to_string(),
+=======
+                "Fetching the version".to_string(),
+>>>>>>> 14f02d66fc31e2d684be0b6e41ff2f824fc9a9b0
             )))
             .await??;
         let version = find_matching_metadata(
@@ -142,6 +146,7 @@ impl Executor {
         .map(|metadata| metadata.version)
         .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
         progress_actor
+<<<<<<< HEAD
         .send(AdvanceProgressBar(ProgressStatus::InProgress(
             "Creating client".to_string(),
         )))
@@ -152,6 +157,18 @@ impl Executor {
             "Download the package".to_string(),
         )))
         .await??;
+=======
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Creating client".to_string(),
+            )))
+            .await??;
+        let client = self.try_create_client(options.registry_name.clone())?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Downloading the package".to_string(),
+            )))
+            .await??;
+>>>>>>> 14f02d66fc31e2d684be0b6e41ff2f824fc9a9b0
         let (temporary_package_path, temporary_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
         client

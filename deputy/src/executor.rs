@@ -119,7 +119,7 @@ impl Executor {
         let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Updating the repository".to_string(),
+                "Updating the repositories".to_string(),
             )))
             .await??;
         self.update_registry_repositories()?;
@@ -131,7 +131,7 @@ impl Executor {
         let registry_repository = self.get_registry(&options.registry_name)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Fetching registry name".to_string(),
+                "Fetch the version".to_string(),
             )))
             .await??;
         let version = find_matching_metadata(
@@ -149,7 +149,7 @@ impl Executor {
         let client = self.try_create_client(options.registry_name.clone())?;
         progress_actor
         .send(AdvanceProgressBar(ProgressStatus::InProgress(
-            "Creating temporary path".to_string(),
+            "Download the package".to_string(),
         )))
         .await??;
         let (temporary_package_path, temporary_directory) =

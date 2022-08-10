@@ -17,7 +17,7 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
-use std::fs::rename;
+use tokio::fs::rename;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
 
 pub struct Executor {

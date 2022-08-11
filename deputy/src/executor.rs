@@ -151,7 +151,7 @@ impl Executor {
                 "Fetching the version".to_string(),
             )))
             .await??;
-        let version = find_matching_metadata(
+        let _version = find_matching_metadata(
             registry_repository,
             &options.package_name,
             &options.version_requirement,

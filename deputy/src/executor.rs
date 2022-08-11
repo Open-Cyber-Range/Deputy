@@ -19,8 +19,8 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
-use std::{collections::HashMap, env::current_dir, path::PathBuf};
 use tokio::fs::rename;
+use std::{collections::HashMap, env::current_dir, path::PathBuf};
 
 pub struct Executor {
     configuration: Configuration,
@@ -133,6 +133,36 @@ impl Executor {
     }
 
     pub async fn fetch(&self, options: FetchOptions) -> Result<()> {
+        let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Updating the repositories".to_string(),
+            )))
+            .await??;
+        self.update_registry_repositories()?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Registering the repository".to_string(),
+            )))
+            .await??;
+        let registry_repository = self.get_registry(&options.registry_name)?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Fetching the version".to_string(),
+            )))
+            .await??;
+        let _version = find_matching_metadata(
+            registry_repository,
+            &options.package_name,
+            &options.version_requirement,
+        )?
+        .map(|metadata| metadata.version)
+        .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Creating client".to_string(),
+            )))
+            .await??;
         let version = self.get_version(
             &options.registry_name,
             &options.package_name,
@@ -140,11 +170,21 @@ impl Executor {
         )?;
 
         let client = self.try_create_client(options.registry_name.clone())?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Downloading the package".to_string(),
+            )))
+            .await??;
         let (temporary_package_path, temporary_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
         client
             .download_package(&options.package_name, &version, &temporary_package_path)
             .await?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Decompressing the package".to_string(),
+            )))
+            .await??;
         let unpacked_file_path =
             unpack_package_file(&temporary_package_path, &options.unpack_level)?;
 
@@ -154,6 +194,9 @@ impl Executor {
         )
         .await?;
         temporary_directory.close()?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::Done))
+            .await??;
 
         Ok(())
     }
@@ -193,3 +236,4 @@ impl Executor {
         Ok(())
     }
 }
+

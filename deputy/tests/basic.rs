@@ -8,7 +8,7 @@ mod tests {
     use crate::test_backend::TestBackEndBuilder;
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy::constants::CONFIG_FILE_PATH_ENV_KEY;
+    use deputy::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
     use predicates::prelude::*;
     use std::{env, process::Command};
 
@@ -22,11 +22,15 @@ mod tests {
                 "does-not-matter",
             )?;
         command.arg("--version");
-        command.env(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        command.env(
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &configuration_directory.path(),
+        );
         command
             .assert()
             .success()
             .stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
+        configuration_file.close()?;
         configuration_directory.close()?;
         Ok(())
     }

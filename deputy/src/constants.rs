@@ -6,7 +6,8 @@ lazy_static! {
         u64::try_from(Byte::from_str("256kB").unwrap().get_bytes()).unwrap();
 }
 
-pub const CONFIG_FILE_PATH_ENV_KEY: &str = "DEPUTY_CONFIG";
+pub const CONFIGURATION_FOLDER_PATH_ENV_KEY: &str = "DEPUTY_CONFIG_FOLDER";
+pub const CONFIGURATION_FILE_RELATIVE_PATH: &str = "configuration.toml";
 pub const PACKAGE_TOML: &str = "package.toml";
 pub const DEFAULT_REGISTRY_NAME: &str = "main-registry";
 

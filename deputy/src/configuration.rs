@@ -1,7 +1,7 @@
-use crate::constants::CONFIG_FILE_PATH_ENV_KEY;
+use crate::constants::{CONFIGURATION_FILE_RELATIVE_PATH, CONFIGURATION_FOLDER_PATH_ENV_KEY};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, fs::read_to_string};
+use std::{collections::HashMap, env, fs::read_to_string, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Registry {
@@ -23,7 +23,12 @@ pub struct Configuration {
 
 impl Configuration {
     pub fn get_configuration() -> Result<Configuration> {
-        let configuration_path = env::var(CONFIG_FILE_PATH_ENV_KEY)?;
+        let configuration_path: PathBuf = [
+            env::var(CONFIGURATION_FOLDER_PATH_ENV_KEY)?,
+            CONFIGURATION_FILE_RELATIVE_PATH.to_string(),
+        ]
+        .iter()
+        .collect();
         let configuration_contents = read_to_string(configuration_path)?;
         Ok(toml::from_str(&configuration_contents)?)
     }
@@ -60,10 +65,12 @@ mod tests {
     #[test]
     fn read_contents_from_configuration_file() -> Result<()> {
         let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
-        env::set_var(CONFIG_FILE_PATH_ENV_KEY, &configuration_file.path());
+        env::set_var(
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            &configuration_directory.path(),
+        );
         let configuration = Configuration::get_configuration()?;
-        env::remove_var(CONFIG_FILE_PATH_ENV_KEY);
-        configuration_directory.close()?;
+        env::remove_var(CONFIGURATION_FOLDER_PATH_ENV_KEY);
         assert_eq!(
             configuration
                 .registries
@@ -81,6 +88,8 @@ mod tests {
             "registry-index"
         );
         assert_eq!(configuration.package.index_path, "./index");
+        configuration_file.close()?;
+        configuration_directory.close()?;
         Ok(())
     }
 }

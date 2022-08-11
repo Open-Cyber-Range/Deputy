@@ -1,8 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
-    commands::InfoOptions,
-    commands::{ChecksumOptions, FetchOptions, PublishOptions},
+    commands::{
+        ChecksumOptions, FetchOptions, NormalizeVersionOptions, ParseTOMLOptions, PublishOptions,
+    },
     configuration::Configuration,
     executor::Executor,
     helpers::print_error_message,
@@ -21,7 +22,8 @@ enum Commands {
     Publish(PublishOptions),
     Fetch(FetchOptions),
     Checksum(ChecksumOptions),
-    Info(InfoOptions),
+    ParseTOML(ParseTOMLOptions),
+    NormalizeVersion(NormalizeVersionOptions),
 }
 
 #[actix_rt::main]
@@ -33,7 +35,8 @@ async fn main() -> Result<()> {
         Commands::Publish(options) => executor.publish(options).await,
         Commands::Fetch(options) => executor.fetch(options).await,
         Commands::Checksum(options) => executor.checksum(options),
-        Commands::Info(options) => executor.info(options),
+        Commands::ParseTOML(options) => executor.parse_toml(options),
+        Commands::NormalizeVersion(options) => executor.normalize_version(options),
     };
     if let Err(error) = result {
         print_error_message(error);

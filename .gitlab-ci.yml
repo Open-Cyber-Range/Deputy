@@ -7,13 +7,14 @@ lint-and-test:
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
-    - cargo tarpaulin --skip-clean --out Xml
-  coverage: '/^\d+.\d+% coverage/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage/cobertura-coverage.xml
+    - cargo test
+    # - cargo tarpaulin --skip-clean --out Xml
+  # coverage: '/^\d+.\d+% coverage/'
+  # artifacts:
+  #   reports:
+  #     coverage_report:
+  #       coverage_format: cobertura
+  #       path: coverage/cobertura-coverage.xml
   only:
     - develop
     - master

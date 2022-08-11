@@ -69,8 +69,22 @@ pub struct PublishOptions {
 }
 
 #[derive(Debug, Args)]
-pub struct InfoOptions {
+pub struct ParseTOMLOptions {
     pub package_toml_path: String,
     #[clap(short, long, help = "Pretty print output")]
     pub pretty: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct NormalizeVersionOptions {
+    pub package_name: String,
+    #[clap(short, long, default_value = DEFAULT_PACKAGE_VERSION_REQUIREMENT, help = "Version of the package to fetch")]
+    pub version_requirement: String,
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for versioning"
+    )]
+    pub registry_name: String,
 }

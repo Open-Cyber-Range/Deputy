@@ -58,6 +58,8 @@ pub async fn add_package(
     })?;
     let folder = &app_state.package_folder;
     let repository = &app_state.repository.lock().await;
+    let package_toml = &app_state.package_toml;
+    let readme = &app_state.readme;
 
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
@@ -66,7 +68,12 @@ pub async fn add_package(
     check_for_version_error(&package.metadata, repository)?;
 
     package
-        .save(folder.to_string(), repository)
+        .save(
+            folder.to_string(),
+            repository,
+            package_toml.to_string(),
+            readme.to_string(),
+        )
         .map_err(|error| {
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
@@ -74,53 +81,65 @@ pub async fn add_package(
     Ok(HttpResponse::Ok().finish())
 }
 
-#[put("/package/stream")]
-pub async fn add_package_streaming(
-    mut body: Payload,
-    app_state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
-        let metadata_vector = metadata_bytes.to_vec();
-        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        });
-        if let Err(error) = result {
-            drain_stream(body).await?;
-            return Err(error.into());
-        }
-        result?
-    } else {
-        error!("Invalid stream chunk: No metadata");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
-    };
+// #[put("/package/stream")]
+// pub async fn add_package_streaming(
+//     mut body: Payload,
+//     app_state: Data<AppState>,
+// ) -> Result<HttpResponse, Error> {
+//     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
+//         let metadata_vector = metadata_bytes.to_vec();
+//         let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+//             error!("Failed to parse package metadata: {error}");
+//             ServerResponseError(PackageServerError::MetadataParse.into())
+//         });
+//         if let Err(error) = result {
+//             drain_stream(body).await?;
+//             return Err(error.into());
+//         }
+//         result?
+//     } else {
+//         error!("Invalid stream chunk: No metadata");
+//         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+//     };
 
-    let folder = &app_state.package_folder;
-    let repository = &app_state.repository.lock().await;
-    if let Err(error) = check_for_version_error(&metadata, repository) {
-        drain_stream(body).await?;
-        return Err(error);
-    }
 
-    let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
-        error!("Failed to save the file: {error}");
-        ServerResponseError(PackageServerError::FileSave.into())
-    })?;
+//     let folder = &app_state.package_folder;
+//     let repository = &app_state.repository.lock().await;
 
-    let mut package = Package::new(metadata, package_file);
-    package.validate().map_err(|error| {
-        error!("Failed to validate the package: {error}");
-        ServerResponseError(PackageServerError::PackageValidation.into())
-    })?;
-    package
-        .save(folder.to_string(), repository)
-        .map_err(|error| {
-            error!("Failed to save the package: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
+//     if let Err(error) = check_for_version_error(&metadata, repository) {
+//         drain_stream(body).await?;
+//         return Err(error);
+//     }
 
-    Ok(HttpResponse::Ok().body("OK"))
-}
+//     let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
+//         error!("Failed to save the file: {error}");
+//         ServerResponseError(PackageServerError::FileSave.into())
+//     })?;
+
+
+//     let mut package = Package::new(metadata, package_file, readme, package_file);
+//     package.validate().map_err(|error| {
+//         error!("Failed to validate the package: {error}");
+//         ServerResponseError(PackageServerError::PackageValidation.into())
+//     })?;
+
+//     let package_toml = &app_state.package_toml;
+//     let readme = &app_state.readme;
+
+//     package
+//         .save(
+//             folder.to_string(),
+//             repository,
+//             package_toml.to_string(),
+//             readme.to_string(),
+//         )
+//         .map_err(|error| {
+//             error!("Failed to save the package: {error}");
+//             ServerResponseError(PackageServerError::PackageSave.into())
+//         })?;
+
+//     Ok(HttpResponse::Ok().body("OK"))
+// }
 
 #[get("package/{package_name}/{package_version}/download")]
 pub async fn download_package(

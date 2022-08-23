@@ -4,7 +4,7 @@ use rayon::current_num_threads;
 use std::{io::Write, fs::File};
 use tempfile::{Builder, TempDir, NamedTempFile, TempPath};
 use byte_unit::Byte;
-use crate::package::{Package, PackageFile, PackageMetadata};
+use crate::{package::{Package, PackageFile, PackageMetadata}};
 use port_check::free_local_port;
 use rand::Rng;
 
@@ -43,25 +43,25 @@ lazy_static! {
         type = "OVA"
         file_path = "src/some-image.ova"
         "#;
-        
-    pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 
-        97, 99, 107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48, 46, 49, 46, 48, 34, 
-        44, 34, 99, 104, 101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102, 
-        51, 48, 57, 101, 51, 100, 101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99, 50, 50, 54, 101, 50, 99, 102, 56, 
-        101, 49, 97, 53, 49, 56, 51, 54, 57, 98, 49, 100, 55, 51, 34, 44, 34, 118, 105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110, 
-        101, 34, 58, 123, 34, 111, 112, 101, 114, 97, 116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34, 58, 34, 85, 98, 117, 110, 116, 
+
+    pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112,
+        97, 99, 107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48, 46, 49, 46, 48, 34,
+        44, 34, 99, 104, 101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102,
+        51, 48, 57, 101, 51, 100, 101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99, 50, 50, 54, 101, 50, 99, 102, 56,
+        101, 49, 97, 53, 49, 56, 51, 54, 57, 98, 49, 100, 55, 51, 34, 44, 34, 118, 105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110,
+        101, 34, 58, 123, 34, 111, 112, 101, 114, 97, 116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34, 58, 34, 85, 98, 117, 110, 116,
         117, 34, 44, 34, 97, 114, 99, 104, 105, 116, 101, 99, 116, 117, 114, 101, 34, 58, 34, 65, 114, 109, 54, 52, 34, 125, 125];
 
     pub static ref TEST_FILE_BYTES: Vec<u8> =
         vec![13, 0, 0, 0, 83, 111, 109, 101, 32, 99, 111, 110, 116, 101, 110, 116, 10,];
 
-    pub static ref TEST_PACKAGE_BYTES: Vec<u8> = vec![195, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99, 
-        107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48, 46, 49, 46, 48, 34, 44, 34, 99, 104, 
-        101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102, 51, 48, 57, 101, 51, 100, 
-        101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99, 50, 50, 54, 101, 50, 99, 102, 56, 101, 49, 97, 53, 49, 56, 51, 54, 57, 
-        98, 49, 100, 55, 51, 34, 44, 34, 118, 105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110, 101, 34, 58, 123, 34, 111, 112, 101, 114, 97, 
-        116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34, 58, 34, 85, 98, 117, 110, 116, 117, 34, 44, 34, 97, 114, 99, 104, 105, 116, 101, 99, 
-        116, 117, 114, 101, 34, 58, 34, 65, 114, 109, 54, 52, 34, 125, 125, 14, 0, 0, 0, 115, 111, 109, 101, 32, 99, 111, 110, 116, 101, 110, 116, 32, 10];  
+    pub static ref TEST_PACKAGE_BYTES: Vec<u8> = vec![195, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99,
+        107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48, 46, 49, 46, 48, 34, 44, 34, 99, 104,
+        101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102, 51, 48, 57, 101, 51, 100,
+        101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99, 50, 50, 54, 101, 50, 99, 102, 56, 101, 49, 97, 53, 49, 56, 51, 54, 57,
+        98, 49, 100, 55, 51, 34, 44, 34, 118, 105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110, 101, 34, 58, 123, 34, 111, 112, 101, 114, 97,
+        116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34, 58, 34, 85, 98, 117, 110, 116, 117, 34, 44, 34, 97, 114, 99, 104, 105, 116, 101, 99,
+        116, 117, 114, 101, 34, 58, 34, 65, 114, 109, 54, 52, 34, 125, 125, 14, 0, 0, 0, 115, 111, 109, 101, 32, 99, 111, 110, 116, 101, 110, 116, 32, 10];
 }
 
 pub struct TempArchive {
@@ -119,7 +119,7 @@ impl TempArchiveBuilder {
 
 
     pub fn build(self) -> Result<TempArchive> {
-        let toml_content = 
+        let toml_content =
             r#"
                 [package]
                 name = "test_package_1"
@@ -134,23 +134,23 @@ impl TempArchiveBuilder {
                 type = "OVA"
                 file_path = "/src/test_file.txt"
             "#;
-        let target_file_ipsum = 
+        let target_file_ipsum =
             br#"
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean consectetur nisl at aliquet pharetra. Cras fringilla 
-            quis leo quis tempus. Aliquam efficitur orci sapien, in luctus elit tempor id. Sed eget dui odio. Suspendisse potenti. 
-            Vestibulum purus quam, fringilla vitae egestas eget, convallis et ex. In ut euismod libero, eget euismod leo. Curabitur 
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean consectetur nisl at aliquet pharetra. Cras fringilla
+            quis leo quis tempus. Aliquam efficitur orci sapien, in luctus elit tempor id. Sed eget dui odio. Suspendisse potenti.
+            Vestibulum purus quam, fringilla vitae egestas eget, convallis et ex. In ut euismod libero, eget euismod leo. Curabitur
             semper dolor mi, quis scelerisque purus fermentum eu.
-            Mauris euismod felis diam, et dictum ante porttitor ac. Suspendisse lacus sapien, maximus et accumsan ultrices, porta 
+            Mauris euismod felis diam, et dictum ante porttitor ac. Suspendisse lacus sapien, maximus et accumsan ultrices, porta
             vel leo. Pellentesque pulvinar enim elementum odio porta, vitae ultricies justo condimentum.
             "#;
-        
-        let src_file_ipsum = 
+
+        let src_file_ipsum =
             br#"
-            Mauris elementum non quam laoreet tristique. Aenean sed nisl a quam venenatis porttitor. Nullam turpis velit, maximus 
-            vitae orci nec, tempus fermentum quam. Vestibulum tristique sollicitudin dignissim. Interdum et malesuada fames ac ante 
-            ipsum primis in faucibus. Phasellus at neque metus. Ut eleifend venenatis arcu. Vestibulum vitae elit ante. Sed fringilla 
+            Mauris elementum non quam laoreet tristique. Aenean sed nisl a quam venenatis porttitor. Nullam turpis velit, maximus
+            vitae orci nec, tempus fermentum quam. Vestibulum tristique sollicitudin dignissim. Interdum et malesuada fames ac ante
+            ipsum primis in faucibus. Phasellus at neque metus. Ut eleifend venenatis arcu. Vestibulum vitae elit ante. Sed fringilla
             placerat magna sollicitudin convallis. Maecenas semper est id tortor interdum, et tempus eros viverra. Fusce at quam nisl.
-            Vivamus elementum at arcu et semper. Donec molestie, lorem et condimentum congue, nisl nisl mattis lorem, rhoncus dapibus 
+            Vivamus elementum at arcu et semper. Donec molestie, lorem et condimentum congue, nisl nisl mattis lorem, rhoncus dapibus
             ex massa eget felis.
             "#;
         let dir = TempDir::new()?;
@@ -212,11 +212,15 @@ pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)>
 
 pub fn create_test_package() -> Result<Package> {
     let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
+    let (package_toml, toml_path) = create_readable_temporary_file("some toml \n")?;
     let file = PackageFile(temporary_file, Some(path));
+    let package_toml = PackageFile(package_toml, Some(toml_path));
 
     Ok(Package {
         metadata: TEST_PACKAGE_METADATA.clone(),
         file,
+        package_toml,
+        readme: None,
     })
 }
 

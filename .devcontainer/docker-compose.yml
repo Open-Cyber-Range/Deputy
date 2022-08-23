@@ -13,6 +13,8 @@ services:
   deputy-package-server:
     image: nexus.ex.c-lab.ee:8003/deputy-package-server:latest
     volumes:
+      - ./deputy-package-tomls:/var/opt/deputy/deputy-package-server/tomls
+      - ./deputy-package-readme:/var/opt/deputy/deputy-package-server/readme
       - ./deputy-packages:/var/opt/deputy/deputy-package-server/package
       - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
     environment:

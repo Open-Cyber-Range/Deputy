@@ -12,4 +12,6 @@ pub mod test;
 pub struct AppState {
     pub repository: Arc<Mutex<Repository>>,
     pub package_folder: String,
+    pub package_toml: String,
+    pub readme: String,
 }

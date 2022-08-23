@@ -8,7 +8,7 @@ use deputy_package_server::{
     configuration::read_configuration,
     routes::{
         basic::{status, version},
-        package::{add_package, add_package_streaming, download_package},
+        package::{add_package, download_package},
     },
     AppState,
 };
@@ -20,10 +20,15 @@ async fn real_main() -> Result<()> {
     env_logger::init();
     let configuration = read_configuration(std::env::args().collect())?;
     if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
+        let package_toml = configuration.package_toml.clone();
+        let readme_md = configuration.readme.clone();
         let package_folder = configuration.package_folder.clone();
+
         let app_state = AppState {
             repository: Arc::new(Mutex::new(repository)),
             package_folder,
+            package_toml,
+            readme: readme_md,
         };
         HttpServer::new(move || {
             let app_data = Data::new(app_state.clone());
@@ -33,7 +38,7 @@ async fn real_main() -> Result<()> {
                 .service(version)
                 .service(
                     scope("/api/v1")
-                        .service(add_package_streaming)
+                        
                         .service(add_package)
                         .service(download_package),
                 )

@@ -12,7 +12,7 @@ use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
     test::{generate_random_string, get_free_port},
 };
-use futures::lock::Mutex;
+use futures::{lock::Mutex, future::join};
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::fs;
@@ -34,6 +34,8 @@ lazy_static! {
             email: "some@email.com".to_string(),
         },
         package_folder: "/tmp/test-packages".to_string(),
+        package_toml: ".devcontainer/deputy-server-repository-combo/package.toml".to_string(),
+        readme: "/README.md".to_string(),
     };
 }
 
@@ -78,10 +80,14 @@ impl TestPackageServer {
     async fn initialize(&self, tx: Sender<()>) -> Result<()> {
         let configuration = self.configuration.clone();
         let package_folder = configuration.package_folder;
+        let package_toml = configuration.package_toml;
+        let readme = configuration.readme;
         if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
                 package_folder,
+                package_toml,
+                readme,
             };
             try_join!(
                 HttpServer::new(move || {
@@ -160,6 +166,12 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     let repository_folder: PathBuf =
         temporary_directory.join(format!("test-repository-folder-{}", randomizer));
     std::fs::create_dir_all(&repository_folder)?;
+    let package_toml_folder: PathBuf =
+        temporary_directory.join(format!("test-package-toml-folder-{}", randomizer));
+    std::fs::create_dir_all(&package_toml_folder)?;
+    let readme_folder: PathBuf =
+        temporary_directory.join(format!("test-readme-folder-{}", randomizer));
+    std::fs::create_dir_all(&package_toml_folder)?;
 
     let repository_configuration = RepositoryConfiguration {
         username: String::from("test-username"),
@@ -171,5 +183,7 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     Ok(Data::new(AppState {
         repository: Arc::new(Mutex::new(repository)),
         package_folder: package_folder.to_str().unwrap().to_string(),
+        package_toml: package_toml_folder.to_str().unwrap().to_string(),
+        readme: readme_folder.to_str().unwrap().to_string(),
     }))
 }

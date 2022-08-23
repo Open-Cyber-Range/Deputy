@@ -8,6 +8,8 @@ pub struct Configuration {
     pub host: String,
     pub port: u16,
     pub repository: RepositoryConfiguration,
+    pub package_toml: String,
+    pub readme: String,
     pub package_folder: String,
 }
 
@@ -43,11 +45,12 @@ repository:
   folder: /tmp/test-repo
   username: some-username
   email: some@email.com
+package_toml_folder: .devcontainer/deputy-server-repository-combo/package.toml
+readme_folder: /README.md
 package_folder: /tmp/packages
     "#
         )?;
         let arguments = vec![String::from("program-name"), path_string];
-
         let configuration = read_configuration(arguments)?;
         insta::assert_debug_snapshot!(configuration);
         Ok(())

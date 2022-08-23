@@ -5,3 +5,5 @@ repository:
   username: deputy
   email: deputy@localhost
 package_folder: /var/opt/deputy/deputy-package-server/package
+package_toml_folder: /var/opt/deputy/deputy-package-server/tomls
+readme_folder: /var/opt/deputy/deputy-package-server/readme

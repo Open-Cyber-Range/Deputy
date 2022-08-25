@@ -20,16 +20,13 @@ async fn real_main() -> Result<()> {
     env_logger::init();
     let configuration = read_configuration(std::env::args().collect())?;
     if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-        let package_toml = configuration.package_toml.clone();
-        let readme_md = configuration.readme.clone();
-        let package_folder = configuration.package_folder.clone();
-
         let app_state = AppState {
             repository: Arc::new(Mutex::new(repository)),
-            package_folder,
-            package_toml,
-            readme: readme_md,
+            package_folder: configuration.package_folder,
+            package_toml_folder: configuration.package_toml_folder,
+            readme_folder: configuration.readme_folder,
         };
+
         HttpServer::new(move || {
             let app_data = Data::new(app_state.clone());
             App::new()
@@ -38,7 +35,6 @@ async fn real_main() -> Result<()> {
                 .service(version)
                 .service(
                     scope("/api/v1")
-                        
                         .service(add_package)
                         .service(download_package),
                 )

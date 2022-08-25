@@ -12,8 +12,8 @@ use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
     test::{generate_random_string, get_free_port},
 };
-use futures::{lock::Mutex, future::join};
 use futures::TryFutureExt;
+use futures::{future::join, lock::Mutex};
 use lazy_static::lazy_static;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -34,8 +34,8 @@ lazy_static! {
             email: "some@email.com".to_string(),
         },
         package_folder: "/tmp/test-packages".to_string(),
-        package_toml: ".devcontainer/deputy-server-repository-combo/package.toml".to_string(),
-        readme: "/README.md".to_string(),
+        package_toml_folder: "/tmp/test-package-tomls".to_string(),
+        readme_folder: "/tmp/readmes".to_string(),
     };
 }
 
@@ -80,14 +80,14 @@ impl TestPackageServer {
     async fn initialize(&self, tx: Sender<()>) -> Result<()> {
         let configuration = self.configuration.clone();
         let package_folder = configuration.package_folder;
-        let package_toml = configuration.package_toml;
-        let readme = configuration.readme;
+        let package_toml_folder = configuration.package_toml_folder;
+        let readme_folder = configuration.readme_folder;
         if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
                 package_folder,
-                package_toml,
-                readme,
+                package_toml_folder,
+                readme_folder,
             };
             try_join!(
                 HttpServer::new(move || {
@@ -183,7 +183,7 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     Ok(Data::new(AppState {
         repository: Arc::new(Mutex::new(repository)),
         package_folder: package_folder.to_str().unwrap().to_string(),
-        package_toml: package_toml_folder.to_str().unwrap().to_string(),
-        readme: readme_folder.to_str().unwrap().to_string(),
+        package_toml_folder: package_toml_folder.to_str().unwrap().to_string(),
+        readme_folder: readme_folder.to_str().unwrap().to_string(),
     }))
 }

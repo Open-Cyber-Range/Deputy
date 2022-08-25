@@ -19,8 +19,8 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
-use tokio::fs::rename;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
+use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,
@@ -105,6 +105,7 @@ impl Executor {
                 "Creating package".to_string(),
             )))
             .await??;
+
         let package = Package::from_file(package_toml, options.compression)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -117,10 +118,12 @@ impl Executor {
                 "Uploading".to_string(),
             )))
             .await??;
+
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            client
-                .upload_small_package(package.try_into()?, options.timeout)
-                .await?;
+            let mehe: Vec<u8> = package.try_into()?;
+            println!("meeh: {:?}", mehe.len());
+
+            client.upload_small_package(mehe, options.timeout).await?;
         } else {
             client
                 .stream_large_package(package.try_into()?, options.timeout)
@@ -236,4 +239,3 @@ impl Executor {
         Ok(())
     }
 }
-

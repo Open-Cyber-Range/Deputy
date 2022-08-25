@@ -17,6 +17,7 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
+        println!("{:?}", self.metadata.clone());
         self.metadata.validate()?;
         self.validate_checksum()?;
         Ok(())
@@ -80,8 +81,8 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::{TEST_VALID_PACKAGE_TOML_SCHEMA, TEST_INVALID_PACKAGE_TOML_SCHEMA};
-    use crate::project::enums::{OperatingSystem, Architecture};
+    use crate::project::enums::{Architecture, OperatingSystem};
+    use crate::test::{TEST_INVALID_PACKAGE_TOML_SCHEMA, TEST_VALID_PACKAGE_TOML_SCHEMA};
     use anyhow::Ok;
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};
@@ -148,7 +149,7 @@ mod tests {
             create_temp_file(TEST_INVALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
         if let Some(virtual_machine) = &deserialized_toml.virtual_machine {
             assert!(virtual_machine.architecture.is_none());
-        }   
+        }
         file.close()?;
         Ok(())
     }
@@ -160,8 +161,8 @@ mod tests {
         if let Some(virtual_machine) = deserialized_toml.virtual_machine {
             if let Some(operating_system) = virtual_machine.operating_system {
                 assert_eq!(operating_system, OperatingSystem::Unknown);
+            }
         }
-    }
         file.close()?;
         Ok(())
     }
@@ -173,11 +174,11 @@ mod tests {
         if let Some(virtual_machine) = deserialized_toml.virtual_machine {
             if let Some(operating_system) = virtual_machine.operating_system {
                 assert_eq!(operating_system, OperatingSystem::Debian);
-        }
+            }
             if let Some(architecture) = virtual_machine.architecture {
                 assert_eq!(architecture, Architecture::arm64);
+            }
         }
-    }
         file.close()?;
         Ok(())
     }

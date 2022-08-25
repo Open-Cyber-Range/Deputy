@@ -8,9 +8,9 @@ pub struct Configuration {
     pub host: String,
     pub port: u16,
     pub repository: RepositoryConfiguration,
-    pub package_toml: String,
-    pub readme: String,
     pub package_folder: String,
+    pub package_toml_folder: String,
+    pub readme_folder: String,
 }
 
 pub fn read_configuration(arguments: Vec<String>) -> Result<Configuration> {
@@ -45,8 +45,8 @@ repository:
   folder: /tmp/test-repo
   username: some-username
   email: some@email.com
-package_toml_folder: .devcontainer/deputy-server-repository-combo/package.toml
-readme_folder: /README.md
+package_toml_folder: /tmp/package-tomls
+readme_folder: /tmp/readmes
 package_folder: /tmp/packages
     "#
         )?;

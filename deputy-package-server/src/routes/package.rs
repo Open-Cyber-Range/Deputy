@@ -51,6 +51,7 @@ pub async fn add_package(
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let package_vector = package_bytes.to_vec();
+    println!("length server side {}", package_vector.len());
 
     let mut package = Package::try_from(&package_vector as &[u8]).map_err(|error| {
         error!("Failed to validate the package: {error}");
@@ -58,8 +59,8 @@ pub async fn add_package(
     })?;
     let folder = &app_state.package_folder;
     let repository = &app_state.repository.lock().await;
-    let package_toml = &app_state.package_toml;
-    let readme = &app_state.readme;
+    let package_toml = &app_state.package_toml_folder;
+    let readme = &app_state.readme_folder;
 
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
@@ -102,7 +103,6 @@ pub async fn add_package(
 //         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
 //     };
 
-
 //     let folder = &app_state.package_folder;
 //     let repository = &app_state.repository.lock().await;
 
@@ -115,7 +115,6 @@ pub async fn add_package(
 //         error!("Failed to save the file: {error}");
 //         ServerResponseError(PackageServerError::FileSave.into())
 //     })?;
-
 
 //     let mut package = Package::new(metadata, package_file, readme, package_file);
 //     package.validate().map_err(|error| {

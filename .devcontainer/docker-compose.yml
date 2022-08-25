@@ -7,13 +7,12 @@ services:
     command: /bin/sh -c "while sleep 1000; do :; done"
     volumes:
       - ..:/workspace:cached
-      - /home/mhs/OCR/local/deputy/fetchTest:/tmp/package
     user: vscode
 
   deputy-package-server:
     image: nexus.ex.c-lab.ee:8003/deputy-package-server:latest
     volumes:
-      - ./deputy-package-tomls:/var/opt/deputy/deputy-package-server/tomls
+      - ./deputy-package-toml:/var/opt/deputy/deputy-package-server/toml
       - ./deputy-package-readme:/var/opt/deputy/deputy-package-server/readme
       - ./deputy-packages:/var/opt/deputy/deputy-package-server/package
       - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository

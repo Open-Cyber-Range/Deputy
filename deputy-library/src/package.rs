@@ -59,8 +59,8 @@ pub struct PackageFile(pub File, pub Option<TempPath>);
 
 impl PackageFile {
     fn save(&mut self, package_folder: String, name: String, version: String) -> Result<()> {
-        let package_folder_path: PathBuf = [package_folder, name.clone()].iter().collect();
-        fs::create_dir_all(package_folder_path.clone())?;
+        let package_folder_path: PathBuf = [&package_folder, &name].iter().collect();
+        fs::create_dir_all(&package_folder_path)?;
         let final_file_path: PathBuf = package_folder_path.join(version);
         let original_path: PathBuf = self
             .1
@@ -158,6 +158,7 @@ impl Package {
 
     pub fn validate_checksum(&mut self) -> Result<()> {
         let calculated = self.file.calculate_checksum()?;
+
         if calculated != self.metadata.checksum {
             return Err(anyhow!(
                 "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
@@ -180,9 +181,11 @@ impl Package {
     }
 
     pub fn from_file(package_toml_path: PathBuf, compression: u32) -> Result<Self> {
+        println!("hlllladslsdallsdldsaldsa");
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path.clone(), &archive_path)?;
         let file = File::open(&archive_path)?;
+        println!("file lenght when packing: {:?}", file.metadata());
         let package_toml = File::open(package_toml_path.clone())?;
 
         let package = Package {
@@ -275,17 +278,17 @@ impl TryFrom<Package> for Vec<u8> {
     fn try_from(package: Package) -> Result<Self> {
         let mut payload: Vec<u8> = Vec::new();
         let package_file = package.file;
-
-        
         let metadata_bytes = Vec::try_from(&package.metadata)?;
         payload.extend(metadata_bytes);
         let toml_bytes = Vec::try_from(package.package_toml)?;
         payload.extend(toml_bytes);
-        let mut readme_bytes = Vec::new();
         if let Some(readme) = package.readme {
-            readme_bytes = Vec::try_from(readme)?
+            let mut readme_bytes = Vec::new();
+            readme_bytes = Vec::try_from(readme)?;
+            payload.extend(readme_bytes);
+        } else {
+            payload.extend(0_u32.to_le_bytes());
         }
-        payload.extend(readme_bytes);
         let file_bytes = Vec::try_from(package_file)?;
         payload.extend(file_bytes);
 
@@ -335,32 +338,16 @@ impl TryFrom<&[u8]> for Package {
             .ok_or_else(|| anyhow::anyhow!("Could not find metadata"))?;
         let metadata = PackageMetadata::try_from(metadata_bytes)?;
 
-        let mut file_length_bytes: [u8; 4] = Default::default();
-        file_length_bytes.copy_from_slice(
-            package_bytes
-                .get(metadata_end..metadata_end + 4)
-                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
-        );
-        let file_length = u32::from_le_bytes(file_length_bytes);
-        info!("file_length: {}", file_length);
-
-        let file_start = metadata_end + 4;
-        let file_end = file_start + (file_length) as usize;
-        let file_bytes = package_bytes
-            .get(file_start..file_end)
-            .ok_or_else(|| anyhow::anyhow!("Could not find file"))?;
-        let file = PackageFile::try_from(file_bytes)?;
-
         let mut package_toml_length_bytes: [u8; 4] = Default::default();
         package_toml_length_bytes.copy_from_slice(
             package_bytes
-                .get(file_end..file_end + 4)
+                .get(metadata_end..metadata_end + 4)
                 .ok_or_else(|| anyhow::anyhow!("Could not find package toml length"))?,
         );
         let package_toml_length = u32::from_le_bytes(package_toml_length_bytes);
         info!("package_toml_length: {}", package_toml_length);
 
-        let package_toml_start = file_end + 4;
+        let package_toml_start = metadata_end + 4;
         let package_toml_end = package_toml_start + (package_toml_length) as usize;
         let package_toml_bytes = package_bytes
             .get(package_toml_start..package_toml_end)
@@ -382,6 +369,22 @@ impl TryFrom<&[u8]> for Package {
             .get(readme_start..readme_end)
             .ok_or_else(|| anyhow::anyhow!("Could not find readme"))?;
         let readme = PackageFile::try_from(readme_bytes)?;
+
+        let mut file_length_bytes: [u8; 4] = Default::default();
+        file_length_bytes.copy_from_slice(
+            package_bytes
+                .get(readme_end..readme_end + 4)
+                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
+        );
+        let file_length = u32::from_le_bytes(file_length_bytes);
+        info!("file_length: {}", file_length);
+
+        let file_start = readme_end + 4;
+        let file_end = file_start + (file_length) as usize;
+        let file_bytes = package_bytes
+            .get(file_start..file_end)
+            .ok_or_else(|| anyhow::anyhow!("Could not find file"))?;
+        let file = PackageFile::try_from(file_bytes)?;
 
         Ok(Package {
             metadata,

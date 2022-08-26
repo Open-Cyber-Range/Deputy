@@ -1,5 +1,6 @@
-use crate::constants::{CONFIGURATION_FILE_RELATIVE_PATH, CONFIGURATION_FOLDER_PATH_ENV_KEY};
+use crate::constants::{CONFIGURATION_FILE_RELATIVE_PATH};
 use anyhow::Result;
+use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs::read_to_string, path::PathBuf};
 

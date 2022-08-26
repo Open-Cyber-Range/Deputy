@@ -1,10 +1,14 @@
-use crate::constants::{INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE};
+use crate::constants::{
+    CONFIGURATION_FOLDER_PATH_ENV_KEY, INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE, LOCKFILE,
+};
+use crate::lockfile::Standoff;
 use crate::package::PackageMetadata;
 use anyhow::{Error, Ok, Result};
 use git2::{
     build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
     Repository, RepositoryInitOptions,
 };
+use lockfile::Lockfile;
 use log::{debug, info};
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
@@ -304,11 +308,17 @@ pub fn get_or_create_repository(
 }
 
 pub fn get_or_clone_repository(url: &str, target_path: PathBuf) -> Result<Repository> {
+    let deputy_config_folder = &std::env::var(CONFIGURATION_FOLDER_PATH_ENV_KEY)?;
+    let lockfile_path = PathBuf::from(deputy_config_folder).join(LOCKFILE);
+    let lockfile = Lockfile::new(lockfile_path)?;
+
     if let Result::Ok(repository) = Repository::open(target_path.clone()) {
         return Ok(repository);
     }
     debug!("Cloning the repository from {url} at: {:?}", target_path);
-    Ok(Repository::clone(url, target_path)?)
+    let repository = Repository::clone(url, target_path)?;
+    lockfile.release()?;
+    Ok(repository)
 }
 
 pub fn pull_from_remote(repository: &Repository) -> Result<()> {

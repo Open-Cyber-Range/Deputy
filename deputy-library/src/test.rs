@@ -213,14 +213,15 @@ pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)>
 pub fn create_test_package() -> Result<Package> {
     let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
     let (package_toml, toml_path) = create_readable_temporary_file("some toml \n")?;
+    let (readme_file, readme_path) = create_readable_temporary_file("some readme \n")?;
     let file = PackageFile(temporary_file, Some(path));
     let package_toml = PackageFile(package_toml, Some(toml_path));
-
+    let readme = PackageFile(readme_file, Some(readme_path));
     Ok(Package {
         metadata: TEST_PACKAGE_METADATA.clone(),
         file,
         package_toml,
-        readme: None,
+        readme: Some(readme),
     })
 }
 

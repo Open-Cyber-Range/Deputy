@@ -22,9 +22,7 @@ async fn real_main() -> Result<()> {
     if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
         let app_state = AppState {
             repository: Arc::new(Mutex::new(repository)),
-            package_folder: configuration.package_folder,
-            package_toml_folder: configuration.package_toml_folder,
-            readme_folder: configuration.readme_folder,
+            storage_folders: configuration.storage_folders,
         };
 
         HttpServer::new(move || {

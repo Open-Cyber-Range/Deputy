@@ -10,7 +10,7 @@ use actix_web::{
 use anyhow::{anyhow, Error, Result};
 use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
-    test::{generate_random_string, get_free_port},
+    test::{generate_random_string, get_free_port}, StorageFolders,
 };
 use futures::TryFutureExt;
 use futures::{future::join, lock::Mutex};
@@ -33,9 +33,11 @@ lazy_static! {
             username: "some-username".to_string(),
             email: "some@email.com".to_string(),
         },
-        package_folder: "/tmp/test-packages".to_string(),
-        package_toml_folder: "/tmp/test-package-tomls".to_string(),
-        readme_folder: "/tmp/readmes".to_string(),
+        storage_folders: StorageFolders {
+            package_folder: "/tmp/packages".to_string(),
+            toml_folder: "/tmp/package-tomls".to_string(),
+            readme_folder: "/tmp/readmes".to_string(),
+        },
     };
 }
 
@@ -68,9 +70,9 @@ impl TestPackageServer {
             configuration.repository.folder,
             generate_random_string(10)?
         );
-        configuration.package_folder = format!(
+        configuration.storage_folders.package_folder = format!(
             "{}-{}",
-            configuration.package_folder,
+            configuration.storage_folders.package_folder,
             generate_random_string(10)?
         );
         let server_address = format!("http://{}:{}", configuration.host, configuration.port);
@@ -79,15 +81,17 @@ impl TestPackageServer {
 
     async fn initialize(&self, tx: Sender<()>) -> Result<()> {
         let configuration = self.configuration.clone();
-        let package_folder = configuration.package_folder;
-        let package_toml_folder = configuration.package_toml_folder;
-        let readme_folder = configuration.readme_folder;
+        let package_folder = configuration.storage_folders.package_folder;
+        let toml_folder = configuration.storage_folders.toml_folder;
+        let readme_folder = configuration.storage_folders.readme_folder;
         if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
-                package_folder,
-                package_toml_folder,
-                readme_folder,
+                storage_folders: StorageFolders {
+                    package_folder,
+                    toml_folder,
+                    readme_folder,
+                },
             };
             try_join!(
                 HttpServer::new(move || {
@@ -129,8 +133,8 @@ impl TestPackageServer {
 
 impl Drop for TestPackageServer {
     fn drop(&mut self) {
-        if Path::new(&self.configuration.package_folder).is_dir() {
-            fs::remove_dir_all(&self.configuration.package_folder).unwrap();
+        if Path::new(&self.configuration.storage_folders.package_folder).is_dir() {
+            fs::remove_dir_all(&self.configuration.storage_folders.package_folder).unwrap();
         }
         if Path::new(&self.configuration.repository.folder).is_dir() {
             fs::remove_dir_all(&self.configuration.repository.folder).unwrap();
@@ -166,12 +170,12 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     let repository_folder: PathBuf =
         temporary_directory.join(format!("test-repository-folder-{}", randomizer));
     std::fs::create_dir_all(&repository_folder)?;
-    let package_toml_folder: PathBuf =
-        temporary_directory.join(format!("test-package-toml-folder-{}", randomizer));
-    std::fs::create_dir_all(&package_toml_folder)?;
+    let toml_folder: PathBuf =
+        temporary_directory.join(format!("test-toml-folder-{}", randomizer));
+    std::fs::create_dir_all(&toml_folder)?;
     let readme_folder: PathBuf =
         temporary_directory.join(format!("test-readme-folder-{}", randomizer));
-    std::fs::create_dir_all(&package_toml_folder)?;
+    std::fs::create_dir_all(&readme_folder)?;
 
     let repository_configuration = RepositoryConfiguration {
         username: String::from("test-username"),
@@ -182,8 +186,10 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
 
     Ok(Data::new(AppState {
         repository: Arc::new(Mutex::new(repository)),
-        package_folder: package_folder.to_str().unwrap().to_string(),
-        package_toml_folder: package_toml_folder.to_str().unwrap().to_string(),
-        readme_folder: readme_folder.to_str().unwrap().to_string(),
+        storage_folders: StorageFolders {
+            package_folder: package_folder.to_str().unwrap().to_string(),
+            toml_folder: toml_folder.to_str().unwrap().to_string(),
+            readme_folder: readme_folder.to_str().unwrap().to_string(),
+        },
     }))
 }

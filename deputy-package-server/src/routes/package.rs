@@ -57,10 +57,8 @@ pub async fn add_package(
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageParse.into())
     })?;
-    let folder = &app_state.package_folder;
+    let storage_folders = &app_state.storage_folders;
     let repository = &app_state.repository.lock().await;
-    let package_toml = &app_state.package_toml_folder;
-    let readme = &app_state.readme_folder;
 
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
@@ -68,84 +66,89 @@ pub async fn add_package(
     })?;
     check_for_version_error(&package.metadata, repository)?;
 
-    package
-        .save(
-            folder.to_string(),
-            repository,
-            package_toml.to_string(),
-            readme.to_string(),
-        )
-        .map_err(|error| {
-            error!("Failed to save the package: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
+    package.save(storage_folders, repository).map_err(|error| {
+        error!("Failed to save the package: {error}");
+        ServerResponseError(PackageServerError::PackageSave.into())
+    })?;
     Ok(HttpResponse::Ok().finish())
 }
 
-// #[put("/package/stream")]
-// pub async fn add_package_streaming(
-//     mut body: Payload,
-//     app_state: Data<AppState>,
-// ) -> Result<HttpResponse, Error> {
-//     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
-//         let metadata_vector = metadata_bytes.to_vec();
-//         let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
-//             error!("Failed to parse package metadata: {error}");
-//             ServerResponseError(PackageServerError::MetadataParse.into())
-//         });
-//         if let Err(error) = result {
-//             drain_stream(body).await?;
-//             return Err(error.into());
-//         }
-//         result?
-//     } else {
-//         error!("Invalid stream chunk: No metadata");
-//         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
-//     };
+#[put("/package/stream")]
+pub async fn add_package_streaming(
+    mut body: Payload,
+    app_state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
+        let metadata_vector = metadata_bytes.to_vec();
+        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        result?
+    } else {
+        error!("Invalid stream chunk: No metadata");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+    };
 
-//     let folder = &app_state.package_folder;
-//     let repository = &app_state.repository.lock().await;
+    let repository = &app_state.repository.lock().await;
+    if let Err(error) = check_for_version_error(&metadata, repository) {
+        drain_stream(body).await?;
+        return Err(error);
+    }
 
-//     if let Err(error) = check_for_version_error(&metadata, repository) {
-//         drain_stream(body).await?;
-//         return Err(error);
-//     }
+    let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
+        let toml_bytes_vector = toml_bytes.to_vec();
+        let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
 
-//     let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
-//         error!("Failed to save the file: {error}");
-//         ServerResponseError(PackageServerError::FileSave.into())
-//     })?;
+        println!("toml length {}", toml_bytes_vector.len());
 
-//     let mut package = Package::new(metadata, package_file, readme, package_file);
-//     package.validate().map_err(|error| {
-//         error!("Failed to validate the package: {error}");
-//         ServerResponseError(PackageServerError::PackageValidation.into())
-//     })?;
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        result?
+    } else {
+        error!("Invalid stream chunk: No metadata");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+    };
 
-//     let package_toml = &app_state.package_toml;
-//     let readme = &app_state.readme;
+    let package_file: PackageFile =
+        PackageFile::from_stream(body, true)
+            .await
+            .map_err(|error| {
+                error!("Failed to save the file: {error}");
+                ServerResponseError(PackageServerError::FileSave.into())
+            })?;
 
-//     package
-//         .save(
-//             folder.to_string(),
-//             repository,
-//             package_toml.to_string(),
-//             readme.to_string(),
-//         )
-//         .map_err(|error| {
-//             error!("Failed to save the package: {error}");
-//             ServerResponseError(PackageServerError::PackageSave.into())
-//         })?;
 
-//     Ok(HttpResponse::Ok().body("OK"))
-// }
+    let mut package = Package::new(metadata, toml_file, None, package_file);
+    package.validate().map_err(|error| {
+        error!("Failed to validate the package: {error}");
+        ServerResponseError(PackageServerError::PackageValidation.into())
+    })?;
+
+    let folder = &app_state.storage_folders;
+    package.save(folder, repository).map_err(|error| {
+        error!("Failed to save the package: {error}");
+        ServerResponseError(PackageServerError::PackageSave.into())
+    })?;
+
+    Ok(HttpResponse::Ok().body("OK"))
+}
 
 #[get("package/{package_name}/{package_version}/download")]
 pub async fn download_package(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
 ) -> impl Responder {
-    let package_folder = &app_state.package_folder;
+    let package_folder = &app_state.storage_folders.package_folder;
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
 

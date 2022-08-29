@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use deputy_library::repository::RepositoryConfiguration;
+use deputy_library::{repository::RepositoryConfiguration, StorageFolders};
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 
@@ -8,9 +8,7 @@ pub struct Configuration {
     pub host: String,
     pub port: u16,
     pub repository: RepositoryConfiguration,
-    pub package_folder: String,
-    pub package_toml_folder: String,
-    pub readme_folder: String,
+    pub storage_folders: StorageFolders,
 }
 
 pub fn read_configuration(arguments: Vec<String>) -> Result<Configuration> {
@@ -45,9 +43,10 @@ repository:
   folder: /tmp/test-repo
   username: some-username
   email: some@email.com
-package_toml_folder: /tmp/package-tomls
-readme_folder: /tmp/readmes
-package_folder: /tmp/packages
+storage_folders:
+  toml_folder: /tmp/tomls
+  readme_folder: /tmp/readmes
+  package_folder: /tmp/packages
     "#
         )?;
         let arguments = vec![String::from("program-name"), path_string];

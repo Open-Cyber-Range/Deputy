@@ -34,7 +34,7 @@ mod tests {
         let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
-            &test_backend.configuration.package_folder,
+            &test_backend.configuration.storage_folders.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
@@ -71,7 +71,7 @@ mod tests {
         let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
-            &test_backend.configuration.package_folder,
+            &test_backend.configuration.storage_folders.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
@@ -196,7 +196,7 @@ mod tests {
         let temp_package = Package::from_file(toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
-            &test_backend.configuration.package_folder,
+            &test_backend.configuration.storage_folders.package_folder,
             &temp_package.metadata.name,
             &temp_package.metadata.version,
         ]
@@ -211,7 +211,7 @@ mod tests {
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
-
+        
         Ok(())
     }
 }

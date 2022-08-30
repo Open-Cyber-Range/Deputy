@@ -2,7 +2,7 @@ pub(crate) mod enums;
 
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{Ok, Result};
-use serde::{Deserialize, Serialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{fs::File, io::Read, path::PathBuf};
 
 use self::enums::VirtualMachineType;
@@ -16,14 +16,14 @@ pub struct Project {
 }
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
-    #[serde(default)]   
+    #[serde(default)]
     pub operating_system: Option<OperatingSystem>,
-    #[serde(default)]   
+    #[serde(default)]
     pub architecture: Option<Architecture>,
     #[serde(rename = "type")]
     pub virtual_machine_type: VirtualMachineType,
     file_path: String,
-
+    pub readme_path: Option<String>,
 }
 pub fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(&toml_path)?;
@@ -40,8 +40,7 @@ enum Values<T> {
 }
 
 impl<T> From<Option<T>> for Values<T> {
-    fn from(opt: Option<T>) -> Values<T>
-    {
+    fn from(opt: Option<T>) -> Values<T> {
         match opt {
             Some(v) => Values::Value(v),
             None => Values::Null,

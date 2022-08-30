@@ -4,6 +4,7 @@ repository:
   folder: /tmp/test-repo
   username: some-username
   email: some@email.com
-package_folder: /tmp/packages
-package_toml_folder: /tmp/tomls
-readme_folder: /tmp/readme
+storage_folders:
+  package_folder: /tmp/packages
+  package_toml_folder: /tmp/tomls
+  readme_folder: /tmp/readme

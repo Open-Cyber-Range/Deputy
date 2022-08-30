@@ -10,10 +10,11 @@ use actix_web::{
 use anyhow::{anyhow, Error, Result};
 use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
-    test::{generate_random_string, get_free_port}, StorageFolders,
+    test::{generate_random_string, get_free_port},
+    StorageFolders,
 };
+use futures::lock::Mutex;
 use futures::TryFutureExt;
-use futures::{future::join, lock::Mutex};
 use lazy_static::lazy_static;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -170,8 +171,7 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     let repository_folder: PathBuf =
         temporary_directory.join(format!("test-repository-folder-{}", randomizer));
     std::fs::create_dir_all(&repository_folder)?;
-    let toml_folder: PathBuf =
-        temporary_directory.join(format!("test-toml-folder-{}", randomizer));
+    let toml_folder: PathBuf = temporary_directory.join(format!("test-toml-folder-{}", randomizer));
     std::fs::create_dir_all(&toml_folder)?;
     let readme_folder: PathBuf =
         temporary_directory.join(format!("test-readme-folder-{}", randomizer));

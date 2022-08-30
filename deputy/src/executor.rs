@@ -99,14 +99,23 @@ impl Executor {
                 "Finding toml".to_string(),
             )))
             .await??;
-        let package_toml = find_toml(current_dir()?)?;
+        let toml_path = find_toml(current_dir()?)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
             )))
             .await??;
 
-        let package = Package::from_file(package_toml, options.compression)?;
+        //TODO, handle unwraps, maybe find a better place for this alltogether
+        let readme_path = PathBuf::from(
+            create_project_from_toml_path(toml_path.clone())?
+                .virtual_machine
+                .unwrap()
+                .readme_path
+                .unwrap(),
+        );
+
+        let package = Package::from_file(readme_path, toml_path, options.compression)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),
@@ -120,10 +129,9 @@ impl Executor {
             .await??;
 
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            let mehe: Vec<u8> = package.try_into()?;
-            println!("meeh: {:?}", mehe.len());
-
-            client.upload_small_package(mehe, options.timeout).await?;
+            client
+                .upload_small_package(package.try_into()?, options.timeout)
+                .await?;
         } else {
             client
                 .stream_large_package(package.try_into()?, options.timeout)

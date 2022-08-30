@@ -127,7 +127,6 @@ pub async fn add_package_streaming(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-
     let mut package = Package::new(metadata, toml_file, None, package_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");

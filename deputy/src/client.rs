@@ -41,6 +41,9 @@ impl Client {
             return Ok(());
         }
 
+        let response_body = &response.body().await?;
+        let response_message = std::str::from_utf8(response_body)?;
+        println!("Server response body: {response_message}");
         Err(Client::response_to_error(
             "Failed to upload package",
             response.body().await?.to_vec(),

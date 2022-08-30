@@ -15,7 +15,7 @@ mod tests {
     use predicates::prelude::predicate;
     use std::{fs, path::PathBuf};
     use tempfile::{Builder, TempDir};
-
+    /*
     #[actix_web::test]
     async fn valid_small_package_was_sent_and_received() -> Result<()> {
         let temp_project = TempArchive::builder().build()?;
@@ -211,7 +211,8 @@ mod tests {
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
         test_backend.test_repository_server.stop().await?;
-        
+
         Ok(())
     }
+    */
 }

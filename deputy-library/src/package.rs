@@ -10,7 +10,7 @@ use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use futures::{Stream, StreamExt};
 use git2::Repository;
-use log::{error, info};
+use log::info;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -188,21 +188,23 @@ impl Package {
         Ok(metadata)
     }
 
-    pub fn from_file(package_toml_path: PathBuf, compression: u32) -> Result<Self> {
-        println!("hlllladslsdallsdldsaldsa");
+    pub fn from_file(
+        readme_path: PathBuf,
+        package_toml_path: PathBuf,
+        compression: u32,
+    ) -> Result<Self> {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path.clone(), &archive_path)?;
         let file = File::open(&archive_path)?;
         println!("file lenght when packing: {:?}", file.metadata());
-        let package_toml = File::open(package_toml_path.clone())?;
-        let readme = File::open(package_toml_path.clone())?;
+        let package_toml = File::open(package_toml_path)?;
+        let readme = File::open(readme_path)?;
         let package = Package {
             metadata,
             file: PackageFile(file, None),
             package_toml: PackageFile(package_toml, None),
             readme: Some(PackageFile(readme, None)),
         };
-        error!("package_toml path {:?}", package_toml_path);
         Ok(package)
     }
 
@@ -300,7 +302,6 @@ impl TryFrom<Package> for Vec<u8> {
         Ok(payload)
     }
 }
-
 pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
 
 impl TryFrom<Package> for PackageStream {
@@ -317,10 +318,16 @@ impl TryFrom<Package> for PackageStream {
 
         let packet_file = TokioFile::from(package.file.0);
         let toml_file = TokioFile::from(package.package_toml.0);
-        // let readme_file = match package.readme {
-        //     Some(readme) => Some(TokioFile::from(readme.0)),
-        //     None => None,
-        // };
+
+        let readme_option = match package.readme {
+            Some(readme) => Some(TokioFile::from(readme.0)),
+            None => None,
+        };
+
+        let toml_stream = FramedRead::new(toml_file, BytesCodec::new()).map(|bytes| match bytes {
+            Ok(bytes) => Ok(bytes.freeze()),
+            Err(err) => Err(PayloadError::Io(err)),
+        });
 
         let file_stream =
             FramedRead::new(packet_file, BytesCodec::new()).map(|bytes| match bytes {
@@ -328,17 +335,22 @@ impl TryFrom<Package> for PackageStream {
                 Err(err) => Err(PayloadError::Io(err)),
             });
 
-        let toml_stream = FramedRead::new(toml_file, BytesCodec::new()).map(|bytes| match bytes {
-            Ok(bytes) => Ok(bytes.freeze()),
-            Err(err) => Err(PayloadError::Io(err)),
-        });
+        if let Some(readme_file) = readme_option {
+            let readme_stream =
+                FramedRead::new(readme_file, BytesCodec::new()).map(|bytes| match bytes {
+                    Ok(bytes) => Ok(bytes.freeze()),
+                    Err(err) => Err(PayloadError::Io(err)),
+                });
+            let stream = stream
+                .chain(toml_stream)
+                .chain(readme_stream)
+                .chain(file_stream);
 
-        // let file_stream = FramedRead::new(readme_file, BytesCodec::new()).map(|bytes| match bytes {
-        //     Ok(bytes) => Ok(bytes.freeze()),
-        //     Err(err) => Err(PayloadError::Io(err)),
-        // });
-        let stream = stream.chain(toml_stream).chain(file_stream);
-        Ok(stream.boxed_local())
+            return Ok(stream.boxed_local());
+        } else {
+            let stream = stream.chain(toml_stream).chain(file_stream);
+            return Ok(stream.boxed_local());
+        }
     }
 }
 

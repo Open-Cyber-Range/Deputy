@@ -106,16 +106,13 @@ impl Executor {
             )))
             .await??;
 
-        //TODO, handle unwraps, maybe find a better place for this alltogether
-        let readme_path = PathBuf::from(
-            create_project_from_toml_path(toml_path.clone())?
-                .virtual_machine
-                .unwrap()
-                .readme_path
-                .unwrap(),
-        );
+        let project = create_project_from_toml_path(toml_path.clone())?;
+        let maybe_readme_path: Option<PathBuf> = match project.virtual_machine {
+            Some(vm) => vm.readme_path.map(PathBuf::from),
+            None => None,
+        };
 
-        let package = Package::from_file(readme_path, toml_path, options.compression)?;
+        let package = Package::from_file(maybe_readme_path, toml_path, options.compression)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),

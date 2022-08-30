@@ -75,7 +75,7 @@ pub async fn add_package(
 
 #[put("/package/stream")]
 pub async fn add_package_streaming(
-    mut body: Payload,
+    mut body: Payload, // METADATA, PACKAGE TOML, README, PACKAGE
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
@@ -103,7 +103,7 @@ pub async fn add_package_streaming(
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
         let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
+            error!("Failed to parse package toml: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
 
@@ -119,6 +119,21 @@ pub async fn add_package_streaming(
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
 
+    let maybe_readme = if let Some(Ok(readme_bytes)) = body.next().await {
+        let readme_vector = readme_bytes.to_vec();
+        let result = PackageFile::try_from(readme_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package readme: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        Some(result?)
+    } else {
+        None
+    };
+
     let package_file: PackageFile =
         PackageFile::from_stream(body, true)
             .await
@@ -127,17 +142,20 @@ pub async fn add_package_streaming(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let mut package = Package::new(metadata, toml_file, None, package_file);
+    let mut package = Package::new(metadata, toml_file, maybe_readme, package_file);
+
+    println!("received package: {:#?}", package);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
 
-    let folder = &app_state.storage_folders;
-    package.save(folder, repository).map_err(|error| {
-        error!("Failed to save the package: {error}");
-        ServerResponseError(PackageServerError::PackageSave.into())
-    })?;
+    package
+        .save(&app_state.storage_folders, repository)
+        .map_err(|error| {
+            error!("Failed to save the package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
 
     Ok(HttpResponse::Ok().body("OK"))
 }

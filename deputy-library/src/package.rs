@@ -89,7 +89,6 @@ impl PackageFile {
         match is_end {
             true => {
                 while let Some(chunk) = stream.next().await {
-                    // println!("Chunk: {}", chunk?.len());
                     file.write_all(&chunk?)?;
                     file.flush()?;
                 }
@@ -100,11 +99,6 @@ impl PackageFile {
                 }
             }
         }
-        // while let Some(chunk) = stream.next().await {
-        //     println!("Chunk: {}", chunk?.len());
-        //     // file.write_all(&chunk?)?;
-        //     file.flush()?;
-        // }
 
         let new_handler = file.reopen()?;
         let temporary_path = file.into_temp_path();
@@ -189,7 +183,7 @@ impl Package {
     }
 
     pub fn from_file(
-        readme_path: PathBuf,
+        maybe_readme_path: Option<PathBuf>,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {
@@ -198,14 +192,22 @@ impl Package {
         let file = File::open(&archive_path)?;
         println!("file lenght when packing: {:?}", file.metadata());
         let package_toml = File::open(package_toml_path)?;
-        let readme = File::open(readme_path)?;
-        let package = Package {
-            metadata,
-            file: PackageFile(file, None),
-            package_toml: PackageFile(package_toml, None),
-            readme: Some(PackageFile(readme, None)),
-        };
-        Ok(package)
+        if let Some(readme_path) = maybe_readme_path {
+            let readme = File::open(readme_path)?;
+            Ok(Package {
+                metadata,
+                file: PackageFile(file, None),
+                package_toml: PackageFile(package_toml, None),
+                readme: Some(PackageFile(readme, None)),
+            })
+        } else {
+            Ok(Package {
+                metadata,
+                file: PackageFile(file, None),
+                package_toml: PackageFile(package_toml, None),
+                readme: None,
+            })
+        }
     }
 
     pub fn get_size(&self) -> Result<u64> {
@@ -318,7 +320,6 @@ impl TryFrom<Package> for PackageStream {
 
         let packet_file = TokioFile::from(package.file.0);
         let toml_file = TokioFile::from(package.package_toml.0);
-
         let readme_option = match package.readme {
             Some(readme) => Some(TokioFile::from(readme.0)),
             None => None,

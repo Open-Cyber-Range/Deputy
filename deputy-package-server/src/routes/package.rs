@@ -1,5 +1,6 @@
 use crate::{
     errors::{PackageServerError, ServerResponseError},
+    helpers::CeilingDiv,
     AppState,
 };
 use actix_files::NamedFile;
@@ -11,7 +12,8 @@ use actix_web::{
 };
 use anyhow::Result;
 use deputy_library::{
-    package::{Package, PackageFile, PackageMetadata, SizeDriver},
+    constants::PAYLOAD_CHUNK_SIZE,
+    package::{Package, PackageFile, PackageMetadata, StreamDriver},
     validation::{validate_name, validate_version, Validate},
 };
 use futures::{Stream, StreamExt};
@@ -140,23 +142,25 @@ pub async fn add_package_streaming(
         );
     };
 
-    let mut maybe_readme: Option<PackageFile> = None;
-    if readme_size > 0 {
-        maybe_readme = if let Some(Ok(readme_bytes)) = body.next().await {
-            let readme_vector = readme_bytes.to_vec();
-            let result = PackageFile::try_from(readme_vector.as_slice()).map_err(|error| {
-                error!("Failed to parse package readme: {error}");
-                ServerResponseError(PackageServerError::MetadataParse.into())
-            });
-            if let Err(error) = result {
-                drain_stream(body).await?;
-                return Err(error.into());
+    let maybe_readme: Option<PackageFile> = if readme_size > 0 {
+        let mut vector_bytes: Vec<u8> = Vec::new();
+        for _ in 0..readme_size.ceiling_div(PAYLOAD_CHUNK_SIZE) {
+            if let Some(Ok(readme_bytes)) = body.next().await {
+                vector_bytes.extend(readme_bytes.to_vec());
             }
-            Some(result?)
-        } else {
-            None
-        };
-    }
+        }
+        let result = PackageFile::try_from(vector_bytes.as_slice()).map_err(|error| {
+            error!("Failed to parse package readme: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        Some(result?)
+    } else {
+        None
+    };
     let package_size = if let Some(Ok(bytes)) = body.next().await {
         u64::from_bytes(bytes).map_err(|error| {
             error!("Failed to parse package metadata: {error}");
@@ -183,8 +187,6 @@ pub async fn add_package_streaming(
             })?;
 
     let mut package = Package::new(metadata, toml_file, maybe_readme, package_file);
-
-    println!("received package: {:#?}", package);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
@@ -196,7 +198,6 @@ pub async fn add_package_streaming(
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-
     Ok(HttpResponse::Ok().body("OK"))
 }
 

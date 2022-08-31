@@ -10,3 +10,5 @@ pub const COMPERSSION_CHUNK_SIZE: usize = 131_072;
 
 pub const INDEX_REPOSITORY_BRANCH: &str = "master";
 pub const INDEX_REPOSITORY_REMOTE: &str = "origin";
+
+pub const PAYLOAD_CHUNK_SIZE: u64 = 8192;

@@ -306,14 +306,14 @@ impl TryFrom<Package> for Vec<u8> {
 }
 pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
 
-pub trait SizeDriver
+pub trait StreamDriver
 where
     Self: Sized,
 {
     fn to_stream(&self) -> PackageStream;
     fn from_bytes(bytes: Bytes) -> Result<Self>;
 }
-impl SizeDriver for u64 {
+impl StreamDriver for u64 {
     fn to_stream(&self) -> PackageStream {
         let mut formatted_bytes = Vec::new();
         formatted_bytes.extend_from_slice(&self.to_le_bytes());
@@ -326,7 +326,7 @@ impl SizeDriver for u64 {
         length_bytes.copy_from_slice(
             bytes
                 .get(0..8)
-                .ok_or_else(|| anyhow::anyhow!("Could not find toml length"))?,
+                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
         );
         Ok(u64::from_le_bytes(length_bytes))
     }
@@ -347,12 +347,12 @@ impl Package {
         let archive_size = archive_file.metadata().await?.len();
 
         let toml_file = TokioFile::from(self.package_toml.0);
-        let toml_size = toml_file.metadata().await?.len().to_owned();
+        let toml_size = toml_file.metadata().await?.len();
 
         let (maybe_readme_file, readme_size) = match self.readme {
             Some(readme) => {
                 let readme_file = TokioFile::from(readme.0);
-                let readme_size = readme_file.metadata().await?.len().to_owned();
+                let readme_size = readme_file.metadata().await?.len();
                 (Some(readme_file), readme_size)
             }
             None => (None, 0_u64),

@@ -306,11 +306,36 @@ impl TryFrom<Package> for Vec<u8> {
 }
 pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
 
-impl TryFrom<Package> for PackageStream {
-    type Error = anyhow::Error;
+pub trait SizeDriver
+where
+    Self: Sized,
+{
+    fn to_stream(&self) -> PackageStream;
+    fn from_bytes(bytes: Bytes) -> Result<Self>;
+}
+impl SizeDriver for u64 {
+    fn to_stream(&self) -> PackageStream {
+        let mut formatted_bytes = Vec::new();
+        formatted_bytes.extend_from_slice(&self.to_le_bytes());
+        let bytes = vec![Ok(Bytes::from(formatted_bytes))];
+        Box::pin(futures::stream::iter(bytes))
+    }
 
-    fn try_from(package: Package) -> Result<Self> {
-        let mut metadata_bytes_with_lenght = Vec::try_from(&package.metadata)?;
+    fn from_bytes(bytes: Bytes) -> Result<Self> {
+        let mut length_bytes: [u8; 8] = Default::default();
+        length_bytes.copy_from_slice(
+            bytes
+                .get(0..8)
+                .ok_or_else(|| anyhow::anyhow!("Could not find toml length"))?,
+        );
+        Ok(u64::from_le_bytes(length_bytes))
+    }
+}
+
+impl Package {
+    pub async fn to_stream(self) -> Result<PackageStream> {
+        println!("package before being turned into stream: {:#?}", &self);
+        let mut metadata_bytes_with_lenght = Vec::try_from(&self.metadata)?;
         if metadata_bytes_with_lenght.len() < 4 {
             return Err(anyhow!("Metadata is too short"));
         }
@@ -318,38 +343,60 @@ impl TryFrom<Package> for PackageStream {
         let stream: PackageStream =
             Box::pin(futures::stream::iter(vec![Ok(Bytes::from(metadata_bytes))]));
 
-        let packet_file = TokioFile::from(package.file.0);
-        let toml_file = TokioFile::from(package.package_toml.0);
-        let readme_option = match package.readme {
-            Some(readme) => Some(TokioFile::from(readme.0)),
-            None => None,
+        let archive_file = TokioFile::from(self.file.0);
+        let archive_size = archive_file.metadata().await?.len();
+
+        let toml_file = TokioFile::from(self.package_toml.0);
+        let toml_size = toml_file.metadata().await?.len().to_owned();
+
+        let (maybe_readme_file, readme_size) = match self.readme {
+            Some(readme) => {
+                let readme_file = TokioFile::from(readme.0);
+                let readme_size = readme_file.metadata().await?.len().to_owned();
+                (Some(readme_file), readme_size)
+            }
+            None => (None, 0_u64),
         };
+
+        println!("------------");
+        println!("toml_size: {toml_size}");
+        println!("readme_size: {readme_size}");
+        println!("archive size: {archive_size}");
+        println!("------------"); //the last println is eaten for some reason, probably spinner
 
         let toml_stream = FramedRead::new(toml_file, BytesCodec::new()).map(|bytes| match bytes {
             Ok(bytes) => Ok(bytes.freeze()),
             Err(err) => Err(PayloadError::Io(err)),
         });
 
-        let file_stream =
-            FramedRead::new(packet_file, BytesCodec::new()).map(|bytes| match bytes {
+        let archive_stream =
+            FramedRead::new(archive_file, BytesCodec::new()).map(|bytes| match bytes {
                 Ok(bytes) => Ok(bytes.freeze()),
                 Err(err) => Err(PayloadError::Io(err)),
             });
 
-        if let Some(readme_file) = readme_option {
+        if let Some(readme_file) = maybe_readme_file {
             let readme_stream =
                 FramedRead::new(readme_file, BytesCodec::new()).map(|bytes| match bytes {
                     Ok(bytes) => Ok(bytes.freeze()),
                     Err(err) => Err(PayloadError::Io(err)),
                 });
             let stream = stream
+                .chain(toml_size.to_stream())
                 .chain(toml_stream)
+                .chain(readme_size.to_stream())
                 .chain(readme_stream)
-                .chain(file_stream);
+                .chain(archive_size.to_stream())
+                .chain(archive_stream);
 
             return Ok(stream.boxed_local());
         } else {
-            let stream = stream.chain(toml_stream).chain(file_stream);
+            let stream = stream
+                .chain(toml_size.to_stream())
+                .chain(toml_stream)
+                .chain(readme_size.to_stream())
+                .chain(archive_size.to_stream())
+                .chain(archive_stream);
             return Ok(stream.boxed_local());
         }
     }

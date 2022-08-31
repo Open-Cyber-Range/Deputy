@@ -9,8 +9,9 @@ use actix_web::{
     web::{Bytes, Data, Path, Payload},
     Error, HttpResponse, Responder,
 };
+use anyhow::Result;
 use deputy_library::{
-    package::{Package, PackageFile, PackageMetadata},
+    package::{Package, PackageFile, PackageMetadata, SizeDriver},
     validation::{validate_name, validate_version, Validate},
 };
 use futures::{Stream, StreamExt};
@@ -31,7 +32,6 @@ fn check_for_version_error(
         error!("Failed to validate versioning");
         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
     }
-
     Ok(())
 }
 
@@ -75,7 +75,7 @@ pub async fn add_package(
 
 #[put("/package/stream")]
 pub async fn add_package_streaming(
-    mut body: Payload, // METADATA, PACKAGE TOML, README, PACKAGE
+    mut body: Payload, // METADATA > TOML LENGTH > TOML > README LENGTH > (MAYBE README), PACKAGE LENGTH > PACKAGE
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
@@ -100,15 +100,24 @@ pub async fn add_package_streaming(
         return Err(error);
     }
 
+    let toml_size = if let Some(Ok(bytes)) = body.next().await {
+        u64::from_bytes(bytes).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?
+    } else {
+        error!("Invalid stream chunk: invalid toml length");
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
+        );
+    };
+
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
         let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
             error!("Failed to parse package toml: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
-
-        println!("toml length {}", toml_bytes_vector.len());
-
         if let Err(error) = result {
             drain_stream(body).await?;
             return Err(error.into());
@@ -119,20 +128,51 @@ pub async fn add_package_streaming(
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
 
-    let maybe_readme = if let Some(Ok(readme_bytes)) = body.next().await {
-        let readme_vector = readme_bytes.to_vec();
-        let result = PackageFile::try_from(readme_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package readme: {error}");
+    let readme_size = if let Some(Ok(bytes)) = body.next().await {
+        u64::from_bytes(bytes).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
-        });
-        if let Err(error) = result {
-            drain_stream(body).await?;
-            return Err(error.into());
-        }
-        Some(result?)
+        })?
     } else {
-        None
+        error!("Invalid stream chunk: invalid toml length");
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
+        );
     };
+
+    let mut maybe_readme: Option<PackageFile> = None;
+    if readme_size > 0 {
+        maybe_readme = if let Some(Ok(readme_bytes)) = body.next().await {
+            let readme_vector = readme_bytes.to_vec();
+            let result = PackageFile::try_from(readme_vector.as_slice()).map_err(|error| {
+                error!("Failed to parse package readme: {error}");
+                ServerResponseError(PackageServerError::MetadataParse.into())
+            });
+            if let Err(error) = result {
+                drain_stream(body).await?;
+                return Err(error.into());
+            }
+            Some(result?)
+        } else {
+            None
+        };
+    }
+    let package_size = if let Some(Ok(bytes)) = body.next().await {
+        u64::from_bytes(bytes).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?
+    } else {
+        error!("Invalid stream chunk: invalid toml length");
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
+        );
+    };
+
+    println!("maybe_readme: {:?}", maybe_readme);
+    println!("readme_size: {readme_size}");
+    println!("file_size: {package_size}");
+    println!("toml_size: {toml_size}");
 
     let package_file: PackageFile =
         PackageFile::from_stream(body, true)

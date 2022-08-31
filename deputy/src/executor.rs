@@ -131,7 +131,7 @@ impl Executor {
                 .await?;
         } else {
             client
-                .stream_large_package(package.try_into()?, options.timeout)
+                .stream_large_package(package.to_stream().await?, options.timeout)
                 .await?;
         }
         progress_actor

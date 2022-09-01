@@ -12,7 +12,7 @@ mod tests {
     };
     use deputy_package_server::{
         routes::package::add_package,
-        routes::package::download_package,
+        routes::package::{download_package, add_package_streaming},
         test::{create_predictable_temporary_folders, create_test_app_state},
         AppState,
     };
@@ -46,28 +46,28 @@ mod tests {
         Ok(())
     }
 
-    // #[actix_web::test]
-    // async fn send_package_via_streaming() -> Result<()> {
-    //     let (package_folder, app_state) = setup_package_server()?;
-    //     let app = test::init_service(
-    //         App::new()
-    //             .app_data(app_state)
-    //             .service(add_package_streaming),
-    //     )
-    //     .await;
+    #[actix_web::test]
+    async fn send_package_via_streaming() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server()?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .service(add_package_streaming),
+        )
+        .await;
 
-    //     let test_package = create_test_package()?;
-    //     let package_name = test_package.metadata.name.clone();
+        let test_package = create_test_package()?;
+        let package_name = test_package.metadata.name.clone();
 
-    //     let stream: PackageStream = test_package.try_into()?;
-    //     let request = test::TestRequest::put().uri("/package/stream").to_request();
-    //     let (request, _) = request.replace_payload(Payload::from(stream));
-    //     let response = test::call_service(&app, request).await;
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package/stream").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
+        let response = test::call_service(&app, request).await;
 
-    //     assert!(response.status().is_success());
-    //     assert!(PathBuf::from(package_folder).join(package_name).exists());
-    //     Ok(())
-    // }
+        assert!(response.status().is_success());
+        assert!(PathBuf::from(package_folder).join(package_name).exists());
+        Ok(())
+    }
 
     #[actix_web::test]
     async fn send_invalid_package_bytes() -> Result<()> {

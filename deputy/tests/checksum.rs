@@ -18,6 +18,7 @@ mod tests {
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
         let response = client.upload_small_package(package_bytes.clone(), 60).await;
+        println!("{:?}", response);
         assert!(response.is_ok());
 
         let mut command = Command::cargo_bin("deputy")?;

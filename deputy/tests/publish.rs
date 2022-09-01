@@ -15,7 +15,7 @@ mod tests {
     use predicates::prelude::predicate;
     use std::{fs, path::PathBuf};
     use tempfile::{Builder, TempDir};
-    /*
+
     #[actix_web::test]
     async fn valid_small_package_was_sent_and_received() -> Result<()> {
         let temp_project = TempArchive::builder().build()?;
@@ -23,7 +23,7 @@ mod tests {
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
-
+        
         let test_backend = TestBackEnd::builder().build().await?;
 
         command.env(
@@ -31,7 +31,7 @@ mod tests {
             &test_backend.configuration_directory.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(None, toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
@@ -68,7 +68,7 @@ mod tests {
             &test_backend.configuration_directory.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(None, toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
@@ -193,7 +193,7 @@ mod tests {
             &test_backend.configuration_directory.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(None, toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
@@ -214,5 +214,5 @@ mod tests {
 
         Ok(())
     }
-    */
+
 }

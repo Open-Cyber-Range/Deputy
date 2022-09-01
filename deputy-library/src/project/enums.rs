@@ -64,6 +64,3 @@ pub enum Architecture {
 pub enum VirtualMachineType {
     OVA,
 }
-
-// #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-// pub enum PackageFileType { Readme, Toml, Binary }

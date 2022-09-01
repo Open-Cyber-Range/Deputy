@@ -10,7 +10,7 @@ use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use futures::{Stream, StreamExt};
 use git2::Repository;
-use log::info;
+use log::{debug, info};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -190,7 +190,6 @@ impl Package {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path.clone(), &archive_path)?;
         let file = File::open(&archive_path)?;
-        println!("file lenght when packing: {:?}", file.metadata());
         let package_toml = File::open(package_toml_path)?;
         if let Some(readme_path) = maybe_readme_path {
             let readme = File::open(readme_path)?;
@@ -306,21 +305,25 @@ impl TryFrom<Package> for Vec<u8> {
 }
 pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>>;
 
-pub trait StreamDriver
+pub trait Streamer {
+    fn to_stream(self) -> PackageStream;
+}
+pub trait ByteSize
 where
     Self: Sized,
 {
-    fn to_stream(&self) -> PackageStream;
     fn from_bytes(bytes: Bytes) -> Result<Self>;
 }
-impl StreamDriver for u64 {
-    fn to_stream(&self) -> PackageStream {
+impl Streamer for u64 {
+    fn to_stream(self) -> PackageStream {
         let mut formatted_bytes = Vec::new();
         formatted_bytes.extend_from_slice(&self.to_le_bytes());
         let bytes = vec![Ok(Bytes::from(formatted_bytes))];
         Box::pin(futures::stream::iter(bytes))
     }
+}
 
+impl ByteSize for u64 {
     fn from_bytes(bytes: Bytes) -> Result<Self> {
         let mut length_bytes: [u8; 8] = Default::default();
         length_bytes.copy_from_slice(
@@ -332,9 +335,18 @@ impl StreamDriver for u64 {
     }
 }
 
+impl Streamer for TokioFile {
+    fn to_stream(self) -> PackageStream {
+        let stream = FramedRead::new(self, BytesCodec::new()).map(|bytes| match bytes {
+            Ok(bytes) => Ok(bytes.freeze()),
+            Err(err) => Err(PayloadError::Io(err)),
+        });
+        Box::pin(stream)
+    }
+}
+
 impl Package {
     pub async fn to_stream(self) -> Result<PackageStream> {
-        println!("package before being turned into stream: {:#?}", &self);
         let mut metadata_bytes_with_lenght = Vec::try_from(&self.metadata)?;
         if metadata_bytes_with_lenght.len() < 4 {
             return Err(anyhow!("Metadata is too short"));
@@ -345,7 +357,6 @@ impl Package {
 
         let archive_file = TokioFile::from(self.file.0);
         let archive_size = archive_file.metadata().await?.len();
-
         let toml_file = TokioFile::from(self.package_toml.0);
         let toml_size = toml_file.metadata().await?.len();
 
@@ -357,46 +368,27 @@ impl Package {
             }
             None => (None, 0_u64),
         };
-
-        println!("------------");
-        println!("toml_size: {toml_size}");
-        println!("readme_size: {readme_size}");
-        println!("archive size: {archive_size}");
-        println!("------------"); //the last println is eaten for some reason, probably spinner
-
-        let toml_stream = FramedRead::new(toml_file, BytesCodec::new()).map(|bytes| match bytes {
-            Ok(bytes) => Ok(bytes.freeze()),
-            Err(err) => Err(PayloadError::Io(err)),
-        });
-
-        let archive_stream =
-            FramedRead::new(archive_file, BytesCodec::new()).map(|bytes| match bytes {
-                Ok(bytes) => Ok(bytes.freeze()),
-                Err(err) => Err(PayloadError::Io(err)),
-            });
+        debug!(
+        "Outbound file sizes (bytes): Package.toml - {toml_size}, Readme.md - {readme_size}, Archive - {archive_size}"
+    );
 
         if let Some(readme_file) = maybe_readme_file {
-            let readme_stream =
-                FramedRead::new(readme_file, BytesCodec::new()).map(|bytes| match bytes {
-                    Ok(bytes) => Ok(bytes.freeze()),
-                    Err(err) => Err(PayloadError::Io(err)),
-                });
             let stream = stream
                 .chain(toml_size.to_stream())
-                .chain(toml_stream)
+                .chain(toml_file.to_stream())
                 .chain(readme_size.to_stream())
-                .chain(readme_stream)
+                .chain(readme_file.to_stream())
                 .chain(archive_size.to_stream())
-                .chain(archive_stream);
+                .chain(archive_file.to_stream());
 
             return Ok(stream.boxed_local());
         } else {
             let stream = stream
                 .chain(toml_size.to_stream())
-                .chain(toml_stream)
+                .chain(toml_file.to_stream())
                 .chain(readme_size.to_stream())
                 .chain(archive_size.to_stream())
-                .chain(archive_stream);
+                .chain(archive_file.to_stream());
             return Ok(stream.boxed_local());
         }
     }

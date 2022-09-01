@@ -13,12 +13,12 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{Package, PackageFile, PackageMetadata, StreamDriver},
+    package::{ByteSize, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
 use futures::{Stream, StreamExt};
 use git2::Repository;
-use log::error;
+use log::{debug, error};
 use std::path::PathBuf;
 
 fn check_for_version_error(
@@ -77,7 +77,7 @@ pub async fn add_package(
 
 #[put("/package/stream")]
 pub async fn add_package_streaming(
-    mut body: Payload, // METADATA > TOML LENGTH > TOML > README LENGTH > (MAYBE README), PACKAGE LENGTH > PACKAGE
+    mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
@@ -114,6 +114,13 @@ pub async fn add_package_streaming(
         );
     };
 
+    if toml_size > PAYLOAD_CHUNK_SIZE {
+        error!("Invalid package.toml: abnormally large package.toml");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity()
+            .body("Invalid package.toml: abnormally large package.toml"));
+    }
+
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
         let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
@@ -127,6 +134,7 @@ pub async fn add_package_streaming(
         result?
     } else {
         error!("Invalid stream chunk: No metadata");
+        drain_stream(body).await?;
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
 
@@ -136,9 +144,10 @@ pub async fn add_package_streaming(
             ServerResponseError(PackageServerError::MetadataParse.into())
         })?
     } else {
-        error!("Invalid stream chunk: invalid toml length");
+        error!("Invalid stream chunk: invalid readme length");
+        drain_stream(body).await?;
         return Ok(
-            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid readme length")
         );
     };
 
@@ -161,24 +170,22 @@ pub async fn add_package_streaming(
     } else {
         None
     };
-    let package_size = if let Some(Ok(bytes)) = body.next().await {
+    let archive_size = if let Some(Ok(bytes)) = body.next().await {
         u64::from_bytes(bytes).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
+            error!("Failed to parse package archive: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         })?
     } else {
-        error!("Invalid stream chunk: invalid toml length");
-        return Ok(
-            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
-        );
+        error!("Invalid stream chunk: invalid archive length");
+        return Ok(HttpResponse::UnprocessableEntity()
+            .body("Invalid stream chunk: invalid archive length"));
     };
 
-    println!("maybe_readme: {:?}", maybe_readme);
-    println!("readme_size: {readme_size}");
-    println!("file_size: {package_size}");
-    println!("toml_size: {toml_size}");
+    debug!(
+        "Received file sizes (bytes): Package.toml - {toml_size}, Readme.md - {readme_size}, Archive - {archive_size}"
+    );
 
-    let package_file: PackageFile =
+    let archive_file: PackageFile =
         PackageFile::from_stream(body, true)
             .await
             .map_err(|error| {
@@ -186,7 +193,7 @@ pub async fn add_package_streaming(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let mut package = Package::new(metadata, toml_file, maybe_readme, package_file);
+    let mut package = Package::new(metadata, toml_file, maybe_readme, archive_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())

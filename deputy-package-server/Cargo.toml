@@ -55,8 +55,3 @@ tokio = { version = "1", features = ["sync", "macros", "time"] }
 [features]
 default = ["test"]
 test = ["deputy-library/test", "tokio/sync", "tokio/macros", "tokio/time"]
-
-[dependencies.tracing]
-version = "0.1.30"
-features = ["log"]
-default-features = false

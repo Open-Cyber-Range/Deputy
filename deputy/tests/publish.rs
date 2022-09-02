@@ -10,7 +10,7 @@ mod tests {
     use deputy_library::{
         constants::CONFIGURATION_FOLDER_PATH_ENV_KEY,
         package::Package,
-        test::{TempArchive, TEST_PACKAGE_BYTES},
+        test::{create_test_package, TempArchive},
     };
     use deputy_package_server::test::TestPackageServer;
     use predicates::prelude::predicate;
@@ -24,7 +24,6 @@ mod tests {
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
-        
         let test_backend = TestBackEnd::builder().build().await?;
 
         command.env(
@@ -162,11 +161,11 @@ mod tests {
 
     #[actix_web::test]
     async fn accepts_valid_small_package() -> Result<()> {
-        let package_bytes = TEST_PACKAGE_BYTES.clone();
+        let package = create_test_package()?;
         let (_configuration, server_address) = TestPackageServer::setup_test_server().await?;
 
         let client = Client::try_new(server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes, 60).await;
+        let response = client.upload_small_package(package.try_into()?, 60).await;
 
         assert!(response.is_ok());
         Ok(())
@@ -215,5 +214,4 @@ mod tests {
 
         Ok(())
     }
-
 }

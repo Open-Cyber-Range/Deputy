@@ -69,7 +69,7 @@ impl PackageFile {
             .ok_or_else(|| anyhow!("Temporary file path not found"))?
             .to_path_buf();
 
-        info!("Saved: {}", name);
+        debug!("Saved PackageFile {name} to {package_folder}");
         fs::copy(original_path, final_file_path)?;
         Ok(())
     }
@@ -475,11 +475,11 @@ impl TryFrom<&[u8]> for Package {
 
 #[cfg(test)]
 mod tests {
-    use super::{Package, PackageFile, PackageMetadata, PackageStream};
+    use super::{Package, PackageFile, PackageMetadata};
     use crate::{
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
-            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES, TEST_PACKAGE_BYTES,
+            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES,
             TEST_PACKAGE_METADATA,
         },
         StorageFolders,
@@ -495,7 +495,7 @@ mod tests {
         let package_folder = target_directory.path().to_str().unwrap().to_string();
         let bytes = TEST_FILE_BYTES.clone();
 
-        let mut package_file = PackageFile::try_from(&bytes as &[u8])?;
+        let package_file = PackageFile::try_from(&bytes as &[u8])?;
 
         let test_name = "test-name";
         let test_version = "1.0.0";
@@ -521,12 +521,12 @@ mod tests {
 
     #[test]
     fn package_can_be_saved() -> Result<()> {
-        let mut test_package = create_test_package()?;
+        let test_package = create_test_package()?;
         let target_directory = tempdir()?;
-        let package_folder = target_directory.path().to_str().unwrap().to_string();
         let (repository_directory, repository) = initialize_test_repository();
-        let toml_folder = "some-package-name".to_string();
-        let readme_folder = "some-package-name".to_string();
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
         let storage_folders = StorageFolders {
             package_folder,
             toml_folder,
@@ -546,12 +546,12 @@ mod tests {
 
     #[test]
     fn latest_package_metadata_is_found() -> Result<()> {
-        let mut test_package = create_test_package()?;
+        let test_package = create_test_package()?;
         let target_directory = tempdir()?;
-        let package_folder = target_directory.path().to_str().unwrap().to_string();
         let (repository_directory, repository) = initialize_test_repository();
-        let toml_folder = "some-package-name".to_string();
-        let readme_folder = "some-package-name".to_string();
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
         let storage_folders = StorageFolders {
             package_folder,
             toml_folder,
@@ -586,12 +586,12 @@ mod tests {
 
     #[test]
     fn is_the_latest_package_version() -> Result<()> {
-        let mut test_package = create_test_package()?;
+        let test_package = create_test_package()?;
         let target_directory = tempdir()?;
-        let package_folder = target_directory.path().to_str().unwrap().to_string();
         let (repository_directory, repository) = initialize_test_repository();
-        let toml_folder = "some-package-name".to_string();
-        let readme_folder = "some-package-name".to_string();
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
         let storage_folders = StorageFolders {
             package_folder,
             toml_folder,
@@ -610,12 +610,12 @@ mod tests {
 
     #[test]
     fn is_not_the_latest_package_version() -> Result<()> {
-        let mut test_package = create_test_package()?;
+        let test_package = create_test_package()?;
         let target_directory = tempdir()?;
-        let package_folder = target_directory.path().to_str().unwrap().to_string();
         let (repository_directory, repository) = initialize_test_repository();
-        let toml_folder = "some-package-name".to_string();
-        let readme_folder = "some-package-name".to_string();
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
         let storage_folders = StorageFolders {
             package_folder,
             toml_folder,
@@ -682,28 +682,24 @@ mod tests {
     async fn package_is_converted_to_stream() -> Result<()> {
         let package = create_test_package()?;
         let mut byte_stream = package.to_stream().await?;
-        tokio::runtime::Runtime::new()?.block_on(async move {
-            let mut counter = 0;
-            let mut bytes = Vec::new();
-            while let Some(chunk) = byte_stream.next().await {
-                let chunk = chunk.unwrap();
-                bytes.append(&mut chunk.to_vec());
-                counter += 1;
-                if counter == 1 {
-                    PackageMetadata::try_from(bytes.as_slice())?;
-                }
+        let mut counter = 0;
+        let mut bytes = Vec::new();
+        while let Some(chunk) = byte_stream.next().await {
+            let chunk = chunk.unwrap();
+            bytes.append(&mut chunk.to_vec());
+            counter += 1;
+            if counter == 1 {
+                PackageMetadata::try_from(bytes.as_slice())?;
             }
-            assert_eq!(counter, 2);
-            insta::assert_debug_snapshot!(bytes);
-            Ok(())
-        })?;
-
+        }
+        assert_eq!(counter, 7);
+        insta::assert_debug_snapshot!(bytes);
         Ok(())
     }
 
     #[test]
     fn package_is_parsed_from_bytes() -> Result<()> {
-        let bytes = TEST_PACKAGE_BYTES.clone();
+        let bytes: Vec<u8> = create_test_package()?.try_into()?;
         let package = Package::try_from(&bytes as &[u8])?;
 
         assert_eq!(package.file.metadata()?.len(), 14);

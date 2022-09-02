@@ -53,7 +53,6 @@ pub async fn add_package(
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let package_vector = package_bytes.to_vec();
-    println!("length server side {}", package_vector.len());
 
     let mut package = Package::try_from(&package_vector as &[u8]).map_err(|error| {
         error!("Failed to validate the package: {error}");

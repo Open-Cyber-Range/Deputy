@@ -12,7 +12,7 @@ mod tests {
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy::client::Client;
-    use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::TEST_PACKAGE_BYTES};
+    use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::create_test_package};
     use futures::future::join_all;
     use tempfile::TempDir;
 
@@ -36,11 +36,12 @@ mod tests {
     #[actix_web::test]
     async fn create_concurrent_checksum_requests() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let package_bytes = TEST_PACKAGE_BYTES.clone();
+        let package = create_test_package()?;
+        let pacakge_bytes: Vec<u8> = package.try_into()?;
         let test_backend = TestBackEnd::builder().build().await?;
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes.clone(), 60).await;
+        let response = client.upload_small_package(pacakge_bytes.clone(), 60).await;
         assert!(response.is_ok());
 
         let config_path = test_backend.configuration_directory.path().to_owned();
@@ -66,12 +67,11 @@ mod tests {
     #[actix_web::test]
     async fn get_package_checksum() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let package_bytes = TEST_PACKAGE_BYTES.clone();
         let test_backend = TestBackEnd::builder().build().await?;
 
+        let package = create_test_package()?;
         let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes.clone(), 60).await;
-        println!("{:?}", response);
+        let response = client.upload_small_package(package.try_into()?, 60).await;
         assert!(response.is_ok());
 
         let mut command = Command::cargo_bin("deputy")?;

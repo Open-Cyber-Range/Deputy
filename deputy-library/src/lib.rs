@@ -6,6 +6,7 @@ extern crate lazy_static;
 
 pub mod archiver;
 pub mod constants;
+pub mod lockfile;
 pub mod package;
 pub mod project;
 pub mod repository;

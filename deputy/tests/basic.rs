@@ -8,7 +8,7 @@ mod tests {
     use crate::test_backend::TestBackEndBuilder;
     use anyhow::Result;
     use assert_cmd::prelude::*;
-    use deputy::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
+    use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
     use predicates::prelude::*;
     use std::{env, process::Command};
 

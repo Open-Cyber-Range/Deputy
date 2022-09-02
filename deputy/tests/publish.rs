@@ -6,8 +6,9 @@ mod tests {
     use crate::test_backend::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::Command;
-    use deputy::{client::Client, constants::CONFIGURATION_FOLDER_PATH_ENV_KEY};
+    use deputy::client::Client;
     use deputy_library::{
+        constants::CONFIGURATION_FOLDER_PATH_ENV_KEY,
         package::Package,
         test::{TempArchive, TEST_PACKAGE_BYTES},
     };

@@ -81,8 +81,11 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{project::enums::{Architecture, OperatingSystem}, test::{TEST_VALID_PACKAGE_TOML_SCHEMA, TEST_INVALID_PACKAGE_TOML_SCHEMA}};
-    
+    use crate::{
+        project::enums::{Architecture, OperatingSystem},
+        test::{TEST_INVALID_PACKAGE_TOML_SCHEMA, TEST_VALID_PACKAGE_TOML_SCHEMA},
+    };
+
     use anyhow::Ok;
     use std::io::Write;
     use tempfile::{Builder, NamedTempFile};

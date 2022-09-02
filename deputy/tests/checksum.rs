@@ -37,11 +37,11 @@ mod tests {
     async fn create_concurrent_checksum_requests() -> Result<()> {
         let temp_dir = TempDir::new()?;
         let package = create_test_package()?;
-        let pacakge_bytes: Vec<u8> = package.try_into()?;
+        let package_bytes: Vec<u8> = package.try_into()?;
         let test_backend = TestBackEnd::builder().build().await?;
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_small_package(pacakge_bytes.clone(), 60).await;
+        let response = client.upload_small_package(package_bytes.clone(), 60).await;
         assert!(response.is_ok());
 
         let config_path = test_backend.configuration_directory.path().to_owned();

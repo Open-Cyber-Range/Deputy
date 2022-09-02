@@ -1,21 +1,21 @@
 use crate::constants::{LOCKFILE_SLEEP_DURATION, LOCKFILE_TRIES};
 use anyhow::{anyhow, Result};
 use lockfile::Lockfile;
-use std::{path::PathBuf, thread::sleep};
+use std::{path::{Path}, thread::sleep};
 
 pub trait Standoff: Sized {
     type Lockfile;
-    fn new(lockfile_path: PathBuf) -> Result<Self>;
+    fn new(lockfile_path: &Path) -> Result<Self>;
 }
 impl Standoff for Lockfile {
     type Lockfile = Self;
-    fn new(lockfile_path: PathBuf) -> Result<Self> {
+    fn new(lockfile_path: &Path) -> Result<Self> {
         let mut tries = *LOCKFILE_TRIES;
-        let mut lockfile = Self::create(lockfile_path.clone());
+        let mut lockfile = Self::create(lockfile_path);
 
         while matches!(lockfile.as_ref().err(), Some(lockfile::Error::LockTaken)) && tries > 0 {
             tries -= 1;
-            lockfile = Self::create(lockfile_path.clone());
+            lockfile = Self::create(lockfile_path);
             sleep(*LOCKFILE_SLEEP_DURATION);
         }
         if lockfile.as_ref().is_err() && tries == 0 {
@@ -43,7 +43,7 @@ mod tests {
     fn lockfile_is_created() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let lockfile_path = temp_dir.path().join(LOCKFILE);
-        let lockfile = Lockfile::new(lockfile_path.clone());
+        let lockfile = Lockfile::new(&lockfile_path);
         assert!(lockfile.is_ok());
         assert!(lockfile_path.is_file());
         Ok(())
@@ -53,7 +53,7 @@ mod tests {
     fn lockfile_is_released() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let lockfile_path = temp_dir.path().join(LOCKFILE);
-        let lockfile = Lockfile::new(lockfile_path.clone())?;
+        let lockfile = Lockfile::new(&lockfile_path)?;
         lockfile.release()?;
         assert!(!lockfile_path.is_file());
         Ok(())
@@ -63,7 +63,7 @@ mod tests {
         lockfile_path: PathBuf,
     ) -> JoinHandle<Result<(), anyhow::Error>> {
         thread::spawn(move || {
-            let lockfile = Lockfile::new(lockfile_path)?;
+            let lockfile = Lockfile::new(&lockfile_path)?;
             sleep(Duration::from_millis(rand::thread_rng().gen_range(10..200)));
             lockfile.release()?;
             Ok::<_, anyhow::Error>(())

@@ -15,7 +15,7 @@ use std::iter::Iterator;
 use std::path::{Path, PathBuf};
 use tar::{Archive, Builder};
 
-fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
+fn get_destination_file_path(toml_path: &Path) -> Result<PathBuf> {
     let mut file = File::open(toml_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -25,7 +25,7 @@ fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
         .parent()
         .ok_or_else(|| anyhow!("Could not find root directory"))?;
     let destination_directory: PathBuf = root_directory.join("target/package");
-    create_dir_all(destination_directory.clone())?;
+    create_dir_all(&destination_directory)?;
     let mut destination_file = destination_directory.join(deserialized_toml.package.name);
     destination_file.set_extension("package");
 

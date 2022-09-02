@@ -41,7 +41,7 @@ mod tests {
         let test_backend = TestBackEnd::builder().build().await?;
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes.clone(), 60).await;
+        let response = client.upload_small_package(package_bytes, 60).await;
         assert!(response.is_ok());
 
         let config_path = test_backend.configuration_directory.path().to_owned();

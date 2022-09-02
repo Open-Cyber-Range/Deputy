@@ -171,7 +171,7 @@ impl Package {
         Ok(())
     }
 
-    fn gather_metadata(toml_path: PathBuf, archive_path: &Path) -> Result<PackageMetadata> {
+    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
         let archive_file = File::open(&archive_path)?;
         let metadata = PackageMetadata {
@@ -188,7 +188,7 @@ impl Package {
         compression: u32,
     ) -> Result<Self> {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
-        let metadata = Self::gather_metadata(package_toml_path.clone(), &archive_path)?;
+        let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
         if let Some(readme_path) = maybe_readme_path {

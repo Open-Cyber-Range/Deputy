@@ -310,7 +310,7 @@ pub fn get_or_create_repository(
 pub fn get_or_clone_repository(url: &str, target_path: PathBuf) -> Result<Repository> {
     let deputy_config_folder = &std::env::var(CONFIGURATION_FOLDER_PATH_ENV_KEY)?;
     let lockfile_path = PathBuf::from(deputy_config_folder).join(LOCKFILE);
-    let lockfile = Lockfile::new(lockfile_path)?;
+    let lockfile = Lockfile::new(&lockfile_path)?;
 
     if let Result::Ok(repository) = Repository::open(target_path.clone()) {
         return Ok(repository);

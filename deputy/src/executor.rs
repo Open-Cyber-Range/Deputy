@@ -225,7 +225,7 @@ impl Executor {
 
     pub fn parse_toml(&self, options: ParseTOMLOptions) -> Result<()> {
         let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
-        let project = create_project_from_toml_path(&package_toml_path.to_path_buf())?;
+        let project = create_project_from_toml_path(&package_toml_path)?;
         if options.pretty {
             println!("{}", serde_json::to_string_pretty(&project)?);
         } else {

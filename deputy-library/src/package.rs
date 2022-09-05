@@ -409,7 +409,6 @@ impl TryFrom<&[u8]> for Package {
                 .ok_or_else(|| anyhow::anyhow!("Could not find metadata length"))?,
         );
         let metadata_length = u32::from_le_bytes(metadata_length_bytes);
-        info!("Metadata length: {}", metadata_length);
         let metadata_end = (4 + metadata_length) as usize;
         let metadata_bytes = package_bytes
             .get(4..metadata_end)
@@ -423,7 +422,6 @@ impl TryFrom<&[u8]> for Package {
                 .ok_or_else(|| anyhow::anyhow!("Could not find package toml length"))?,
         );
         let package_toml_length = u32::from_le_bytes(package_toml_length_bytes);
-        info!("package_toml_length: {}", package_toml_length);
 
         let package_toml_start = metadata_end + 4;
         let package_toml_end = package_toml_start + (package_toml_length) as usize;
@@ -439,7 +437,6 @@ impl TryFrom<&[u8]> for Package {
                 .ok_or_else(|| anyhow::anyhow!("Could not find readme length"))?,
         );
         let readme_length = u32::from_le_bytes(readme_length_bytes);
-        info!("readme_length: {}", readme_length);
 
         let readme_start = package_toml_end + 4;
         let readme_end = readme_start + (readme_length) as usize;
@@ -455,7 +452,6 @@ impl TryFrom<&[u8]> for Package {
                 .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
         );
         let file_length = u32::from_le_bytes(file_length_bytes);
-        info!("file_length: {}", file_length);
 
         let file_start = readme_end + 4;
         let file_end = file_start + (file_length) as usize;

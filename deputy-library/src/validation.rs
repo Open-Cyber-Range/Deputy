@@ -17,7 +17,6 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
-        println!("{:?}", self.metadata.clone());
         self.metadata.validate()?;
         self.validate_checksum()?;
         Ok(())

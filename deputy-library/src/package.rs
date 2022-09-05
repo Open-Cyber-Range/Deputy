@@ -109,6 +109,23 @@ impl PackageFile {
     pub(crate) fn get_size(&self) -> Result<u64> {
         Ok(self.metadata()?.len())
     }
+
+    fn from_bytes(pointer: usize, bytes: &[u8]) -> Result<(Self, usize), anyhow::Error> {
+        let mut file_length_bytes: [u8; 4] = Default::default();
+        file_length_bytes.copy_from_slice(
+            bytes
+                .get(pointer..pointer + 4)
+                .ok_or_else(|| anyhow::anyhow!("Could not find package toml length"))?,
+        );
+        let file_length = u32::from_le_bytes(file_length_bytes);
+        let file_start = pointer + 4;
+        let file_end = file_start + (file_length) as usize;
+        let file_bytes = bytes
+            .get(file_start..file_end)
+            .ok_or_else(|| anyhow::anyhow!("Could not find package toml"))?;
+        let package_toml = Self::try_from(file_bytes)?;
+        Ok((package_toml, file_end))
+    }
 }
 
 #[derive(Debug)]
@@ -415,50 +432,10 @@ impl TryFrom<&[u8]> for Package {
             .ok_or_else(|| anyhow::anyhow!("Could not find metadata"))?;
         let metadata = PackageMetadata::try_from(metadata_bytes)?;
 
-        let mut package_toml_length_bytes: [u8; 4] = Default::default();
-        package_toml_length_bytes.copy_from_slice(
-            package_bytes
-                .get(metadata_end..metadata_end + 4)
-                .ok_or_else(|| anyhow::anyhow!("Could not find package toml length"))?,
-        );
-        let package_toml_length = u32::from_le_bytes(package_toml_length_bytes);
-
-        let package_toml_start = metadata_end + 4;
-        let package_toml_end = package_toml_start + (package_toml_length) as usize;
-        let package_toml_bytes = package_bytes
-            .get(package_toml_start..package_toml_end)
-            .ok_or_else(|| anyhow::anyhow!("Could not find package toml"))?;
-        let package_toml = PackageFile::try_from(package_toml_bytes)?;
-
-        let mut readme_length_bytes: [u8; 4] = Default::default();
-        readme_length_bytes.copy_from_slice(
-            package_bytes
-                .get(package_toml_end..package_toml_end + 4)
-                .ok_or_else(|| anyhow::anyhow!("Could not find readme length"))?,
-        );
-        let readme_length = u32::from_le_bytes(readme_length_bytes);
-
-        let readme_start = package_toml_end + 4;
-        let readme_end = readme_start + (readme_length) as usize;
-        let readme_bytes = package_bytes
-            .get(readme_start..readme_end)
-            .ok_or_else(|| anyhow::anyhow!("Could not find readme"))?;
-        let readme = PackageFile::try_from(readme_bytes)?;
-
-        let mut file_length_bytes: [u8; 4] = Default::default();
-        file_length_bytes.copy_from_slice(
-            package_bytes
-                .get(readme_end..readme_end + 4)
-                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
-        );
-        let file_length = u32::from_le_bytes(file_length_bytes);
-
-        let file_start = readme_end + 4;
-        let file_end = file_start + (file_length) as usize;
-        let file_bytes = package_bytes
-            .get(file_start..file_end)
-            .ok_or_else(|| anyhow::anyhow!("Could not find file"))?;
-        let file = PackageFile::try_from(file_bytes)?;
+        let (package_toml, package_toml_end) =
+            PackageFile::from_bytes(metadata_end, package_bytes)?;
+        let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
+        let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
 
         Ok(Package {
             metadata,

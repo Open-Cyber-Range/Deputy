@@ -310,14 +310,16 @@ impl TryFrom<Package> for Vec<u8> {
         payload.extend(metadata_bytes);
         let toml_bytes = Vec::try_from(package.package_toml)?;
         payload.extend(toml_bytes);
-        if let Some(readme) = package.readme {
-            let readme_bytes = Vec::try_from(readme)?;
-            payload.extend(readme_bytes);
-        } else {
-            let mut readme_length_bytes = Vec::new();
-            readme_length_bytes.extend_from_slice(&0_u32.to_le_bytes());
-            payload.extend(readme_length_bytes)
-        }
+
+        let readme_bytes: Vec<u8> = match package.readme {
+            Some(readme) => Vec::try_from(readme)?,
+            None => {
+                let mut readme_length_bytes = Vec::new();
+                readme_length_bytes.extend_from_slice(&0_u32.to_le_bytes());
+                readme_length_bytes
+            }
+        };
+        payload.extend(readme_bytes);
         let file_bytes = Vec::try_from(package_file)?;
         payload.extend(file_bytes);
 

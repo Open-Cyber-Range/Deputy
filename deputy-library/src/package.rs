@@ -10,7 +10,6 @@ use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use futures::{Stream, StreamExt};
 use git2::Repository;
-use log::debug;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

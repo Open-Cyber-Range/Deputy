@@ -9,7 +9,7 @@ use git2::{
     Repository, RepositoryInitOptions,
 };
 use lockfile::Lockfile;
-use log::{debug, info};
+use log::info;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use std::{

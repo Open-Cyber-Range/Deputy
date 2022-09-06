@@ -18,7 +18,7 @@ use deputy_library::{
 };
 use futures::{Stream, StreamExt};
 use git2::Repository;
-use log::{debug, error};
+use log::error;
 use std::path::PathBuf;
 
 fn check_for_version_error(
@@ -168,16 +168,6 @@ pub async fn add_package_streaming(
         Some(result?)
     } else {
         None
-    };
-    let archive_size = if let Some(Ok(bytes)) = body.next().await {
-        u64::from_bytes(bytes).map_err(|error| {
-            error!("Failed to parse package archive: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        })?
-    } else {
-        error!("Invalid stream chunk: invalid archive length");
-        return Ok(HttpResponse::UnprocessableEntity()
-            .body("Invalid stream chunk: invalid archive length"));
     };
 
     let archive_file: PackageFile =

@@ -375,7 +375,7 @@ impl Package {
         let toml_file = TokioFile::from(self.package_toml.0);
         let toml_size = toml_file.metadata().await?.len();
 
-        let (maybe_readme_file, readme_size) = match self.readme {
+        let (optional_readme_file, readme_size) = match self.readme {
             Some(readme) => {
                 let readme_file = TokioFile::from(readme.0);
                 let readme_size = readme_file.metadata().await?.len();
@@ -384,21 +384,19 @@ impl Package {
             None => (None, 0_u64),
         };
 
-        if let Some(readme_file) = maybe_readme_file {
+        let stream = stream
+            .chain(toml_size.to_stream())
+            .chain(toml_file.to_stream())
+            .chain(readme_size.to_stream());
+
+        if let Some(readme_file) = optional_readme_file {
             let stream = stream
-                .chain(toml_size.to_stream())
-                .chain(toml_file.to_stream())
-                .chain(readme_size.to_stream())
                 .chain(readme_file.to_stream())
                 .chain(archive_size.to_stream())
                 .chain(archive_file.to_stream());
-
             return Ok(stream.boxed_local());
         } else {
             let stream = stream
-                .chain(toml_size.to_stream())
-                .chain(toml_file.to_stream())
-                .chain(readme_size.to_stream())
                 .chain(archive_size.to_stream())
                 .chain(archive_file.to_stream());
             return Ok(stream.boxed_local());

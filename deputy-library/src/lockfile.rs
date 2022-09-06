@@ -1,7 +1,7 @@
 use crate::constants::{LOCKFILE_SLEEP_DURATION, LOCKFILE_TRIES};
 use anyhow::{anyhow, Result};
 use lockfile::Lockfile;
-use std::{path::{Path}, thread::sleep};
+use std::{path::Path, thread::sleep};
 
 pub trait Standoff: Sized {
     type Lockfile;

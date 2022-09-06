@@ -207,22 +207,16 @@ impl Package {
         let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
-        if let Some(readme_path) = optional_readme_path {
-            let readme = File::open(readme_path)?;
-            Ok(Package {
-                metadata,
-                file: PackageFile(file, None),
-                package_toml: PackageFile(package_toml, None),
-                readme: Some(PackageFile(readme, None)),
-            })
-        } else {
-            Ok(Package {
-                metadata,
-                file: PackageFile(file, None),
-                package_toml: PackageFile(package_toml, None),
-                readme: None,
-            })
-        }
+        let optional_readme = match optional_readme_path {
+            Some(readme_path) => Some(PackageFile(File::open(readme_path)?, None)),
+            None => None,
+        };
+        Ok(Package {
+            metadata,
+            file: PackageFile(file, None),
+            package_toml: PackageFile(package_toml, None),
+            readme: optional_readme,
+        })
     }
 
     pub fn get_size(&self) -> Result<u64> {

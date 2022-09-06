@@ -13,7 +13,7 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{ByteSize, Package, PackageFile, PackageMetadata},
+    package::{FromBytes, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
 use futures::{Stream, StreamExt};

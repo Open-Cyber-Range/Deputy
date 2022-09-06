@@ -323,7 +323,7 @@ pub type PackageStream = Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>
 pub trait Streamer {
     fn to_stream(self) -> PackageStream;
 }
-pub trait ByteSize
+pub trait FromBytes
 where
     Self: Sized,
 {
@@ -338,13 +338,13 @@ impl Streamer for u64 {
     }
 }
 
-impl ByteSize for u64 {
+impl FromBytes for u64 {
     fn from_bytes(bytes: Bytes) -> Result<Self> {
         let mut length_bytes: [u8; 8] = Default::default();
         length_bytes.copy_from_slice(
             bytes
                 .get(0..8)
-                .ok_or_else(|| anyhow::anyhow!("Could not find file length"))?,
+                .ok_or_else(|| anyhow::anyhow!("Could not get bytes slice"))?,
         );
         Ok(u64::from_le_bytes(length_bytes))
     }

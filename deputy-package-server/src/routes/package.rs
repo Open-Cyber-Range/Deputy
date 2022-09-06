@@ -171,7 +171,7 @@ pub async fn add_package_streaming(
     };
 
     let archive_file: PackageFile =
-        PackageFile::from_stream(body, true)
+        PackageFile::from_stream(body.skip(1), true)
             .await
             .map_err(|error| {
                 error!("Failed to save the file: {error}");

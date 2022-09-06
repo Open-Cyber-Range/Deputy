@@ -200,7 +200,7 @@ impl Package {
     }
 
     pub fn from_file(
-        maybe_readme_path: Option<PathBuf>,
+        optional_readme_path: Option<PathBuf>,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {
@@ -208,7 +208,7 @@ impl Package {
         let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
-        if let Some(readme_path) = maybe_readme_path {
+        if let Some(readme_path) = optional_readme_path {
             let readme = File::open(readme_path)?;
             Ok(Package {
                 metadata,

@@ -180,10 +180,6 @@ pub async fn add_package_streaming(
             .body("Invalid stream chunk: invalid archive length"));
     };
 
-    debug!(
-        "Received file sizes (bytes): Package.toml - {toml_size}, Readme.md - {readme_size}, Archive - {archive_size}"
-    );
-
     let archive_file: PackageFile =
         PackageFile::from_stream(body, true)
             .await

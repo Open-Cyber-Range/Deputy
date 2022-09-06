@@ -315,7 +315,6 @@ pub fn get_or_clone_repository(url: &str, target_path: PathBuf) -> Result<Reposi
     if let Result::Ok(repository) = Repository::open(target_path.clone()) {
         return Ok(repository);
     }
-    debug!("Cloning the repository from {url} at: {:?}", target_path);
     let repository = Repository::clone(url, target_path)?;
     lockfile.release()?;
     Ok(repository)

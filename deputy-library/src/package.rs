@@ -69,7 +69,6 @@ impl PackageFile {
             .ok_or_else(|| anyhow!("Temporary file path not found"))?
             .to_path_buf();
 
-        debug!("Saved PackageFile {name} to {package_folder}");
         fs::copy(original_path, final_file_path)?;
         Ok(())
     }
@@ -391,9 +390,6 @@ impl Package {
             }
             None => (None, 0_u64),
         };
-        debug!(
-        "Outbound file sizes (bytes): Package.toml - {toml_size}, Readme.md - {readme_size}, Archive - {archive_size}"
-    );
 
         if let Some(readme_file) = maybe_readme_file {
             let stream = stream

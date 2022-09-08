@@ -1,6 +1,5 @@
 use crate::{
     errors::{PackageServerError, ServerResponseError},
-    helpers::CeilingDiv,
     AppState,
 };
 use actix_files::NamedFile;
@@ -16,6 +15,7 @@ use deputy_library::{
     package::{FromBytes, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
+use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
@@ -150,9 +150,11 @@ pub async fn add_package_streaming(
         );
     };
 
-    let maybe_readme: Option<PackageFile> = if readme_size > 0 {
+    let optional_readme: Option<PackageFile> = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
-        for _ in 0..readme_size.ceiling_div(PAYLOAD_CHUNK_SIZE) {
+        let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
+
+        for _ in 0..readme_chunk {
             if let Some(Ok(readme_bytes)) = body.next().await {
                 vector_bytes.extend(readme_bytes.to_vec());
             }
@@ -178,7 +180,7 @@ pub async fn add_package_streaming(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let mut package = Package::new(metadata, toml_file, maybe_readme, archive_file);
+    let mut package = Package::new(metadata, toml_file, optional_readme, archive_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())

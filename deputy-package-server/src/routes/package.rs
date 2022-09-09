@@ -3,20 +3,28 @@ use crate::{
     AppState,
 };
 use actix_files::NamedFile;
-use actix_http::error::PayloadError;
+use actix_http::{body::MessageBody, StatusCode};
 use actix_web::{
     get, put,
     web::{Bytes, Data, Path, Payload},
     Error, HttpResponse, Responder,
 };
+use anyhow::Result;
 use deputy_library::{
     package::{Package, PackageFile, PackageMetadata},
+    project::Project,
     validation::{validate_name, validate_version, Validate},
 };
+use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::fs;
 use std::path::PathBuf;
+use std::{fs::File, io::Read};
+use tar::Archive;
 
 fn check_for_version_error(
     package_metadata: &PackageMetadata,
@@ -147,4 +155,50 @@ pub async fn download_package(
         error!("Failed to open the package: {error}");
         Error::from(error)
     })
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PackageResponse {
+    pub name: String,
+    pub version: String,
+}
+
+async fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
+    // For every package, iterate over its versions and parse data from their .toml files
+    let paths = fs::read_dir(package_path).unwrap();
+    let mut result_vec: Vec<Project> = Vec::new();
+
+    for package in paths {
+        let versions = fs::read_dir(package?.path()).unwrap();
+        for version in versions {
+            let file = File::open(version?.path())?;
+            let tarfile = MultiGzDecoder::new(file);
+            let mut archive = Archive::new(tarfile);
+            for entry in archive.entries().unwrap() {
+                let mut entry = entry?;
+                if entry.path()?.to_str().unwrap() == "package.toml" {
+                    // Read contents of package.toml to a string and parse them to a Project struct object
+                    let mut buffer = String::new();
+                    entry.read_to_string(&mut buffer)?;
+                    let value: Project = toml::from_str(&buffer).unwrap();
+                    result_vec.push(value);
+                }
+            }
+        }
+    }
+    let jsondata = serde_json::to_string(&result_vec)?;
+    Ok(jsondata)
+}
+
+#[get("package/random")]
+pub async fn get_all_packages(app_state: Data<AppState>) -> Result<HttpResponse, Error> {
+    let package_path = PathBuf::from(&app_state.package_folder);
+    let iteration_result = iterate_packages(&package_path).await;
+    let result = match iteration_result {
+        Ok(iteration_result) => {
+            HttpResponse::new(StatusCode::OK).set_body(iteration_result.boxed())
+        }
+        Err(e) => return Err(e),
+    };
+    Ok(result)
 }

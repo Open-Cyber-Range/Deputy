@@ -39,6 +39,7 @@ actix-http = { version = "3", features = ["http2", "ws"] }
 anyhow = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"
+flate2 = "1.0"
 futures = "0.3"
 git2 = "0.14"
 insta = "1"
@@ -47,9 +48,12 @@ log = "0.4"
 rand = "0.8"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
 serde_yaml = "0.8"
+tar = "0.4"
 tempfile = "3"
 thiserror = "1"
+toml = "0.5"
 tokio = { version = "1", features = ["sync", "macros", "time"] }
 
 [features]

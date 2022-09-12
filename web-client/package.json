@@ -24,6 +24,6 @@
   },
   "description": "Front-end for Deputy",
   "main": "index.js",
-  "author": "Developer <developers@cr14.ee>",
+  "author": "Rait Rotšan <developers@cr14.ee>",
   "license": "MIT"
 }

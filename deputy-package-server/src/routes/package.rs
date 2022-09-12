@@ -3,7 +3,7 @@ use crate::{
     AppState,
 };
 use actix_files::NamedFile;
-use actix_http::{body::MessageBody, StatusCode};
+use actix_http::{body::MessageBody, error::PayloadError, StatusCode};
 use actix_web::{
     get, put,
     web::{Bytes, Data, Path, Payload},
@@ -157,12 +157,6 @@ pub async fn download_package(
     })
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PackageResponse {
-    pub name: String,
-    pub version: String,
-}
-
 async fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
     // For every package, iterate over its versions and parse data from their .toml files
     let paths = fs::read_dir(package_path).unwrap();
@@ -190,7 +184,7 @@ async fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
     Ok(jsondata)
 }
 
-#[get("package/random")]
+#[get("package")]
 pub async fn get_all_packages(app_state: Data<AppState>) -> Result<HttpResponse, Error> {
     let package_path = PathBuf::from(&app_state.package_folder);
     let iteration_result = iterate_packages(&package_path).await;

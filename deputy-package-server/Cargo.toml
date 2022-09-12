@@ -45,6 +45,7 @@ git2 = "0.14"
 insta = "1"
 lazy_static = "1"
 log = "0.4"
+paginate = "1.1.11"
 rand = "0.8"
 semver = "1"
 serde = { version = "1", features = ["derive"] }

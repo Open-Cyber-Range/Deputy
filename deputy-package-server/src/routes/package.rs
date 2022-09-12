@@ -190,9 +190,7 @@ fn paginate_json(result: String, query: PackageQuery) -> Result<String, Error> {
     let projects: Vec<Project> = serde_json::from_str(result.as_str())?;
     let pages = Pages::new(projects.len() + 1, usize::try_from(query.limit).unwrap());
     let page = pages.with_offset(usize::try_from(query.page).unwrap());
-    let correctslice = &projects[page.start..=page.end];
-    let jsonreturnable = serde_json::to_string(correctslice)?;
-    Ok(jsonreturnable)
+    Ok(serde_json::to_string(&projects[page.start..=page.end])?)
 }
 
 #[derive(Deserialize, Debug)]
@@ -208,15 +206,15 @@ pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<HttpResponse, Error> {
-    let query = query.into_inner();
     let package_path = PathBuf::from(&app_state.package_folder);
     let iteration_result = iterate_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");
         ServerResponseError(PackageServerError::Pagination.into())
     })?;
-    let paginated_result = paginate_json(iteration_result, query).map_err(|error| {
-        error!("Failed to paginate for response: {error}");
-        ServerResponseError(PackageServerError::IterateOverPackages.into())
-    })?;
+    let paginated_result =
+        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
+            error!("Failed to paginate for response: {error}");
+            ServerResponseError(PackageServerError::IterateOverPackages.into())
+        })?;
     Ok(HttpResponse::new(StatusCode::OK).set_body(paginated_result.boxed()))
 }

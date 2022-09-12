@@ -25,6 +25,10 @@ pub enum PackageServerError {
     VersionParse,
     #[error("Package version on the server is either same or later")]
     VersionConflict,
+    #[error("Failed to paginate packages")]
+    Pagination,
+    #[error("Failed to iterate over all packages")]
+    IterateOverPackages,
 }
 
 #[derive(Debug)]

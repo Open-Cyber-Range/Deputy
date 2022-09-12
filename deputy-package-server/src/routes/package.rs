@@ -1,4 +1,5 @@
 use crate::{
+    constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
     AppState,
 };
@@ -6,7 +7,7 @@ use actix_files::NamedFile;
 use actix_http::{body::MessageBody, error::PayloadError, StatusCode};
 use actix_web::{
     get, put,
-    web::{Bytes, Data, Path, Payload},
+    web::{Bytes, Data, Path, Payload, Query},
     Error, HttpResponse, Responder,
 };
 use anyhow::Result;
@@ -19,7 +20,8 @@ use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
-use serde::{Deserialize, Serialize};
+use paginate::Pages;
+use serde::Deserialize;
 use serde_json;
 use std::fs;
 use std::path::PathBuf;
@@ -157,7 +159,7 @@ pub async fn download_package(
     })
 }
 
-async fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
+fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
     // For every package, iterate over its versions and parse data from their .toml files
     let paths = fs::read_dir(package_path).unwrap();
     let mut result_vec: Vec<Project> = Vec::new();
@@ -184,15 +186,37 @@ async fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
     Ok(jsondata)
 }
 
+fn paginate_json(result: String, query: PackageQuery) -> Result<String, Error> {
+    let projects: Vec<Project> = serde_json::from_str(result.as_str())?;
+    let pages = Pages::new(projects.len() + 1, usize::try_from(query.limit).unwrap());
+    let page = pages.with_offset(usize::try_from(query.page).unwrap());
+    let correctslice = &projects[page.start..=page.end];
+    let jsonreturnable = serde_json::to_string(correctslice)?;
+    Ok(jsonreturnable)
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PackageQuery {
+    #[serde(default = "default_page")]
+    page: u32,
+    #[serde(default = "default_limit")]
+    limit: u32,
+}
+
 #[get("package")]
-pub async fn get_all_packages(app_state: Data<AppState>) -> Result<HttpResponse, Error> {
+pub async fn get_all_packages(
+    app_state: Data<AppState>,
+    query: Query<PackageQuery>,
+) -> Result<HttpResponse, Error> {
+    let query = query.into_inner();
     let package_path = PathBuf::from(&app_state.package_folder);
-    let iteration_result = iterate_packages(&package_path).await;
-    let result = match iteration_result {
-        Ok(iteration_result) => {
-            HttpResponse::new(StatusCode::OK).set_body(iteration_result.boxed())
-        }
-        Err(e) => return Err(e),
-    };
-    Ok(result)
+    let iteration_result = iterate_packages(&package_path).map_err(|error| {
+        error!("Failed to iterate over all packages: {error}");
+        ServerResponseError(PackageServerError::Pagination.into())
+    })?;
+    let paginated_result = paginate_json(iteration_result, query).map_err(|error| {
+        error!("Failed to paginate for response: {error}");
+        ServerResponseError(PackageServerError::IterateOverPackages.into())
+    })?;
+    Ok(HttpResponse::new(StatusCode::OK).set_body(paginated_result.boxed()))
 }

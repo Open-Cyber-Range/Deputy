@@ -27,8 +27,6 @@ pub enum PackageServerError {
     VersionConflict,
     #[error("Failed to paginate packages")]
     Pagination,
-    #[error("Failed to iterate over all packages")]
-    IterateOverPackages,
 }
 
 #[derive(Debug)]

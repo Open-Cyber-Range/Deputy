@@ -185,9 +185,12 @@ fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Er
 
 fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Vec<Project> {
     let projects: Vec<Project> = result;
-    let pages = Pages::new(projects.len() + 1, usize::try_from(query.limit).unwrap());
+    let pages = Pages::new(
+        projects.len() + 1,
+        usize::try_from(query.limit + 1).unwrap(),
+    );
     let page = pages.with_offset(usize::try_from(query.page).unwrap());
-    projects[page.start..=page.end].to_vec()
+    projects[page.start..page.end].to_vec()
 }
 
 #[derive(Deserialize, Debug)]

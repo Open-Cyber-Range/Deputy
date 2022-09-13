@@ -1,5 +1,5 @@
 use crate::{
-    constants::{default_limit, default_page},
+    constants::{default_limit, default_page, PACKAGE_TOML},
     errors::{PackageServerError, ServerResponseError},
     AppState,
 };
@@ -7,7 +7,7 @@ use actix_files::NamedFile;
 use actix_http::{body::MessageBody, error::PayloadError, StatusCode};
 use actix_web::{
     get, put,
-    web::{Bytes, Data, Path, Payload, Query},
+    web::{Bytes, Data, Json, Path, Payload, Query},
     Error, HttpResponse, Responder,
 };
 use anyhow::Result;
@@ -159,8 +159,7 @@ pub async fn download_package(
     })
 }
 
-fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
-    // For every package, iterate over its versions and parse data from their .toml files
+fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Error> {
     let paths = fs::read_dir(package_path).unwrap();
     let mut result_vec: Vec<Project> = Vec::new();
 
@@ -170,10 +169,9 @@ fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
             let file = File::open(version?.path())?;
             let tarfile = MultiGzDecoder::new(file);
             let mut archive = Archive::new(tarfile);
-            for entry in archive.entries().unwrap() {
+            for entry in archive.entries()? {
                 let mut entry = entry?;
-                if entry.path()?.to_str().unwrap() == "package.toml" {
-                    // Read contents of package.toml to a string and parse them to a Project struct object
+                if entry.path()?.to_str() == Some(PACKAGE_TOML) {
                     let mut buffer = String::new();
                     entry.read_to_string(&mut buffer)?;
                     let value: Project = toml::from_str(&buffer).unwrap();
@@ -182,15 +180,14 @@ fn iterate_packages(package_path: &PathBuf) -> Result<String, Error> {
             }
         }
     }
-    let jsondata = serde_json::to_string(&result_vec)?;
-    Ok(jsondata)
+    Ok(result_vec)
 }
 
-fn paginate_json(result: String, query: PackageQuery) -> Result<String, Error> {
-    let projects: Vec<Project> = serde_json::from_str(result.as_str())?;
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
+    let projects: Vec<Project> = result;
     let pages = Pages::new(projects.len() + 1, usize::try_from(query.limit).unwrap());
     let page = pages.with_offset(usize::try_from(query.page).unwrap());
-    Ok(serde_json::to_string(&projects[page.start..=page.end])?)
+    Ok(projects[page.start..=page.end].to_vec())
 }
 
 #[derive(Deserialize, Debug)]
@@ -207,7 +204,7 @@ pub async fn get_all_packages(
     query: Query<PackageQuery>,
 ) -> Result<HttpResponse, Error> {
     let package_path = PathBuf::from(&app_state.package_folder);
-    let iteration_result = iterate_packages(&package_path).map_err(|error| {
+    let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");
         ServerResponseError(PackageServerError::Pagination.into())
     })?;
@@ -216,5 +213,6 @@ pub async fn get_all_packages(
             error!("Failed to paginate for response: {error}");
             ServerResponseError(PackageServerError::IterateOverPackages.into())
         })?;
-    Ok(HttpResponse::new(StatusCode::OK).set_body(paginated_result.boxed()))
+    Ok(HttpResponse::new(StatusCode::OK)
+        .set_body(serde_json::to_string(&paginated_result)?.boxed()))
 }

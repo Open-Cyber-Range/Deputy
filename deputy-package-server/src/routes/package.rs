@@ -7,7 +7,7 @@ use actix_files::NamedFile;
 use actix_http::{body::MessageBody, error::PayloadError, StatusCode};
 use actix_web::{
     get, put,
-    web::{Bytes, Data, Json, Path, Payload, Query},
+    web::{Bytes, Data, Path, Payload, Query},
     Error, HttpResponse, Responder,
 };
 use anyhow::Result;
@@ -183,11 +183,11 @@ fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Er
     Ok(result_vec)
 }
 
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Vec<Project> {
     let projects: Vec<Project> = result;
     let pages = Pages::new(projects.len() + 1, usize::try_from(query.limit).unwrap());
     let page = pages.with_offset(usize::try_from(query.page).unwrap());
-    Ok(projects[page.start..=page.end].to_vec())
+    projects[page.start..=page.end].to_vec()
 }
 
 #[derive(Deserialize, Debug)]
@@ -208,11 +208,7 @@ pub async fn get_all_packages(
         error!("Failed to iterate over all packages: {error}");
         ServerResponseError(PackageServerError::Pagination.into())
     })?;
-    let paginated_result =
-        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
-            error!("Failed to paginate for response: {error}");
-            ServerResponseError(PackageServerError::IterateOverPackages.into())
-        })?;
+    let paginated_result = paginate_json(iteration_result, query.into_inner());
     Ok(HttpResponse::new(StatusCode::OK)
         .set_body(serde_json::to_string(&paginated_result)?.boxed()))
 }

@@ -66,7 +66,7 @@ deploy-package-server:
     - mkdir -p ~/.ssh
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
     - scp -r ./deputy-package-server/docker-compose.yml user@10.80.60.167:~
-    - ssh -t user@10.80.60.167 "cd deputy-package-server && docker compose up -d"
+    - ssh -t user@10.80.60.167 "docker compose up -d"
     - echo "Deputy Package Server deployed, howdy!"
 
   only:

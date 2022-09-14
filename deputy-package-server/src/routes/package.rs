@@ -23,7 +23,7 @@ use log::error;
 use paginate::Pages;
 use serde::Deserialize;
 use serde_json;
-use std::fs;
+use std::fs::{self, DirEntry};
 use std::path::PathBuf;
 use std::{fs::File, io::Read};
 use tar::Archive;
@@ -159,25 +159,35 @@ pub async fn download_package(
     })
 }
 
+fn get_tomls_from_archive(package: DirEntry, filename: String) -> Result<Vec<String>, Error> {
+    let versions = fs::read_dir(package.path()).unwrap();
+    let mut result_vec: Vec<String> = Vec::new();
+    for version in versions {
+        let file = File::open(version?.path())?;
+        let tarfile = MultiGzDecoder::new(file);
+        let mut archive = Archive::new(tarfile);
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            if entry.path()?.to_str() == Some(filename.as_str()) {
+                let mut buffer = String::new();
+                entry.read_to_string(&mut buffer)?;
+                result_vec.push(buffer)
+            }
+        }
+    }
+    Ok(result_vec)
+}
+
 fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Error> {
     let paths = fs::read_dir(package_path).unwrap();
     let mut result_vec: Vec<Project> = Vec::new();
 
     for package in paths {
-        let versions = fs::read_dir(package?.path()).unwrap();
-        for version in versions {
-            let file = File::open(version?.path())?;
-            let tarfile = MultiGzDecoder::new(file);
-            let mut archive = Archive::new(tarfile);
-            for entry in archive.entries()? {
-                let mut entry = entry?;
-                if entry.path()?.to_str() == Some(PACKAGE_TOML) {
-                    let mut buffer = String::new();
-                    entry.read_to_string(&mut buffer)?;
-                    let value: Project = toml::from_str(&buffer).unwrap();
-                    result_vec.push(value);
-                }
-            }
+        let package = package?;
+        let tomls = get_tomls_from_archive(package, PACKAGE_TOML.to_string())?;
+        for toml in tomls {
+            let value: Project = toml::from_str(&toml).unwrap();
+            result_vec.push(value);
         }
     }
     Ok(result_vec)

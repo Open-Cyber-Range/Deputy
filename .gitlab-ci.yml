@@ -70,4 +70,4 @@ deploy-package-server:
     - echo "Deputy Package Server deployed, howdy!"
 
   only:
-    - master
+    - merge_requests

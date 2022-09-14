@@ -12,7 +12,7 @@ mod tests {
     };
     use deputy_package_server::{
         routes::package::add_package,
-        routes::package::{add_package_streaming, download_package},
+        routes::package::{download_package, add_package_streaming},
         test::{create_predictable_temporary_folders, create_test_app_state},
         AppState,
     };
@@ -59,7 +59,7 @@ mod tests {
         let test_package = create_test_package()?;
         let package_name = test_package.metadata.name.clone();
 
-        let stream: PackageStream = test_package.try_into()?;
+        let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package/stream").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;

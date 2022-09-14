@@ -1,4 +1,4 @@
-use crate::{constants::COMPERSSION_CHUNK_SIZE, project::Project, validation};
+use crate::{constants::COMPRESSION_CHUNK_SIZE, project::Project, validation};
 use anyhow::{anyhow, Result};
 use gzp::{
     deflate::Mgzip,
@@ -15,7 +15,7 @@ use std::iter::Iterator;
 use std::path::{Path, PathBuf};
 use tar::{Archive, Builder};
 
-fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
+fn get_destination_file_path(toml_path: &Path) -> Result<PathBuf> {
     let mut file = File::open(toml_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -25,7 +25,7 @@ fn get_destination_file_path(toml_path: &PathBuf) -> Result<PathBuf> {
         .parent()
         .ok_or_else(|| anyhow!("Could not find root directory"))?;
     let destination_directory: PathBuf = root_directory.join("target/package");
-    create_dir_all(destination_directory.clone())?;
+    create_dir_all(&destination_directory)?;
     let mut destination_file = destination_directory.join(deserialized_toml.package.name);
     destination_file.set_extension("package");
 
@@ -42,9 +42,9 @@ pub fn decompress_archive(compressed_file_path: &Path) -> Result<PathBuf> {
     let mut parallel_decompressor: ParallelDecompression = ParDecompressBuilder::new()
         .num_threads(num_cpus::get())?
         .from_reader(compressed_file);
-    let mut buffer = Vec::with_capacity(COMPERSSION_CHUNK_SIZE);
+    let mut buffer = Vec::with_capacity(COMPRESSION_CHUNK_SIZE);
     loop {
-        let mut limit = (&mut parallel_decompressor).take(COMPERSSION_CHUNK_SIZE as u64);
+        let mut limit = (&mut parallel_decompressor).take(COMPRESSION_CHUNK_SIZE as u64);
         limit.read_to_end(&mut buffer)?;
         if buffer.is_empty() {
             break;
@@ -63,9 +63,9 @@ fn compress_archive(archive_path: &Path, compression: u32) -> Result<PathBuf> {
         .num_threads(num_cpus::get())?
         .compression_level(Compression::new(compression))
         .from_writer(compressed_file);
-    let mut buffer = Vec::with_capacity(COMPERSSION_CHUNK_SIZE);
+    let mut buffer = Vec::with_capacity(COMPRESSION_CHUNK_SIZE);
     loop {
-        let mut limit = (&archive_file).take(COMPERSSION_CHUNK_SIZE as u64);
+        let mut limit = (&archive_file).take(COMPRESSION_CHUNK_SIZE as u64);
         limit.read_to_end(&mut buffer)?;
         if buffer.is_empty() {
             break;

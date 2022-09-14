@@ -10,5 +10,9 @@ Configuration {
         username: "some-username",
         email: "some@email.com",
     },
-    package_folder: "/tmp/packages",
+    storage_folders: StorageFolders {
+        package_folder: "/tmp/packages",
+        toml_folder: "/tmp/tomls",
+        readme_folder: "/tmp/readmes",
+    },
 }

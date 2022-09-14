@@ -9,7 +9,9 @@
     "tamasfe.even-better-toml",
     "rust-lang.rust-analyzer",
     "zxh404.vscode-proto3",
-    "github.copilot"
+    "github.copilot",
+    "eamodio.gitlens",
+    "github.copilot-labs"
   ],
   "workspaceFolder": "/workspace",
   "remoteUser": "vscode"

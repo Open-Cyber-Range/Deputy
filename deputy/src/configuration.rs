@@ -45,10 +45,10 @@ mod tests {
     use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
 
     fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {
-        let configuration_file_contents = br#"    
+        let configuration_file_contents = br#"
                 [registries]
                 main-registry = { index = "registry-index", api = "apilink" }
-                
+
                 [package]
                 index_path = "./index"
                 download_path = "./download"

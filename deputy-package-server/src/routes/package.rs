@@ -9,10 +9,13 @@ use actix_web::{
     web::{Bytes, Data, Path, Payload},
     Error, HttpResponse, Responder,
 };
+use anyhow::Result;
 use deputy_library::{
-    package::{Package, PackageFile, PackageMetadata},
+    constants::PAYLOAD_CHUNK_SIZE,
+    package::{FromBytes, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
+use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
@@ -31,7 +34,6 @@ fn check_for_version_error(
         error!("Failed to validate versioning");
         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
     }
-
     Ok(())
 }
 
@@ -56,7 +58,7 @@ pub async fn add_package(
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageParse.into())
     })?;
-    let folder = &app_state.package_folder;
+    let storage_folders = &app_state.storage_folders;
     let repository = &app_state.repository.lock().await;
 
     package.validate().map_err(|error| {
@@ -65,12 +67,10 @@ pub async fn add_package(
     })?;
     check_for_version_error(&package.metadata, repository)?;
 
-    package
-        .save(folder.to_string(), repository)
-        .map_err(|error| {
-            error!("Failed to save the package: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
+    package.save(storage_folders, repository).map_err(|error| {
+        error!("Failed to save the package: {error}");
+        ServerResponseError(PackageServerError::PackageSave.into())
+    })?;
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -95,30 +95,103 @@ pub async fn add_package_streaming(
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
 
-    let folder = &app_state.package_folder;
     let repository = &app_state.repository.lock().await;
     if let Err(error) = check_for_version_error(&metadata, repository) {
         drain_stream(body).await?;
         return Err(error);
     }
 
-    let package_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
-        error!("Failed to save the file: {error}");
-        ServerResponseError(PackageServerError::FileSave.into())
-    })?;
+    let toml_size = if let Some(Ok(bytes)) = body.next().await {
+        u64::from_bytes(bytes).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?
+    } else {
+        error!("Invalid stream chunk: invalid toml length");
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
+        );
+    };
 
-    let mut package = Package::new(metadata, package_file);
+    if toml_size > PAYLOAD_CHUNK_SIZE {
+        error!("Invalid package.toml: abnormally large package.toml");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity()
+            .body("Invalid package.toml: abnormally large package.toml"));
+    }
+
+    let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
+        let toml_bytes_vector = toml_bytes.to_vec();
+        let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package toml: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        result?
+    } else {
+        error!("Invalid stream chunk: No metadata");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+    };
+
+    let readme_size = if let Some(Ok(bytes)) = body.next().await {
+        u64::from_bytes(bytes).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?
+    } else {
+        error!("Invalid stream chunk: invalid readme length");
+        drain_stream(body).await?;
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid readme length")
+        );
+    };
+
+    let optional_readme: Option<PackageFile> = if readme_size > 0 {
+        let mut vector_bytes: Vec<u8> = Vec::new();
+        let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
+
+        for _ in 0..readme_chunk {
+            if let Some(Ok(readme_bytes)) = body.next().await {
+                vector_bytes.extend(readme_bytes.to_vec());
+            }
+        }
+        let result = PackageFile::try_from(vector_bytes.as_slice()).map_err(|error| {
+            error!("Failed to parse package readme: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        });
+        if let Err(error) = result {
+            drain_stream(body).await?;
+            return Err(error.into());
+        }
+        Some(result?)
+    } else {
+        None
+    };
+
+    let archive_file: PackageFile =
+        PackageFile::from_stream(body.skip(1), true)
+            .await
+            .map_err(|error| {
+                error!("Failed to save the file: {error}");
+                ServerResponseError(PackageServerError::FileSave.into())
+            })?;
+
+    let mut package = Package::new(metadata, toml_file, optional_readme, archive_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
+
     package
-        .save(folder.to_string(), repository)
+        .save(&app_state.storage_folders, repository)
         .map_err(|error| {
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-
     Ok(HttpResponse::Ok().body("OK"))
 }
 
@@ -127,7 +200,7 @@ pub async fn download_package(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
 ) -> impl Responder {
-    let package_folder = &app_state.package_folder;
+    let package_folder = &app_state.storage_folders.package_folder;
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
 

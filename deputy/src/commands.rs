@@ -48,7 +48,7 @@ pub struct PublishOptions {
     #[clap(
         short,
         long,
-        default_value_t = 60,
+        default_value_t = 300,
         help = "Timeout before publish fails"
     )]
     pub(crate) timeout: u64,

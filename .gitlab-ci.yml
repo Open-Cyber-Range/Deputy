@@ -52,8 +52,22 @@ staging:
     DEPUTY_PACKAGE_SERVER: "1"
     DEPUTY: "1"
   stage: deploy
-  trigger:
-    open-cyber-range/internal/support-docker-images
+  trigger: open-cyber-range/internal/support-docker-images
   only:
     - master
     - tags
+
+deploy-package-server:
+  stage: deploy
+  script:
+    - apt-get update -y && apt-get install openssh-client -y
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$DOCUSAURUS_SSH_PK")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - scp -r ./deputy-package-server/docker-compose.yml user@10.80.60.167:~
+    - ssh -t user@10.80.60.167 "cd deputy-package-server && docker compose up -d"
+    - echo "Deputy Package Server deployed, howdy!"
+
+  only:
+    - master

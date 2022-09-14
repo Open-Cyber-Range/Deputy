@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  deputy-package-server-repository-combo:
+    image: nexus.ex.c-lab.ee:8003/deputy-package-server-repository-combo:latest
+    environment:
+      - RUST_LOG=debug
+    restart: unless-stopped

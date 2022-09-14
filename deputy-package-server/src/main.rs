@@ -20,11 +20,11 @@ async fn real_main() -> Result<()> {
     env_logger::init();
     let configuration = read_configuration(std::env::args().collect())?;
     if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-        let package_folder = configuration.package_folder.clone();
         let app_state = AppState {
             repository: Arc::new(Mutex::new(repository)),
-            package_folder,
+            storage_folders: configuration.storage_folders,
         };
+
         HttpServer::new(move || {
             let app_data = Data::new(app_state.clone());
             App::new()

@@ -7,17 +7,20 @@ mod tests {
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy::client::Client;
-    use deputy_library::{test::TEST_PACKAGE_BYTES, constants::CONFIGURATION_FOLDER_PATH_ENV_KEY};
+    use deputy_library::{
+        constants::CONFIGURATION_FOLDER_PATH_ENV_KEY,
+        test::{create_test_package},
+    };
     use tempfile::TempDir;
 
     #[actix_web::test]
     async fn downloads_package() -> Result<()> {
         let temp_dir = TempDir::new()?;
-        let package_bytes = TEST_PACKAGE_BYTES.clone();
+        let package = create_test_package()?;
         let test_backend = TestBackEnd::builder().build().await?;
 
         let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_small_package(package_bytes.clone(), 60).await;
+        let response = client.upload_small_package(package.try_into()?, 60).await;
         assert!(response.is_ok());
 
         let mut command = Command::cargo_bin("deputy")?;

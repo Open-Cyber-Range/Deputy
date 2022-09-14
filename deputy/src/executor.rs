@@ -19,8 +19,8 @@ use deputy_library::{
 use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
-use tokio::fs::rename;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
+use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,
@@ -99,13 +99,20 @@ impl Executor {
                 "Finding toml".to_string(),
             )))
             .await??;
-        let package_toml = find_toml(current_dir()?)?;
+        let toml_path = find_toml(current_dir()?)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
             )))
             .await??;
-        let package = Package::from_file(package_toml, options.compression)?;
+
+        let project = create_project_from_toml_path(&toml_path)?;
+        let optional_readme_path: Option<PathBuf> = match project.virtual_machine {
+            Some(vm) => vm.readme_path.map(PathBuf::from),
+            None => None,
+        };
+
+        let package = Package::from_file(optional_readme_path, toml_path, options.compression)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),
@@ -117,13 +124,14 @@ impl Executor {
                 "Uploading".to_string(),
             )))
             .await??;
+
         if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
             client
                 .upload_small_package(package.try_into()?, options.timeout)
                 .await?;
         } else {
             client
-                .stream_large_package(package.try_into()?, options.timeout)
+                .stream_large_package(package.to_stream().await?, options.timeout)
                 .await?;
         }
         progress_actor
@@ -217,7 +225,7 @@ impl Executor {
 
     pub fn parse_toml(&self, options: ParseTOMLOptions) -> Result<()> {
         let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
-        let project = create_project_from_toml_path(package_toml_path.to_path_buf())?;
+        let project = create_project_from_toml_path(&package_toml_path)?;
         if options.pretty {
             println!("{}", serde_json::to_string_pretty(&project)?);
         } else {
@@ -236,4 +244,3 @@ impl Executor {
         Ok(())
     }
 }
-

@@ -14,9 +14,11 @@ use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, Package, PackageFile, PackageMetadata},
+    project::Project,
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
+use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
@@ -286,7 +288,7 @@ pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<HttpResponse, Error> {
-    let package_path = PathBuf::from(&app_state.package_folder);
+    let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
     let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");
         ServerResponseError(PackageServerError::Pagination.into())

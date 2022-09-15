@@ -11,13 +11,17 @@ use anyhow::{anyhow, Error, Result};
 use deputy_library::{
     repository::{get_or_create_repository, RepositoryConfiguration},
     test::{generate_random_string, get_free_port},
+    StorageFolders,
 };
-use futures::lock::Mutex;
-use futures::TryFutureExt;
+use futures::{lock::Mutex, TryFutureExt};
 use lazy_static::lazy_static;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    env,
+    fs::{create_dir_all, remove_dir_all},
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 use tokio::{
     sync::oneshot::{channel, Sender},
     time::timeout,
@@ -33,7 +37,11 @@ lazy_static! {
             username: "some-username".to_string(),
             email: "some@email.com".to_string(),
         },
-        package_folder: "/tmp/test-packages".to_string(),
+        storage_folders: StorageFolders {
+            package_folder: "/tmp/packages".to_string(),
+            toml_folder: "/tmp/package-tomls".to_string(),
+            readme_folder: "/tmp/readmes".to_string(),
+        },
     };
 }
 
@@ -66,9 +74,9 @@ impl TestPackageServer {
             configuration.repository.folder,
             generate_random_string(10)?
         );
-        configuration.package_folder = format!(
+        configuration.storage_folders.package_folder = format!(
             "{}-{}",
-            configuration.package_folder,
+            configuration.storage_folders.package_folder,
             generate_random_string(10)?
         );
         let server_address = format!("http://{}:{}", configuration.host, configuration.port);
@@ -77,11 +85,17 @@ impl TestPackageServer {
 
     async fn initialize(&self, tx: Sender<()>) -> Result<()> {
         let configuration = self.configuration.clone();
-        let package_folder = configuration.package_folder;
+        let package_folder = configuration.storage_folders.package_folder;
+        let toml_folder = configuration.storage_folders.toml_folder;
+        let readme_folder = configuration.storage_folders.readme_folder;
         if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
-                package_folder,
+                storage_folders: StorageFolders {
+                    package_folder,
+                    toml_folder,
+                    readme_folder,
+                },
             };
             try_join!(
                 HttpServer::new(move || {
@@ -111,7 +125,7 @@ impl TestPackageServer {
     pub async fn start(self) -> Result<()> {
         let (tx, rx) = channel::<()>();
         tokio::spawn(async move { self.initialize(tx).await });
-        timeout(std::time::Duration::from_millis(1000), rx).await??;
+        timeout(Duration::from_millis(1000), rx).await??;
 
         Ok(())
     }
@@ -123,17 +137,17 @@ impl TestPackageServer {
 
 impl Drop for TestPackageServer {
     fn drop(&mut self) {
-        if Path::new(&self.configuration.package_folder).is_dir() {
-            fs::remove_dir_all(&self.configuration.package_folder).unwrap();
+        if Path::new(&self.configuration.storage_folders.package_folder).is_dir() {
+            remove_dir_all(&self.configuration.storage_folders.package_folder).unwrap();
         }
         if Path::new(&self.configuration.repository.folder).is_dir() {
-            fs::remove_dir_all(&self.configuration.repository.folder).unwrap();
+            remove_dir_all(&self.configuration.repository.folder).unwrap();
         }
     }
 }
 
 pub fn get_predictable_temporary_folders(randomizer: String) -> Result<(String, String)> {
-    let temporary_directory = std::env::temp_dir();
+    let temporary_directory = env::temp_dir();
     let package_folder: PathBuf =
         temporary_directory.join(format!("test-package-folder-{}", randomizer));
     let repository_folder: PathBuf =
@@ -147,19 +161,24 @@ pub fn get_predictable_temporary_folders(randomizer: String) -> Result<(String, 
 pub fn create_predictable_temporary_folders(randomizer: String) -> Result<(String, String)> {
     let (package_string, repository_string) = get_predictable_temporary_folders(randomizer)?;
 
-    std::fs::create_dir_all(&PathBuf::from(package_string.clone()))?;
-    std::fs::create_dir_all(&PathBuf::from(repository_string.clone()))?;
+    create_dir_all(&PathBuf::from(package_string.clone()))?;
+    create_dir_all(&PathBuf::from(repository_string.clone()))?;
     Ok((package_string, repository_string))
 }
 
 pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
-    let temporary_directory = std::env::temp_dir();
+    let temporary_directory = env::temp_dir();
     let package_folder: PathBuf =
         temporary_directory.join(format!("test-package-folder-{}", randomizer));
-    std::fs::create_dir_all(&package_folder)?;
+    create_dir_all(&package_folder)?;
     let repository_folder: PathBuf =
         temporary_directory.join(format!("test-repository-folder-{}", randomizer));
-    std::fs::create_dir_all(&repository_folder)?;
+    create_dir_all(&repository_folder)?;
+    let toml_folder: PathBuf = temporary_directory.join(format!("test-toml-folder-{}", randomizer));
+    create_dir_all(&toml_folder)?;
+    let readme_folder: PathBuf =
+        temporary_directory.join(format!("test-readme-folder-{}", randomizer));
+    create_dir_all(&readme_folder)?;
 
     let repository_configuration = RepositoryConfiguration {
         username: String::from("test-username"),
@@ -170,6 +189,10 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
 
     Ok(Data::new(AppState {
         repository: Arc::new(Mutex::new(repository)),
-        package_folder: package_folder.to_str().unwrap().to_string(),
+        storage_folders: StorageFolders {
+            package_folder: package_folder.to_str().unwrap().to_string(),
+            toml_folder: toml_folder.to_str().unwrap().to_string(),
+            readme_folder: readme_folder.to_str().unwrap().to_string(),
+        },
     }))
 }

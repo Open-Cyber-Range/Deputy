@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "test")]
 #[macro_use]
 extern crate lazy_static;
@@ -11,3 +13,10 @@ pub mod repository;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod validation;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StorageFolders {
+    pub package_folder: String,
+    pub toml_folder: String,
+    pub readme_folder: String,
+}

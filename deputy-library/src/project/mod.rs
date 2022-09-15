@@ -3,7 +3,7 @@ pub(crate) mod enums;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
@@ -23,9 +23,10 @@ pub struct VirtualMachine {
     #[serde(rename = "type")]
     pub virtual_machine_type: VirtualMachineType,
     file_path: String,
+    pub readme_path: Option<String>,
 }
-pub fn create_project_from_toml_path(toml_path: PathBuf) -> Result<Project, anyhow::Error> {
-    let mut toml_file = File::open(&toml_path)?;
+pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
+    let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();
     toml_file.read_to_string(&mut contents)?;
     let deserialized_toml: Project = toml::from_str(&*contents)?;
@@ -68,7 +69,7 @@ pub struct Body {
 }
 
 impl Body {
-    pub fn create_from_toml(toml_path: PathBuf) -> Result<Body> {
+    pub fn create_from_toml(toml_path: &Path) -> Result<Body> {
         let deserialized_toml = create_project_from_toml_path(toml_path)?;
         let result = Body {
             name: deserialized_toml.package.name,

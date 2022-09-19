@@ -1,6 +1,7 @@
 use crate::{
     constants::{default_limit, default_page, PACKAGE_TOML},
     errors::{PackageServerError, ServerResponseError},
+    utils::get_file_content_by_path,
     AppState,
 };
 use actix_files::NamedFile;
@@ -18,17 +19,14 @@ use deputy_library::{
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
-use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
 use paginate::Pages;
 use serde::Deserialize;
 use serde_json;
-use std::fs::{self, DirEntry};
+use std::fs;
 use std::path::PathBuf;
-use std::{fs::File, io::Read};
-use tar::Archive;
 
 fn check_for_version_error(
     package_metadata: &PackageMetadata,
@@ -231,32 +229,13 @@ pub async fn download_package(
     })
 }
 
-fn get_tomls_from_archive(package: DirEntry, filename: &str) -> Result<Vec<String>> {
-    let versions = fs::read_dir(package.path())?;
-    let mut result_vec: Vec<String> = Vec::new();
-    for version in versions {
-        let file = File::open(version?.path())?;
-        let tarfile = MultiGzDecoder::new(file);
-        let mut archive = Archive::new(tarfile);
-        for entry in archive.entries()? {
-            let mut entry = entry?;
-            if entry.path()?.to_str() == Some(filename) {
-                let mut buffer = String::new();
-                entry.read_to_string(&mut buffer)?;
-                result_vec.push(buffer)
-            }
-        }
-    }
-    Ok(result_vec)
-}
-
 fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
     let paths = fs::read_dir(package_path)?;
     let mut result_vec: Vec<Project> = Vec::new();
 
     for package in paths {
         let package = package?;
-        let tomls = get_tomls_from_archive(package, PACKAGE_TOML)?;
+        let tomls = get_file_content_by_path(package, &PathBuf::from(PACKAGE_TOML))?;
         for toml in tomls {
             let value: Project = toml::from_str(&toml).unwrap();
             result_vec.push(value);

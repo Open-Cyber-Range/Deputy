@@ -231,8 +231,8 @@ pub async fn download_package(
     })
 }
 
-fn get_tomls_from_archive(package: DirEntry, filename: String) -> Result<Vec<String>, Error> {
-    let versions = fs::read_dir(package.path()).unwrap();
+fn get_tomls_from_archive(package: DirEntry, filename: &str) -> Result<Vec<String>> {
+    let versions = fs::read_dir(package.path())?;
     let mut result_vec: Vec<String> = Vec::new();
     for version in versions {
         let file = File::open(version?.path())?;
@@ -240,7 +240,7 @@ fn get_tomls_from_archive(package: DirEntry, filename: String) -> Result<Vec<Str
         let mut archive = Archive::new(tarfile);
         for entry in archive.entries()? {
             let mut entry = entry?;
-            if entry.path()?.to_str() == Some(filename.as_str()) {
+            if entry.path()?.to_str() == Some(filename) {
                 let mut buffer = String::new();
                 entry.read_to_string(&mut buffer)?;
                 result_vec.push(buffer)
@@ -250,13 +250,13 @@ fn get_tomls_from_archive(package: DirEntry, filename: String) -> Result<Vec<Str
     Ok(result_vec)
 }
 
-fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Error> {
-    let paths = fs::read_dir(package_path).unwrap();
+fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
+    let paths = fs::read_dir(package_path)?;
     let mut result_vec: Vec<Project> = Vec::new();
 
     for package in paths {
         let package = package?;
-        let tomls = get_tomls_from_archive(package, PACKAGE_TOML.to_string())?;
+        let tomls = get_tomls_from_archive(package, PACKAGE_TOML)?;
         for toml in tomls {
             let value: Project = toml::from_str(&toml).unwrap();
             result_vec.push(value);
@@ -265,14 +265,14 @@ fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>, Er
     Ok(result_vec)
 }
 
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Vec<Project> {
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
     let projects: Vec<Project> = result;
     let pages = Pages::new(
         projects.len() + 1,
         usize::try_from(query.limit + 1).unwrap(),
     );
-    let page = pages.with_offset(usize::try_from(query.page).unwrap());
-    projects[page.start..page.end].to_vec()
+    let page = pages.with_offset(usize::try_from(query.page)?);
+    Ok(projects[page.start..page.end].to_vec())
 }
 
 #[derive(Deserialize, Debug)]
@@ -293,7 +293,11 @@ pub async fn get_all_packages(
         error!("Failed to iterate over all packages: {error}");
         ServerResponseError(PackageServerError::Pagination.into())
     })?;
-    let paginated_result = paginate_json(iteration_result, query.into_inner());
+    let paginated_result =
+        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
+            error!("Failed to paginate packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
     Ok(HttpResponse::new(StatusCode::OK)
         .set_body(serde_json::to_string(&paginated_result)?.boxed()))
 }

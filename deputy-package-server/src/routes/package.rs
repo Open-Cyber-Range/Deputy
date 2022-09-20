@@ -5,10 +5,10 @@ use crate::{
     AppState,
 };
 use actix_files::NamedFile;
-use actix_http::{body::MessageBody, error::PayloadError, StatusCode};
+use actix_http::error::PayloadError;
 use actix_web::{
     get, put,
-    web::{Bytes, Data, Path, Payload, Query},
+    web::{Bytes, Data, Json, Path, Payload, Query},
     Error, HttpResponse, Responder,
 };
 use anyhow::Result;
@@ -24,7 +24,6 @@ use git2::Repository;
 use log::error;
 use paginate::Pages;
 use serde::Deserialize;
-use serde_json;
 use std::fs;
 use std::path::PathBuf;
 
@@ -266,7 +265,7 @@ pub struct PackageQuery {
 pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
-) -> Result<HttpResponse, Error> {
+) -> Result<impl Responder, Error> {
     let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
     let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");
@@ -277,6 +276,5 @@ pub async fn get_all_packages(
             error!("Failed to paginate packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    Ok(HttpResponse::new(StatusCode::OK)
-        .set_body(serde_json::to_string(&paginated_result)?.boxed()))
+    Ok(Json(paginated_result))
 }

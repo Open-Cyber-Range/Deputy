@@ -265,7 +265,7 @@ pub struct PackageQuery {
 pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
-) -> Result<impl Responder, Error> {
+) -> Result<Json<Vec<Project>>, Error> {
     let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
     let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");

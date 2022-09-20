@@ -1,24 +1,30 @@
 use crate::{
+    constants::{default_limit, default_page, PACKAGE_TOML},
     errors::{PackageServerError, ServerResponseError},
+    utils::get_file_content_by_path,
     AppState,
 };
 use actix_files::NamedFile;
 use actix_http::error::PayloadError;
 use actix_web::{
     get, put,
-    web::{Bytes, Data, Path, Payload},
+    web::{Bytes, Data, Json, Path, Payload, Query},
     Error, HttpResponse, Responder,
 };
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, Package, PackageFile, PackageMetadata},
+    project::Project,
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
+use paginate::Pages;
+use serde::Deserialize;
+use std::fs;
 use std::path::PathBuf;
 
 fn check_for_version_error(
@@ -220,4 +226,55 @@ pub async fn download_package(
         error!("Failed to open the package: {error}");
         Error::from(error)
     })
+}
+
+fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
+    let paths = fs::read_dir(package_path)?;
+    let mut result_vec: Vec<Project> = Vec::new();
+
+    for package in paths {
+        let package = package?;
+        let tomls = get_file_content_by_path(package, &PathBuf::from(PACKAGE_TOML))?;
+        for toml in tomls {
+            let value: Project = toml::from_str(&toml).unwrap();
+            result_vec.push(value);
+        }
+    }
+    Ok(result_vec)
+}
+
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
+    let projects: Vec<Project> = result;
+    let pages = Pages::new(
+        projects.len() + 1,
+        usize::try_from(query.limit + 1).unwrap(),
+    );
+    let page = pages.with_offset(usize::try_from(query.page)?);
+    Ok(projects[page.start..page.end].to_vec())
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PackageQuery {
+    #[serde(default = "default_page")]
+    page: u32,
+    #[serde(default = "default_limit")]
+    limit: u32,
+}
+
+#[get("package")]
+pub async fn get_all_packages(
+    app_state: Data<AppState>,
+    query: Query<PackageQuery>,
+) -> Result<Json<Vec<Project>>, Error> {
+    let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
+    let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
+        error!("Failed to iterate over all packages: {error}");
+        ServerResponseError(PackageServerError::Pagination.into())
+    })?;
+    let paginated_result =
+        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
+            error!("Failed to paginate packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    Ok(Json(paginated_result))
 }

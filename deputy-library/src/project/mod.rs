@@ -7,7 +7,7 @@ use std::{fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Project {
     pub package: Body,
     pub content: Content,
@@ -60,7 +60,7 @@ where
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Body {
     pub name: String,
     pub description: String,
@@ -81,13 +81,13 @@ impl Body {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Content {
     #[serde(rename = "type")]
     pub content_type: ContentType,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum ContentType {
     #[serde(alias = "vm")]
     VM,

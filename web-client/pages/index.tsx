@@ -12,9 +12,7 @@ const Home: NextPage = () => {
       </Head>
 
       <header className={styles.header}>
-        <h1>
-          I&apos;m a searchbox
-        </h1>
+        <a>I&apos;m a searchbox</a>
       </header>
 
       <main className={styles.main}>

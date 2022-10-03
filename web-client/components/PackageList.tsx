@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import styles from "../styles/Home.module.css";
+import styles from "../styles/PackageList.module.css";
 import {PackageList} from "../interfaces/PackageListInterface";
 
 const fetcher = (args: RequestInfo) => fetch(args).then((res) => res.json())
@@ -15,7 +15,7 @@ function GetAllPackages() {
           <div className={styles.packageRow}>
             <div key={null} className={styles.descriptionBox}>
               <div>
-                <span className={styles.name}>{deputyPackage.package.name}</span>
+                <a href="#" className={styles.name}>{deputyPackage.package.name}</a>
                 <span className={styles.version}>{deputyPackage.package.version}</span>
               </div>
               <div className={styles.description}>{deputyPackage.package.description}</div>

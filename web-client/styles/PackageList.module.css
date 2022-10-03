@@ -1,0 +1,39 @@
+ul.noBullets {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.descriptionBox {
+    padding-top: 5px;
+}
+
+.name {
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 120%;
+    overflow-wrap: break-word;
+}
+
+.description {
+    margin-top: 8px;
+    font-size: 80%;
+}
+
+.version {
+    margin-left: 10px;
+}
+
+.packageContainer {
+    padding: 30px;
+    width: 960px;
+}
+
+.packageRow {
+    --shadow: 0 1px 3px hsla(51, 90%, 42%, .35);
+    background-color: #FFFFFF;
+    border-radius: 5px;
+    padding: 15px 25px;
+    margin-bottom: 15px;
+    box-shadow: var(--shadow);
+}

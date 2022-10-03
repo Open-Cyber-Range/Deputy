@@ -8,6 +8,7 @@ lint-and-test:
   script:
     - cargo clippy -- -Dwarnings
     - cargo test
+    - yarn --cwd ./web-client/
     # - cargo tarpaulin --skip-clean --out Xml
   # coverage: '/^\d+.\d+% coverage/'
   # artifacts:

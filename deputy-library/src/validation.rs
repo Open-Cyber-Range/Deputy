@@ -66,7 +66,7 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
-pub fn validate_default_account(virtual_machine: Option<VirtualMachine>) -> Result<()> {
+pub fn validate_vm_accounts(virtual_machine: Option<VirtualMachine>) -> Result<()> {
     match virtual_machine {
         Some(virtual_machine) => {
             if let Some(accounts) = virtual_machine.accounts {
@@ -97,7 +97,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
-    validate_default_account(deserialized_toml.virtual_machine)?;
+    validate_vm_accounts(deserialized_toml.virtual_machine)?;
     Ok(())
 }
 

@@ -80,6 +80,9 @@ pub fn validate_default_account(virtual_machine: Option<VirtualMachine>) -> Resu
                 }
                 return Err(anyhow!("Accounts defined but no default account assigned"));
             }
+            if virtual_machine.accounts.is_none() && virtual_machine.default_account.is_some() {
+                return Err(anyhow!("Default account assigned but no accounts defined"));
+            }
             Ok(())
         }
         None => Ok(()),
@@ -216,7 +219,6 @@ mod tests {
             [content]
             type = "vm"
             [virtual-machine]
-            accounts = [{name = "user1", password = "password1"},{name = "user2", password = "password2"}]
             default_account = "user404"
             type = "OVA"
             file_path = "some-path"

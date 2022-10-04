@@ -13,6 +13,7 @@ pub struct Project {
     pub content: Content,
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
+    pub feature: Option<Feature>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -33,6 +34,22 @@ pub struct VirtualMachine {
     pub virtual_machine_type: VirtualMachineType,
     file_path: String,
     pub readme_path: Option<String>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub enum FeatureType {
+    #[serde(alias = "service", alias = "SERVICE")]
+    Service,
+    #[serde(alias = "configuration", alias = "CONFIGURATION")]
+    Configuration,
+    #[serde(alias = "artifact", alias = "ARTIFACT")]
+    Artifact,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Feature {
+    #[serde(rename = "type", alias = "Type", alias = "TYPE")]
+    pub feature_type: FeatureType,
 }
 
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
@@ -92,13 +109,15 @@ impl Body {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct Content {
-    #[serde(rename = "type")]
-    pub content_type: ContentType,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum ContentType {
     #[serde(alias = "vm")]
     VM,
+    #[serde(alias = "feature", alias = "FEATURE")]
+    Feature,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct Content {
+    #[serde(rename = "type")]
+    pub content_type: ContentType,
 }

@@ -14,8 +14,17 @@ pub struct Project {
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
 }
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct Account {
+    pub name: String,
+    pub password: String,
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
+    pub accounts: Option<Vec<Account>>,
+    pub default_account: Option<String>,
     #[serde(default)]
     pub operating_system: Option<OperatingSystem>,
     #[serde(default)]
@@ -25,6 +34,7 @@ pub struct VirtualMachine {
     file_path: String,
     pub readme_path: Option<String>,
 }
+
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();

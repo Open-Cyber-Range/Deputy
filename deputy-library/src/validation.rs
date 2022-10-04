@@ -248,4 +248,23 @@ mod tests {
         file.close()?;
         Ok(())
     }
+
+    #[test]
+    fn feature_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            [content]
+            type = "feature"
+            [feature]
+            type = "SERVICE"
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::assert_debug_snapshot!(project);
+        file.close()?;
+        Ok(())
+    }
 }

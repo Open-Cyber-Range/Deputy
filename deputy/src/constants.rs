@@ -8,5 +8,5 @@ pub mod fetching {
 }
 
 pub mod endpoints {
-    pub const PACKAGE_UPLOAD_PATH: &str = "api/v1/package/stream";
+    pub const PACKAGE_UPLOAD_PATH: &str = "api/v1/package";
 }

@@ -37,12 +37,10 @@ mod tests {
 
         let test_package = create_test_package()?;
         let package_name = test_package.metadata.name.clone();
-        let payload = Vec::try_from(test_package)?;
 
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;
 
         assert!(response.status().is_success());
@@ -85,11 +83,9 @@ mod tests {
 
         let mut test_package = create_test_package()?;
         test_package.metadata.checksum = String::from("ssssss");
-        let payload = Vec::try_from(test_package)?;
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;
 
         assert!(response.status().is_client_error());
@@ -109,16 +105,14 @@ mod tests {
         .await;
 
         let test_package = create_test_package()?;
-        let payload = Vec::try_from(test_package)?;
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload.clone())
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         test::call_service(&app, request).await;
-        let second_request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let test_package = create_test_package()?;
+        let stream: PackageStream = test_package.to_stream().await?;
+        let second_request = test::TestRequest::put().uri("/package").to_request();
+        let (second_request, _) = second_request.replace_payload(Payload::from(stream));
         let second_response = test::call_service(&app, second_request).await;
 
         assert!(second_response.status().is_client_error());
@@ -146,14 +140,9 @@ mod tests {
                 .service(add_package),
         )
         .await;
-
-        let payload = Vec::try_from(test_package)?;
-
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload.clone())
-            .to_request();
-
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         test::call_service(&app, request).await;
 
         let request = test::TestRequest::get()

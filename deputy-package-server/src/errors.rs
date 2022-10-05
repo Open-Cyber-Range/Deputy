@@ -9,8 +9,6 @@ use thiserror::Error as ThisError;
 pub enum PackageServerError {
     #[error("Failed to parse metadata")]
     MetadataParse,
-    #[error("Failed to parse package bytes")]
-    PackageParse,
     #[error("Failed to save the file")]
     FileSave,
     #[error("Failed to save the package")]
@@ -39,12 +37,11 @@ impl Display for ServerResponseError {
 }
 
 impl ResponseError for ServerResponseError {
-    fn status_code(&self) -> actix_http::StatusCode {
+    fn status_code(&self) -> StatusCode {
         if let Some(package_server_error) = self.0.root_cause().downcast_ref::<PackageServerError>()
         {
             return match package_server_error {
                 PackageServerError::MetadataParse => StatusCode::BAD_REQUEST,
-                PackageServerError::PackageParse => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionParse => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageVersionValidation => StatusCode::BAD_REQUEST,
@@ -61,8 +58,8 @@ impl ResponseError for ServerResponseError {
     }
 }
 
-impl From<anyhow::Error> for ServerResponseError {
-    fn from(error: anyhow::Error) -> ServerResponseError {
+impl From<Error> for ServerResponseError {
+    fn from(error: Error) -> ServerResponseError {
         ServerResponseError(error)
     }
 }

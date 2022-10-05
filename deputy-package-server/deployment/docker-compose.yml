@@ -2,7 +2,7 @@ version: "3"
 
 services:
   nginx-proxy:
-    image: nginx:latest
+    image: nexus.ocr.cr14.net:8003/nginx:latest
     restart: always
     ports:
       - "443:443"
@@ -20,7 +20,7 @@ services:
       - '10.81.50.8'
       - '10.81.50.9'
   deputy-package-server-repository-combo:
-    image: nexus.ex.c-lab.ee:8003/deputy-package-server-repository-combo:latest
+    image: nexus.ocr.cr14.net:8003/deputy-package-server-repository-combo:latest
     container_name: deputy-server
     environment:
       - RUST_LOG=debug

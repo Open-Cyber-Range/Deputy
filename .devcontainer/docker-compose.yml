@@ -10,7 +10,7 @@ services:
     user: vscode
 
   deputy-package-server:
-    image: nexus.ex.c-lab.ee:8003/deputy-package-server:latest
+    image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
     volumes:
       - ./deputy-package-toml:/var/opt/deputy/deputy-package-server/toml
       - ./deputy-package-readme:/var/opt/deputy/deputy-package-server/readme
@@ -20,6 +20,6 @@ services:
       - RUST_LOG=debug
 
   index-repository:
-    image: nexus.ex.c-lab.ee:8003/deputy-repository-server
+    image: nexus.ocr.cr14.net:8003/deputy-repository-server
     volumes:
       - ./deputy-repository/.git:/srv/git/index.git

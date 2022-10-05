@@ -55,33 +55,6 @@ async fn drain_stream(
 
 #[put("package")]
 pub async fn add_package(
-    package_bytes: Bytes,
-    app_state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    let package_vector = package_bytes.to_vec();
-
-    let mut package = Package::try_from(&package_vector as &[u8]).map_err(|error| {
-        error!("Failed to validate the package: {error}");
-        ServerResponseError(PackageServerError::PackageParse.into())
-    })?;
-    let storage_folders = &app_state.storage_folders;
-    let repository = &app_state.repository.lock().await;
-
-    package.validate().map_err(|error| {
-        error!("Failed to validate the package: {error}");
-        ServerResponseError(PackageServerError::PackageValidation.into())
-    })?;
-    check_for_version_error(&package.metadata, repository)?;
-
-    package.save(storage_folders, repository).map_err(|error| {
-        error!("Failed to save the package: {error}");
-        ServerResponseError(PackageServerError::PackageSave.into())
-    })?;
-    Ok(HttpResponse::Ok().finish())
-}
-
-#[put("/package/stream")]
-pub async fn add_package_streaming(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {

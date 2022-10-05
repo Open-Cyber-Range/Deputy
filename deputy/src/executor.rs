@@ -3,7 +3,6 @@ use crate::commands::{
     ChecksumOptions, FetchOptions, NormalizeVersionOptions, ParseTOMLOptions, PublishOptions,
 };
 use crate::configuration::{Configuration, Registry};
-use crate::constants::SMALL_PACKAGE_LIMIT;
 use crate::helpers::{
     create_temporary_package_download_path, find_toml, get_download_target_name,
     unpack_package_file,
@@ -124,16 +123,9 @@ impl Executor {
                 "Uploading".to_string(),
             )))
             .await??;
-
-        if package.get_size()? <= *SMALL_PACKAGE_LIMIT {
-            client
-                .upload_small_package(package.try_into()?, options.timeout)
-                .await?;
-        } else {
-            client
-                .stream_large_package(package.to_stream().await?, options.timeout)
-                .await?;
-        }
+        client
+            .upload_package(package.to_stream().await?, options.timeout)
+            .await?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::Done))
             .await??;

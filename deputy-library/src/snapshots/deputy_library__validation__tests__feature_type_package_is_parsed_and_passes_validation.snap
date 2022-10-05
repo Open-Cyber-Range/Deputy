@@ -1,0 +1,21 @@
+---
+source: deputy-library/src/validation.rs
+expression: project
+---
+Project {
+    package: Body {
+        name: "my-cool-feature",
+        description: "description",
+        version: "1.0.0",
+        authors: None,
+    },
+    content: Content {
+        content_type: Feature,
+    },
+    virtual_machine: None,
+    feature: Some(
+        Feature {
+            feature_type: Service,
+        },
+    ),
+}

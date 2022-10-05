@@ -1,6 +1,7 @@
 stages:
   - build
   - deploy
+  - release
 
 lint-and-test:
   stage: build
@@ -57,8 +58,8 @@ staging:
     - master
     - tags
 
-deploy-package-server:
-  stage: deploy
+release-to-internal-network:
+  stage: release
   script:
     - apt-get update -y && apt-get install openssh-client -y
     - eval $(ssh-agent -s)

@@ -62,12 +62,17 @@ deploy-package-server:
   script:
     - apt-get update -y && apt-get install openssh-client -y
     - eval $(ssh-agent -s)
-    - ssh-add <(echo "$DOCUSAURUS_SSH_PK")
+    - ssh-add <(echo "$OCR_SERVICE_PRIVATE_KEY")
     - mkdir -p ~/.ssh
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-    - scp -r ./deputy-package-server/docker-compose.yml user@10.80.60.167:~
-    - ssh -t user@10.80.60.167 "docker compose up -d"
-    - echo "Deputy Package Server deployed, howdy!"
 
+    - ssh -t service@deputy.ocr.cr14.net "docker kill $(docker ps -q) || echo 'No containers to kill'"
+    - ssh -t service@deputy.ocr.cr14.net "rm -rf deployment"
+    - ssh -t service@deputy.ocr.cr14.net "mkdir -p deployment"
+    - scp -r ./deputy-package-server/deployment service@deputy.ocr.cr14.net:~/deployment
+    - ssh -t service@deputy.ocr.cr14.net "cd deployment && docker compose up -d --remove-orphans"
+    
+    - echo "Deputy Package Server deployed, howdy!"
   only:
-    - merge_requests
+    - master
+    - tags

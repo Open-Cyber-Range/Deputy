@@ -148,24 +148,12 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn rejects_invalid_small_package() -> Result<()> {
-        let invalid_package_bytes: Vec<u8> = vec![124, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58];
-        let (_configuration, server_address) = TestPackageServer::setup_test_server().await?;
-
-        let client = Client::try_new(server_address)?;
-        let response = client.upload_small_package(invalid_package_bytes, 60).await;
-
-        assert!(response.is_err());
-        Ok(())
-    }
-
-    #[actix_web::test]
     async fn accepts_valid_small_package() -> Result<()> {
         let package = create_test_package()?;
         let (_configuration, server_address) = TestPackageServer::setup_test_server().await?;
 
         let client = Client::try_new(server_address.to_string())?;
-        let response = client.upload_small_package(package.try_into()?, 60).await;
+        let response = client.upload_package(package.to_stream().await?, 60).await;
 
         assert!(response.is_ok());
         Ok(())

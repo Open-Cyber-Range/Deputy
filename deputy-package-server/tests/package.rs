@@ -11,8 +11,7 @@ mod tests {
         test::{create_test_package, generate_random_string},
     };
     use deputy_package_server::{
-        routes::package::add_package,
-        routes::package::{download_package, add_package_streaming},
+        routes::package::{add_package, download_package},
         test::{create_predictable_temporary_folders, create_test_app_state},
         AppState,
     };
@@ -29,16 +28,19 @@ mod tests {
     #[actix_web::test]
     async fn successfully_add_package() -> Result<()> {
         let (package_folder, app_state) = setup_package_server()?;
-        let app = test::init_service(App::new().app_data(app_state).service(add_package)).await;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .service(add_package),
+        )
+        .await;
 
         let test_package = create_test_package()?;
         let package_name = test_package.metadata.name.clone();
-        let payload = Vec::try_from(test_package)?;
 
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;
 
         assert!(response.status().is_success());
@@ -52,7 +54,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .service(add_package_streaming),
+                .service(add_package),
         )
         .await;
 
@@ -60,7 +62,7 @@ mod tests {
         let package_name = test_package.metadata.name.clone();
 
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package/stream").to_request();
+        let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;
 
@@ -70,35 +72,20 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn send_invalid_package_bytes() -> Result<()> {
-        let (_, app_state) = setup_package_server()?;
-        let app = test::init_service(App::new().app_data(app_state).service(add_package)).await;
-
-        let payload = vec![0, 1, 1, 1];
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
-        let response = test::call_service(&app, request).await;
-
-        assert!(response.status().is_client_error());
-        let body = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(body.as_str(), "Failed to parse package bytes");
-        Ok(())
-    }
-
-    #[actix_web::test]
     async fn send_invalid_package_metadata() -> Result<()> {
         let (_, app_state) = setup_package_server()?;
-        let app = test::init_service(App::new().app_data(app_state).service(add_package)).await;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .service(add_package),
+        )
+        .await;
 
         let mut test_package = create_test_package()?;
         test_package.metadata.checksum = String::from("ssssss");
-        let payload = Vec::try_from(test_package)?;
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         let response = test::call_service(&app, request).await;
 
         assert!(response.status().is_client_error());
@@ -110,19 +97,22 @@ mod tests {
     #[actix_web::test]
     async fn submit_package_with_same_version_twice() -> Result<()> {
         let (_, app_state) = setup_package_server()?;
-        let app = test::init_service(App::new().app_data(app_state).service(add_package)).await;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .service(add_package),
+        )
+        .await;
 
         let test_package = create_test_package()?;
-        let payload = Vec::try_from(test_package)?;
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload.clone())
-            .to_request();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         test::call_service(&app, request).await;
-        let second_request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload)
-            .to_request();
+        let test_package = create_test_package()?;
+        let stream: PackageStream = test_package.to_stream().await?;
+        let second_request = test::TestRequest::put().uri("/package").to_request();
+        let (second_request, _) = second_request.replace_payload(Payload::from(stream));
         let second_response = test::call_service(&app, second_request).await;
 
         assert!(second_response.status().is_client_error());
@@ -150,14 +140,9 @@ mod tests {
                 .service(add_package),
         )
         .await;
-
-        let payload = Vec::try_from(test_package)?;
-
-        let request = test::TestRequest::put()
-            .uri("/package")
-            .set_payload(payload.clone())
-            .to_request();
-
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
         test::call_service(&app, request).await;
 
         let request = test::TestRequest::get()

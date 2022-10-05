@@ -54,6 +54,7 @@ staging:
     DEPUTY: "1"
   stage: deploy
   trigger: open-cyber-range/internal/support-docker-images
+  strategy: depend
   only:
     - master
     - tags

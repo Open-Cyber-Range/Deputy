@@ -1,0 +1,27 @@
+ul.noBullets {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.name {
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 120%;
+    overflow-wrap: break-word;
+    color: #0082be;
+}
+
+.description {
+    margin-top: 8px;
+    font-size: 90%;
+}
+
+.version {
+    margin-left: 10px;
+}
+
+.packageContainer {
+    padding: 30px;
+    width: 960px;
+}

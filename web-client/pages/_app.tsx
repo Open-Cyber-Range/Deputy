@@ -1,4 +1,5 @@
 import type { AppProps } from "next/app";
+import '@blueprintjs/core/lib/css/blueprint.css';
 import "../styles/global.css"
 
 function MyApp({ Component, pageProps }: AppProps) {

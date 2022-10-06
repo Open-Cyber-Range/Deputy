@@ -7,11 +7,11 @@
 
 .main {
   min-height: 100vh;
-  background-color: rgb(249, 247, 236);
+  background-color: #eff0f2;
 }
 
 .header, .footer {
-  background-color: hsl(115, 31%, 23%);
+  background-color: #142667;
   color: #FFFFFF;
   padding: 2rem 0;
 }

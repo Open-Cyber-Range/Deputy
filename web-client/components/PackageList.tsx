@@ -1,6 +1,7 @@
 import useSWR from "swr";
 import styles from "../styles/PackageList.module.css";
 import {PackageList} from "../interfaces/PackageListInterface";
+import { Card, Elevation } from "@blueprintjs/core";
 
 const fetcher = (args: RequestInfo) => fetch(args).then((res) => res.json())
 
@@ -12,15 +13,11 @@ function GetAllPackages() {
     <ul className={styles.noBullets}>
       {data.map((deputyPackage: PackageList) =>
         <li key={deputyPackage.package.version}>
-          <div className={styles.packageRow}>
-            <div key={null} className={styles.descriptionBox}>
-              <div>
-                <a href="#" className={styles.name}>{deputyPackage.package.name}</a>
-                <span className={styles.version}>{deputyPackage.package.version}</span>
-              </div>
-              <div className={styles.description}>{deputyPackage.package.description}</div>
-            </div>
-          </div>
+          <Card interactive={false} elevation={Elevation.ONE}>
+            <span><a href="#" className={styles.name}>{deputyPackage.package.name}</a></span>
+            <span className={styles.version}>{deputyPackage.package.version}</span>
+            <div className={styles.description}>{deputyPackage.package.description}</div>
+          </Card>
         </li>)}
     </ul>
   )

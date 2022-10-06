@@ -1,34 +1,36 @@
-import useSWR from "swr";
-import styles from "../styles/PackageList.module.css";
-import {PackageList} from "../interfaces/PackageListInterface";
-import { Card, Elevation } from "@blueprintjs/core";
+import type {Fetcher} from 'swr';
+import useSWR from 'swr';
+import styles from '../styles/PackageList.module.css';
+import type {PackageList} from '../interfaces/PackageListInterface';
+import {Card, Elevation} from '@blueprintjs/core';
+import type {SWRResponse} from 'swr/dist/types';
 
-const fetcher = (args: RequestInfo) => fetch(args).then((res) => res.json())
-
-function GetAllPackages() {
-  const {data, error} = useSWR('/api/v1/package', fetcher)
-  if (error) return <div>Failed to load</div>
-  if (!data) return <div>Loading...</div>
-  return (
-    <ul className={styles.noBullets}>
-      {data.map((deputyPackage: PackageList) =>
-        <li key={deputyPackage.package.version}>
-          <Card interactive={false} elevation={Elevation.ONE}>
-            <span><a href="#" className={styles.name}>{deputyPackage.package.name}</a></span>
-            <span className={styles.version}>{deputyPackage.package.version}</span>
-            <div className={styles.description}>{deputyPackage.package.description}</div>
-          </Card>
-        </li>)}
-    </ul>
-  )
-}
+const fetcher: Fetcher<PackageList[], string> = async (args: RequestInfo) => fetch(args).then(async res => res.json());
 
 const PackageListView = () => {
-  return (
-  <div className={styles.packageContainer}>
-    {GetAllPackages()}
-  </div>
-  );
-}
+	const {data: packageList, error}: SWRResponse<PackageList[], string> = useSWR('/api/v1/package', fetcher);
+	if (error) {
+		return <div>Failed to load</div>;
+	}
+
+	if (!packageList) {
+		return null;
+	}
+
+	return (
+		<div className={styles.packageContainer}>
+			<ul className={styles.noBullets}>
+				{packageList.map((deputyPackage: PackageList) =>
+					<li key={deputyPackage.package.version}>
+						<Card interactive={false} elevation={Elevation.ONE}>
+							<span><a href='#' className={styles.name}>{deputyPackage.package.name}</a></span>
+							<span className={styles.version}>{deputyPackage.package.version}</span>
+							<div className={styles.description}>{deputyPackage.package.description}</div>
+						</Card>
+					</li>)}
+			</ul>
+		</div>
+	);
+};
 
 export default PackageListView;

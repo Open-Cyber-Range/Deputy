@@ -66,6 +66,29 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
+pub fn validate_vm_accounts(virtual_machine: Option<VirtualMachine>) -> Result<()> {
+    match virtual_machine {
+        Some(virtual_machine) => {
+            if let Some(accounts) = virtual_machine.accounts {
+                if let Some(default_account) = virtual_machine.default_account {
+                    for account in accounts.iter() {
+                        if account.name.eq_ignore_ascii_case(&default_account) {
+                            return Ok(());
+                        }
+                    }
+                    return Err(anyhow!("Default account not found under accounts"));
+                }
+                return Err(anyhow!("Accounts defined but no default account assigned"));
+            }
+            if virtual_machine.accounts.is_none() && virtual_machine.default_account.is_some() {
+                return Err(anyhow!("Default account assigned but no accounts defined"));
+            }
+            Ok(())
+        }
+        None => Ok(()),
+    }
+}
+
 pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<()> {
     let mut file = File::open(package_path)?;
     let mut contents = String::new();
@@ -74,6 +97,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let deserialized_toml: Project = toml::from_str(&*contents)?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
+    validate_vm_accounts(deserialized_toml.virtual_machine)?;
     Ok(())
 }
 
@@ -181,6 +205,65 @@ mod tests {
                 assert_eq!(architecture, Architecture::arm64);
             }
         }
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_mismatched_default_account() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-package"
+            description = "description"
+            version = "1.2.3"
+            [content]
+            type = "vm"
+            [virtual-machine]
+            default_account = "user404"
+            type = "OVA"
+            file_path = "some-path"
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+        assert!(validate_package_toml(&file.path()).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_missing_default_account() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-package"
+            description = "description"
+            version = "1.2.3"
+            [content]
+            type = "vm"
+            [virtual-machine]
+            accounts = [{name = "user1", password = "password1"},{name = "user2", password = "password2"}]
+            type = "OVA"
+            file_path = "some-path"
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+        assert!(validate_package_toml(&file.path()).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn feature_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            [content]
+            type = "feature"
+            [feature]
+            type = "SERVICE"
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::assert_debug_snapshot!(project);
         file.close()?;
         Ok(())
     }

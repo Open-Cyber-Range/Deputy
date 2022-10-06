@@ -1,5 +1,5 @@
 use crate::{
-    constants::endpoints::{LARGE_PACKAGE_UPLOAD_PATH, SMALL_PACKAGE_UPLOAD_PATH},
+    constants::endpoints::PACKAGE_UPLOAD_PATH,
     helpers::create_file_from_stream,
 };
 use anyhow::{anyhow, Error, Result};
@@ -28,34 +28,15 @@ impl Client {
         Ok(anyhow!(error_message))
     }
 
-    pub async fn stream_large_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
-        let put_uri = self.api_base_url.join(LARGE_PACKAGE_UPLOAD_PATH)?;
+    pub async fn upload_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
+        let put_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
         let mut response = self
             .client
             .put(put_uri.to_string())
             .timeout(std::time::Duration::from_secs(timeout))
             .send_stream(stream)
             .await
-            .map_err(|error| anyhow!("Failed to upload package: {}", error))?;
-        if response.status().is_success() {
-            return Ok(());
-        }
-
-        Err(Client::response_to_error(
-            "Failed to upload package",
-            response.body().await?.to_vec(),
-        )?)
-    }
-
-    pub async fn upload_small_package(&self, payload: Vec<u8>, timeout: u64) -> Result<()> {
-        let put_uri = self.api_base_url.join(SMALL_PACKAGE_UPLOAD_PATH)?;
-        let mut response = self
-            .client
-            .put(put_uri.to_string())
-            .timeout(std::time::Duration::from_secs(timeout))
-            .send_body(payload)
-            .await
-            .map_err(|error| anyhow!("Failed to upload package: {}", error))?;
+            .map_err(|error| anyhow!("Failed to upload package: {:?}", error))?;
         if response.status().is_success() {
             return Ok(());
         }
@@ -78,7 +59,7 @@ impl Client {
             .get(get_uri.to_string())
             .send()
             .await
-            .map_err(|error| anyhow!("Failed to download package: {}", error))?;
+            .map_err(|error| anyhow!("Failed to download package: {:?}", error))?;
         if response.status().is_success() {
             create_file_from_stream(&mut response, file_path).await?;
             return Ok(());

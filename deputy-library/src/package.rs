@@ -437,7 +437,7 @@ impl TryFrom<&[u8]> for Package {
 
 #[cfg(test)]
 mod tests {
-    use super::{Package, PackageFile, PackageMetadata};
+    use super::{PackageFile, PackageMetadata};
     use crate::{
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
@@ -656,16 +656,6 @@ mod tests {
         }
         assert_eq!(counter, 7);
         insta::assert_debug_snapshot!(bytes);
-        Ok(())
-    }
-
-    #[test]
-    fn package_is_parsed_from_bytes() -> Result<()> {
-        let bytes: Vec<u8> = create_test_package()?.try_into()?;
-        let package = Package::try_from(&bytes as &[u8])?;
-
-        assert_eq!(package.file.metadata()?.len(), 14);
-        insta::assert_debug_snapshot!(package.metadata);
         Ok(())
     }
 }

@@ -7,15 +7,25 @@ use std::{fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Project {
     pub package: Body,
     pub content: Content,
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
+    pub feature: Option<Feature>,
 }
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct Account {
+    pub name: String,
+    pub password: String,
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
+    pub accounts: Option<Vec<Account>>,
+    pub default_account: Option<String>,
     #[serde(default)]
     pub operating_system: Option<OperatingSystem>,
     #[serde(default)]
@@ -25,6 +35,23 @@ pub struct VirtualMachine {
     file_path: String,
     pub readme_path: Option<String>,
 }
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub enum FeatureType {
+    #[serde(alias = "service", alias = "SERVICE")]
+    Service,
+    #[serde(alias = "configuration", alias = "CONFIGURATION")]
+    Configuration,
+    #[serde(alias = "artifact", alias = "ARTIFACT")]
+    Artifact,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Feature {
+    #[serde(rename = "type", alias = "Type", alias = "TYPE")]
+    pub feature_type: FeatureType,
+}
+
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();
@@ -60,7 +87,7 @@ where
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Body {
     pub name: String,
     pub description: String,
@@ -81,14 +108,16 @@ impl Body {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Content {
-    #[serde(rename = "type")]
-    pub content_type: ContentType,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum ContentType {
     #[serde(alias = "vm")]
     VM,
+    #[serde(alias = "feature", alias = "FEATURE")]
+    Feature,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct Content {
+    #[serde(rename = "type")]
+    pub content_type: ContentType,
 }

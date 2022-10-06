@@ -4,10 +4,12 @@ use git2::Repository;
 use std::sync::Arc;
 
 pub mod configuration;
+pub mod constants;
 mod errors;
 pub mod routes;
 #[cfg(feature = "test")]
 pub mod test;
+pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct AppState {

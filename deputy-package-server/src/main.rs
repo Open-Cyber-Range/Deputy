@@ -8,7 +8,7 @@ use deputy_package_server::{
     configuration::read_configuration,
     routes::{
         basic::{status, version},
-        package::{add_package, add_package_streaming, download_package},
+        package::{add_package, download_package, get_all_packages},
     },
     AppState,
 };
@@ -30,7 +30,7 @@ async fn real_main() -> Result<()> {
             App::new().app_data(app_data).service(
                 scope("/api").service(status).service(version).service(
                     scope("/v1")
-                        .service(add_package_streaming)
+                        .service(get_all_packages)
                         .service(add_package)
                         .service(download_package),
                 ),

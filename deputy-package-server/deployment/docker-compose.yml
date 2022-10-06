@@ -8,7 +8,7 @@ services:
       - "443:443"
       - "80:80"
     links:
-      - deputy-server
+      - deputy-package-server-repository-combo
     container_name: nginx-proxy
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
@@ -21,11 +21,12 @@ services:
       - '10.81.50.9'
   deputy-package-server-repository-combo:
     image: nexus.ocr.cr14.net:8003/deputy-package-server-repository-combo:latest
-    container_name: deputy-server
+    container_name: deputy-package-server-repository-combo
     environment:
       - RUST_LOG=debug
     networks:
       - deputy
     restart: unless-stopped
+
 networks:
   deputy: {}

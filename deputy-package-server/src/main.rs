@@ -27,16 +27,14 @@ async fn real_main() -> Result<()> {
 
         HttpServer::new(move || {
             let app_data = Data::new(app_state.clone());
-            App::new()
-                .app_data(app_data)
-                .service(status)
-                .service(version)
-                .service(
-                    scope("/api/v1")
+            App::new().app_data(app_data).service(
+                scope("/api").service(status).service(version).service(
+                    scope("/v1")
                         .service(add_package_streaming)
                         .service(add_package)
                         .service(download_package),
-                )
+                ),
+            )
         })
         .bind((configuration.host, configuration.port))?
         .run()

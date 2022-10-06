@@ -251,3 +251,50 @@ pub async fn get_all_packages(
         })?;
     Ok(Json(paginated_result))
 }
+
+#[derive(Debug, Deserialize)]
+pub enum FileType {
+    #[serde(rename = "archive")]
+    Archive,
+    #[serde(rename = "readme")]
+    Readme,
+    #[serde(rename = "toml")]
+    Toml,
+}
+
+#[get("package/{package_name}/{package_version}/{file_type}")]
+pub async fn download_file(
+    path_variables: Path<(String, String, FileType)>,
+    app_state: Data<AppState>,
+) -> Result<NamedFile, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    let file_type = &path_variables.2;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+
+    let file_path = match file_type {
+        FileType::Archive => PathBuf::from(&app_state.storage_folders.package_folder)
+            .join(package_name)
+            .join(package_version),
+        FileType::Readme => PathBuf::from(&app_state.storage_folders.readme_folder)
+            .join(package_name)
+            .join(package_version),
+        FileType::Toml => PathBuf::from(&app_state.storage_folders.toml_folder)
+            .join(package_name)
+            .join(package_version),
+    };
+
+    NamedFile::open(file_path).map_err(|error| {
+        error!("Failed to open the file: {error}");
+        Error::from(error)
+    })
+}

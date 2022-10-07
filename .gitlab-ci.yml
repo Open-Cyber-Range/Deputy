@@ -73,7 +73,8 @@ release-to-internal-network:
     - ssh -t service@deputy.ocr.cr14.net "rm -rf deployment"
     - ssh -t service@deputy.ocr.cr14.net "mkdir -p deployment"
     - scp -r ./deputy-package-server/deployment/* service@deputy.ocr.cr14.net:~/deployment
-    - ssh -t service@deputy.ocr.cr14.net "cd deployment && docker compose up -d --remove-orphans"
+    - ssh -t service@deputy.ocr.cr14.net "cd deployment && docker compose pull && docker compose up -d --remove-orphans"
+    - ssh -t service@deputy.ocr.cr14.net "docker image prune -f"
     
     - echo "Deputy Package Server deployed, howdy!"
   only:

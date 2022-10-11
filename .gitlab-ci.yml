@@ -6,7 +6,7 @@ build-frontend:
   stage: build
   image: $DOCKER_REGISTRY_PULL/frontend-builder
   script:
-    - yarn --cwd ./web-client/
+    - yarn --cwd ./web-client/ lint
   only:
     - develop
     - master

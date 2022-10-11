@@ -6,6 +6,5 @@ repository:
   email: some@email.com
 storage_folders:
   package_folder: /tmp/packages
-  package_toml_folder: /tmp/tomls
   toml_folder: /tmp/tomls
   readme_folder: /tmp/readme

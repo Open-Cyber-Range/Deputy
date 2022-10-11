@@ -3,13 +3,24 @@ stages:
   - deploy
   - release
 
+build-frontend:
+  stage: build
+  image: $DOCKER_REGISTRY_PULL/frontend-builder
+  script:
+    - yarn --cwd ./web-client/
+    - yarn --cwd ./web-client/ lint
+  only:
+    - develop
+    - master
+    - merge_requests
+    - tags
+
 lint-and-test:
   stage: build
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
     - cargo test
-    - yarn --cwd ./web-client/
     # - cargo tarpaulin --skip-clean --out Xml
   # coverage: '/^\d+.\d+% coverage/'
   # artifacts:

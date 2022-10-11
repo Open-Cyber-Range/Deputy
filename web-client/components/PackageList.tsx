@@ -1,14 +1,14 @@
 import type {Fetcher} from 'swr';
 import useSWR from 'swr';
 import styles from '../styles/PackageList.module.css';
-import type {PackageList} from '../interfaces/PackageListInterface';
+import type {PackageResponse} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 
-const fetcher: Fetcher<PackageList[], string> = async (...url) => fetch(...url).then(async res => res.json());
+const fetcher: Fetcher<PackageResponse[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageListView = () => {
-	const {data: packageList, error}: SWRResponse<PackageList[], string> = useSWR('/api/v1/package', fetcher);
+	const {data: packageList, error}: SWRResponse<PackageResponse[], string> = useSWR('/api/v1/package', fetcher);
 	if (error) {
 		return <div>Failed to load</div>;
 	}
@@ -20,7 +20,7 @@ const PackageListView = () => {
 	return (
 		<div className={styles.packageContainer}>
 			<ul className={styles.noBullets}>
-				{packageList.map((deputyPackage: PackageList) =>
+				{packageList.map((deputyPackage: PackageResponse) =>
 					<li key={deputyPackage.package.version}>
 						<Card interactive={false} elevation={Elevation.ONE}>
 							<span><a href='#' className={styles.name}>{deputyPackage.package.name}</a></span>

@@ -4,6 +4,6 @@ type Package = {
 	version: string;
 };
 
-export type PackageList = {
+export type PackageResponse = {
 	package: Package;
 };

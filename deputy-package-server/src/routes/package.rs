@@ -15,7 +15,7 @@ use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, Package, PackageFile, PackageMetadata},
-    project::Project,
+    project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
@@ -243,14 +243,18 @@ fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
     Ok(result_vec)
 }
 
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Body>> {
     let projects: Vec<Project> = result;
     let pages = Pages::new(
         projects.len() + 1,
         usize::try_from(query.limit + 1).unwrap(),
     );
     let page = pages.with_offset(usize::try_from(query.page)?);
-    Ok(projects[page.start..page.end].to_vec())
+    Ok(projects[page.start..page.end]
+        .to_vec()
+        .iter()
+        .map(|project| project.package.clone())
+        .collect())
 }
 
 #[derive(Deserialize, Debug)]
@@ -265,7 +269,7 @@ pub struct PackageQuery {
 pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
-) -> Result<Json<Vec<Project>>, Error> {
+) -> Result<Json<Vec<Body>>, Error> {
     let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
     let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");

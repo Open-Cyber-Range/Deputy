@@ -38,7 +38,7 @@ toml = "0.5"
 gzp = { version = "0.9", default-features = false, features = ["deflate_rust"] }
 
 [dev-dependencies]
-insta = "1"
+insta = { version = "1", features = ["toml"] }
 tokio = { version = "1", features = ["fs", "rt-multi-thread"] }
 
 [features]

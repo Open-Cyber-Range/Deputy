@@ -11,8 +11,8 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
-    package::Package,
-    project::create_project_from_toml_path,
+    package::{Package, PackageMetadata},
+    project::{Body, create_project_from_toml_path},
     repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
@@ -80,10 +80,16 @@ impl Executor {
         Ok(version)
     }
 
-    fn check_for_version(&self, registry_name: &str, package: &Package) -> Result<()> {
+    fn is_latest(&self, registry_name: &str, toml_path: &Path) -> Result<()> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let package_metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            checksum: "unused_checksum".to_string(),
+        };
         self.update_registry_repositories()?;
         let registry_repository = self.get_registry(registry_name)?;
-        if let Ok(is_valid) = package.metadata.is_latest_version(registry_repository) {
+        if let Ok(is_valid) = package_metadata.is_latest_version(registry_repository) {
             if !is_valid {
                 return Err(anyhow::anyhow!(
                     "Package version on the server is either same or later"
@@ -114,6 +120,7 @@ impl Executor {
             )))
             .await??;
         let toml_path = find_toml(current_dir()?)?;
+        self.is_latest(&options.registry_name, &toml_path)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
@@ -127,7 +134,6 @@ impl Executor {
         };
 
         let package = Package::from_file(optional_readme_path, toml_path, options.compression)?;
-        self.check_for_version(&options.registry_name, &package)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),

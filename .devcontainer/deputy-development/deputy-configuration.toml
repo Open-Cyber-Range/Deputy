@@ -1,5 +1,5 @@
 [registries]
-main-registry = { index = "http://10.80.60.167/git/index.git", api = "http://10.80.60.167:8080/" }
+main-registry = { index = "http://127.0.0.1/git/index.git", api = "http://127.0.0.1:8080/" }
 
 [package]
 index_path = "/home/vscode/.deputy/index"

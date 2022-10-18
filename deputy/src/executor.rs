@@ -80,6 +80,21 @@ impl Executor {
         Ok(version)
     }
 
+    fn check_for_version(&self, registry_name: &str, package: &Package) -> Result<()> {
+        self.update_registry_repositories()?;
+        let registry_repository = self.get_registry(registry_name)?;
+        if let Ok(is_valid) = package.metadata.is_latest_version(registry_repository) {
+            if !is_valid {
+                return Err(anyhow::anyhow!(
+                    "Package version on the server is either same or later 2"
+                ));
+            }
+        } else {
+            return Err(anyhow::anyhow!("Failed to validate versioning 2"));
+        }
+        Ok(())
+    }
+
     pub fn try_new(configuration: Configuration) -> Result<Self> {
         let repositories = Executor::get_or_create_registry_repositories(
             configuration.registries.clone(),
@@ -112,6 +127,7 @@ impl Executor {
         };
 
         let package = Package::from_file(optional_readme_path, toml_path, options.compression)?;
+        self.check_for_version(&options.registry_name, &package)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),

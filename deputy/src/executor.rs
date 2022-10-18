@@ -86,11 +86,11 @@ impl Executor {
         if let Ok(is_valid) = package.metadata.is_latest_version(registry_repository) {
             if !is_valid {
                 return Err(anyhow::anyhow!(
-                    "Package version on the server is either same or later 2"
+                    "Package version on the server is either same or later"
                 ));
             }
         } else {
-            return Err(anyhow::anyhow!("Failed to validate versioning 2"));
+            return Err(anyhow::anyhow!("Failed to validate versioning"));
         }
         Ok(())
     }

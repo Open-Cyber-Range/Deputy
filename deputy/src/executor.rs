@@ -12,7 +12,7 @@ use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
     package::{Package, PackageMetadata},
-    project::{create_project_from_toml_path, Body},
+    project::create_project_from_toml_path,
     repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
@@ -80,15 +80,6 @@ impl Executor {
         Ok(version)
     }
 
-    fn create_initial_metadata(&self, toml_path: &Path) -> Result<PackageMetadata> {
-        let package_body = Body::create_from_toml(toml_path)?;
-        Ok(PackageMetadata {
-            name: package_body.name,
-            version: package_body.version,
-            checksum: "unused_checksum".to_string(),
-        })
-    }
-
     pub fn try_new(configuration: Configuration) -> Result<Self> {
         let repositories = Executor::get_or_create_registry_repositories(
             configuration.registries.clone(),
@@ -114,9 +105,8 @@ impl Executor {
             )))
             .await??;
         self.update_registry_repositories()?;
-        let package_metadata = self.create_initial_metadata(&toml_path)?;
         let registry_repository = self.get_registry(&options.registry_name)?;
-        package_metadata.validate_version(registry_repository)?;
+        PackageMetadata::validate_version(&toml_path, registry_repository)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(

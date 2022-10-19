@@ -11,7 +11,7 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
-    package::Package,
+    package::{Package, PackageMetadata},
     project::create_project_from_toml_path,
     repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
@@ -101,10 +101,18 @@ impl Executor {
         let toml_path = find_toml(current_dir()?)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Validating version".to_string(),
+            )))
+            .await??;
+        self.update_registry_repositories()?;
+        let registry_repository = self.get_registry(&options.registry_name)?;
+        PackageMetadata::validate_version(&toml_path, registry_repository)?;
+
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
             )))
             .await??;
-
         let project = create_project_from_toml_path(&toml_path)?;
         let optional_readme_path: Option<PathBuf> = match project.virtual_machine {
             Some(vm) => vm.readme_path.map(PathBuf::from),

@@ -52,6 +52,26 @@ impl PackageMetadata {
         }
         Ok(true)
     }
+
+    pub fn validate_version(toml_path: &Path, registry_repository: &Repository) -> Result<()> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            checksum: "".to_string(),
+        };
+
+        if let Ok(is_valid) = metadata.is_latest_version(registry_repository) {
+            if !is_valid {
+                return Err(anyhow::anyhow!(
+                    "Package version on the server is either same or later"
+                ));
+            }
+        } else {
+            return Err(anyhow::anyhow!("Failed to validate versioning"));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]

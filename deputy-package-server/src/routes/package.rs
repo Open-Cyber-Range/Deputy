@@ -15,7 +15,7 @@ use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, Package, PackageFile, PackageMetadata},
-    project::Project,
+    project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
@@ -216,14 +216,18 @@ fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
     Ok(result_vec)
 }
 
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Project>> {
+fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Body>> {
     let projects: Vec<Project> = result;
     let pages = Pages::new(
         projects.len() + 1,
         usize::try_from(query.limit + 1).unwrap(),
     );
     let page = pages.with_offset(usize::try_from(query.page)?);
-    Ok(projects[page.start..page.end].to_vec())
+    Ok(projects[page.start..page.end]
+        .to_vec()
+        .iter()
+        .map(|project| project.package.clone())
+        .collect())
 }
 
 #[derive(Deserialize, Debug)]
@@ -238,7 +242,7 @@ pub struct PackageQuery {
 pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
-) -> Result<Json<Vec<Project>>, Error> {
+) -> Result<Json<Vec<Body>>, Error> {
     let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
     let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
         error!("Failed to iterate over all packages: {error}");
@@ -250,4 +254,51 @@ pub async fn get_all_packages(
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(paginated_result))
+}
+
+#[derive(Debug, Deserialize)]
+pub enum FileType {
+    #[serde(rename = "archive")]
+    Archive,
+    #[serde(rename = "readme")]
+    Readme,
+    #[serde(rename = "toml")]
+    Toml,
+}
+
+#[get("package/{package_name}/{package_version}/{file_type}")]
+pub async fn download_file(
+    path_variables: Path<(String, String, FileType)>,
+    app_state: Data<AppState>,
+) -> Result<NamedFile, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    let file_type = &path_variables.2;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+
+    let file_path = match file_type {
+        FileType::Archive => PathBuf::from(&app_state.storage_folders.package_folder)
+            .join(package_name)
+            .join(package_version),
+        FileType::Readme => PathBuf::from(&app_state.storage_folders.readme_folder)
+            .join(package_name)
+            .join(package_version),
+        FileType::Toml => PathBuf::from(&app_state.storage_folders.toml_folder)
+            .join(package_name)
+            .join(package_version),
+    };
+
+    NamedFile::open(file_path).map_err(|error| {
+        error!("Failed to open the file: {error}");
+        Error::from(error)
+    })
 }

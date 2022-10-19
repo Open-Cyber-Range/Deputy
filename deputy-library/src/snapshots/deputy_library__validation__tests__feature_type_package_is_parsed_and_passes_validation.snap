@@ -2,20 +2,28 @@
 source: deputy-library/src/validation.rs
 expression: project
 ---
-Project {
-    package: Body {
-        name: "my-cool-feature",
-        description: "description",
-        version: "1.0.0",
-        authors: None,
-    },
-    content: Content {
-        content_type: Feature,
-    },
-    virtual_machine: None,
-    feature: Some(
-        Feature {
-            feature_type: Service,
-        },
-    ),
-}
+[package]
+name = 'my-cool-feature'
+description = 'description'
+version = '1.0.0'
+
+[content]
+type = 'Feature'
+
+[feature]
+assets = [
+    [
+    'src/configs/my-cool-config1.yml',
+    '/var/opt/my-cool-service1',
+    '744',
+],
+    [
+    'src/configs/my-cool-config2.yml',
+    '/var/opt/my-cool-service2',
+    '777',
+],
+    [
+    'src/configs/my-cool-config3.yml',
+    '/var/opt/my-cool-service3',
+],
+]

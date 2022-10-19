@@ -3,6 +3,18 @@ stages:
   - deploy
   - release
 
+build-frontend:
+  stage: build
+  image: $DOCKER_REGISTRY_PULL/frontend-builder
+  script:
+    - yarn --cwd ./web-client/
+    - yarn --cwd ./web-client/ lint
+  only:
+    - develop
+    - master
+    - merge_requests
+    - tags
+
 lint-and-test:
   stage: build
   image: $DOCKER_REGISTRY_PULL/rust-builder

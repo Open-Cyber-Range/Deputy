@@ -12,7 +12,7 @@ use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
     package::{Package, PackageMetadata},
-    project::{Body, create_project_from_toml_path},
+    project::{create_project_from_toml_path, Body},
     repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
@@ -80,25 +80,13 @@ impl Executor {
         Ok(version)
     }
 
-    fn is_latest(&self, registry_name: &str, toml_path: &Path) -> Result<()> {
+    fn create_initial_metadata(&self, toml_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
-        let package_metadata = PackageMetadata {
+        Ok(PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: "unused_checksum".to_string(),
-        };
-        self.update_registry_repositories()?;
-        let registry_repository = self.get_registry(registry_name)?;
-        if let Ok(is_valid) = package_metadata.is_latest_version(registry_repository) {
-            if !is_valid {
-                return Err(anyhow::anyhow!(
-                    "Package version on the server is either same or later"
-                ));
-            }
-        } else {
-            return Err(anyhow::anyhow!("Failed to validate versioning"));
-        }
-        Ok(())
+        })
     }
 
     pub fn try_new(configuration: Configuration) -> Result<Self> {
@@ -120,13 +108,21 @@ impl Executor {
             )))
             .await??;
         let toml_path = find_toml(current_dir()?)?;
-        self.is_latest(&options.registry_name, &toml_path)?;
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Validating version".to_string(),
+            )))
+            .await??;
+        self.update_registry_repositories()?;
+        let package_metadata = self.create_initial_metadata(&toml_path)?;
+        let registry_repository = self.get_registry(&options.registry_name)?;
+        package_metadata.validate_version(registry_repository)?;
+
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
             )))
             .await??;
-
         let project = create_project_from_toml_path(&toml_path)?;
         let optional_readme_path: Option<PathBuf> = match project.virtual_machine {
             Some(vm) => vm.readme_path.map(PathBuf::from),

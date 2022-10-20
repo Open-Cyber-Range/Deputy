@@ -19,7 +19,7 @@ use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
-use tokio::fs::{rename, copy};
+use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,

@@ -19,7 +19,7 @@ use git2::Repository;
 use path_absolutize::Absolutize;
 use std::path::Path;
 use std::{collections::HashMap, env::current_dir, path::PathBuf};
-use tokio::fs::rename;
+use tokio::fs::{rename, copy};
 
 pub struct Executor {
     configuration: Configuration,
@@ -195,10 +195,11 @@ impl Executor {
             .await??;
         let unpacked_file_path =
             unpack_package_file(&temporary_package_path, &options.unpack_level)?;
+        let target_path = get_download_target_name(&options.unpack_level, &options.save_path, &options.package_name, &version);
 
         rename(
             unpacked_file_path,
-            get_download_target_name(&options.unpack_level, &options.save_path, &options.package_name, &version),
+            target_path,
         )
         .await?;
         temporary_directory.close()?;

@@ -65,6 +65,11 @@ staging:
     DEPUTY_PACKAGE_SERVER: "1"
     DEPUTY: "1"
   stage: deploy
+  needs:
+    - job: build-and-upload-x86-64bit-linux-release-for-deputy-cli
+      optional: true
+    - job: build-and-upload-x86-64bit-linux-release-for-deputy-package-server
+      optional: true
   trigger:
     project: open-cyber-range/internal/support-docker-images
     strategy: depend
@@ -74,6 +79,7 @@ staging:
 
 release-to-internal-network:
   stage: release
+  needs: ["staging"]
   script:
     - apt-get update -y && apt-get install openssh-client -y
     - eval $(ssh-agent -s)

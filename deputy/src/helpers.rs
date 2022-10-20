@@ -47,11 +47,11 @@ pub fn create_temporary_package_download_path(
     ))
 }
 
-pub fn get_download_target_name(unpack_level: &UnpackLevel, name: &str, version: &str) -> String {
+pub fn get_download_target_name(unpack_level: &UnpackLevel, save_path: &str, name: &str, version: &str) -> String {
     match unpack_level {
-        UnpackLevel::Raw => format!("{}-{}.tar.gz", name, version),
-        UnpackLevel::Uncompressed => format!("{}-{}.tar", name, version),
-        UnpackLevel::Regular => format!("{}-{}", name, version),
+        UnpackLevel::Raw => format!("{}/{}-{}.tar.gz", save_path, name, version),
+        UnpackLevel::Uncompressed => format!("{}/{}-{}.tar", save_path, name, version),
+        UnpackLevel::Regular => format!("{}/{}-{}", save_path, name, version),
     }
 }
 

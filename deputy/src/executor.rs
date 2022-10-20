@@ -198,7 +198,7 @@ impl Executor {
 
         rename(
             unpacked_file_path,
-            get_download_target_name(&options.unpack_level, &options.package_name, &version),
+            get_download_target_name(&options.unpack_level, &options.save_path, &options.package_name, &version),
         )
         .await?;
         temporary_directory.close()?;

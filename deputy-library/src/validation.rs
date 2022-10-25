@@ -236,6 +236,7 @@ mod tests {
             name = "my-cool-package"
             description = "description"
             version = "1.2.3"
+            license = "Apache-2.0"
             [content]
             type = "vm"
             [virtual-machine]
@@ -256,6 +257,7 @@ mod tests {
             name = "my-cool-package"
             description = "description"
             version = "1.2.3"
+            license = "Apache-2.0"
             [content]
             type = "vm"
             [virtual-machine]
@@ -276,6 +278,7 @@ mod tests {
             name = "my-cool-feature"
             description = "description"
             version = "1.0.0"
+            license = "Apache-2.0"
             [content]
             type = "feature"
             [feature]

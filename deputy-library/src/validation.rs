@@ -10,6 +10,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use semver::Version;
+use spdx;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
@@ -66,6 +67,15 @@ pub fn validate_version(version: String) -> Result<()> {
     }
 }
 
+pub fn validate_license(license: String) -> Result<()> {
+    match spdx::license_id(&license) {
+        Some(_) => Ok(()),
+        None => Err(anyhow!(
+            "License must match SPDX specifications https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60"
+        )),
+    }
+}
+
 pub fn validate_vm_accounts(virtual_machine: Option<VirtualMachine>) -> Result<()> {
     match virtual_machine {
         Some(virtual_machine) => {
@@ -98,6 +108,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_vm_accounts(deserialized_toml.virtual_machine)?;
+    validate_license(deserialized_toml.package.license)?;
     Ok(())
 }
 
@@ -131,12 +142,13 @@ mod tests {
         Ok(deserialized_toml)
     }
 
-    fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Project)> {
+    fn create_incorrect_name_version_licence_toml() -> Result<(NamedTempFile, Project)> {
         let toml_content = br#"
             [package]
             name = "this is incorrect formatting"
             description = "description"
             version = "version 23"
+            license = "Very bad licence"
             [content]
             type = "vm"
             "#;
@@ -155,7 +167,7 @@ mod tests {
 
     #[test]
     fn negative_result_name_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
         assert!(validate_name(deserialized_toml.package.name).is_err());
         file.close()?;
         Ok(())
@@ -163,8 +175,16 @@ mod tests {
 
     #[test]
     fn negative_result_version_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
         assert!(validate_version(deserialized_toml.package.version).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_license_field() -> Result<()> {
+        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
+        assert!(validate_license(deserialized_toml.package.license).is_err());
         file.close()?;
         Ok(())
     }

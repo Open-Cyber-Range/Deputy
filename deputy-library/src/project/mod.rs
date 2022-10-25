@@ -82,6 +82,7 @@ pub struct Body {
     pub description: String,
     pub version: String,
     pub authors: Option<Vec<String>>,
+    pub license: String,
 }
 
 impl Body {
@@ -92,6 +93,7 @@ impl Body {
             description: deserialized_toml.package.description,
             version: deserialized_toml.package.version,
             authors: deserialized_toml.package.authors,
+            license: deserialized_toml.package.license,
         };
         Ok(result)
     }

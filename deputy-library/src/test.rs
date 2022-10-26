@@ -20,6 +20,7 @@ lazy_static! {
         description = "This is a package"
         version = "1.0.4"
         authors = ["Robert robert@exmaple.com"]
+        license = "very bad licence"
         [content]
         type = "vm"
         [virtual-machine]
@@ -33,6 +34,7 @@ lazy_static! {
         description = "This package does nothing at all, and we spent 300 manhours on it..."
         version = "1.0.4"
         authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
+        license = "Apache-2.0"
         [content]
         type = "vm"
         [virtual-machine]
@@ -134,6 +136,7 @@ impl TempArchiveBuilder {
                 description = "This package does nothing at all, and we spent 300 manhours on it..."
                 version = "1.0.4"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
+                license = "Apache-2.0"
                 [content]
                 type = "vm"
                 [virtual-machine]
@@ -213,7 +216,7 @@ impl TempArchiveBuilder {
 }
 
 pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)> {
-    let file = tempfile::NamedTempFile::new()?;
+    let file = NamedTempFile::new()?;
     let mut other_handler = file.reopen()?;
     write!(&mut other_handler, "{}", content)?;
     Ok(file.into_parts())

@@ -29,6 +29,8 @@ pub struct PackageMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
+    pub readme: String,
+    pub license: String,
 }
 
 impl PackageMetadata {
@@ -59,6 +61,8 @@ impl PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: "".to_string(),
+            readme: "".to_string(),
+            license: "".to_string(),
         };
 
         if let Ok(is_valid) = metadata.is_latest_version(registry_repository) {
@@ -213,6 +217,8 @@ impl Package {
             name: package_body.name,
             version: package_body.version,
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
+            readme: "".to_string(),
+            license: package_body.license,
         };
         Ok(metadata)
     }

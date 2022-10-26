@@ -43,6 +43,12 @@ impl Validate for PackageMetadata {
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
+        if self.readme.is_empty() {
+            return Err(anyhow!("Package README is empty"));
+        }
+        if self.license.is_empty() {
+            return Err(anyhow!("Package license is empty"));
+        }
         Ok(())
     }
 }

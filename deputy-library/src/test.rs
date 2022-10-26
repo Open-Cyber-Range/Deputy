@@ -13,6 +13,8 @@ lazy_static! {
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),
         name: "some-package-name".to_string(),
+        readme: "some-readme".to_string(),
+        license: "Apache-2.0".to_string(),
     };
     pub static ref TEST_INVALID_PACKAGE_TOML_SCHEMA: &'static str = r#"
         [package]

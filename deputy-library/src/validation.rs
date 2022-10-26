@@ -142,7 +142,7 @@ mod tests {
         Ok(deserialized_toml)
     }
 
-    fn create_incorrect_name_version_licence_toml() -> Result<(NamedTempFile, Project)> {
+    fn create_incorrect_name_version_license_toml() -> Result<(NamedTempFile, Project)> {
         let toml_content = br#"
             [package]
             name = "this is incorrect formatting"
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn negative_result_name_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
         assert!(validate_name(deserialized_toml.package.name).is_err());
         file.close()?;
         Ok(())
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn negative_result_version_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
         assert!(validate_version(deserialized_toml.package.version).is_err());
         file.close()?;
         Ok(())
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn negative_result_license_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_version_licence_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
         assert!(validate_license(deserialized_toml.package.license).is_err());
         file.close()?;
         Ok(())

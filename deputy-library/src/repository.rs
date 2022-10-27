@@ -2,7 +2,7 @@ use crate::constants::{
     CONFIGURATION_FOLDER_PATH_ENV_KEY, INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE, LOCKFILE,
 };
 use crate::lockfile::Standoff;
-use crate::package::IndexMetadata;
+use crate::package::IndexInfo;
 use anyhow::{Error, Ok, Result};
 use git2::{
     build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
@@ -75,8 +75,8 @@ fn create_or_find_package_file(
     ))
 }
 
-fn write_metadata_to_file(mut file: &File, index_metadata: &IndexMetadata) -> Result<()> {
-    let mut metadata_string = serde_json::to_string(index_metadata)?;
+fn write_metadata_to_file(mut file: &File, index_info: &IndexInfo) -> Result<()> {
+    let mut metadata_string = serde_json::to_string(index_info)?;
     metadata_string.push_str(LINE_ENDING);
     file.write_all(metadata_string.as_bytes())?;
     Ok(())
@@ -85,7 +85,7 @@ fn write_metadata_to_file(mut file: &File, index_metadata: &IndexMetadata) -> Re
 fn create_package_commit(
     repository: &Repository,
     file_path: &Path,
-    index_metadata: &IndexMetadata,
+    index_info: &IndexInfo,
 ) -> Result<()> {
     let mut index = repository.index()?;
     index.add_path(file_path)?;
@@ -96,7 +96,7 @@ fn create_package_commit(
     let parent = repository.find_commit(head_id)?;
     let commit_message = format!(
         "Adding package: {}, version: {}",
-        &index_metadata.name, &index_metadata.version
+        &index_info.name, &index_info.version
     );
     repository.commit(
         Some(HEAD_REF),
@@ -130,35 +130,35 @@ fn find_package_file_by_name(repository: &Repository, name: &str) -> Result<Opti
     Ok(file)
 }
 
-pub fn find_metadata_by_package_name(
+pub fn find_index_info_by_package_name(
     repository: &Repository,
     name: &str,
-) -> Result<Vec<IndexMetadata>> {
+) -> Result<Vec<IndexInfo>> {
     let mut metadata_list = Vec::new();
     if let Some(mut file) = find_package_file_by_name(repository, name)? {
         let mut file_content = String::new();
         file.read_to_string(&mut file_content).ok();
         for line in file_content.lines() {
-            if let Result::Ok(index_metadata) = serde_json::from_str::<IndexMetadata>(line) {
-                metadata_list.push(index_metadata);
+            if let Result::Ok(index_info) = serde_json::from_str::<IndexInfo>(line) {
+                metadata_list.push(index_info);
             }
         }
     }
     Ok(metadata_list)
 }
 
-pub fn find_matching_metadata(
+pub fn find_matching_index_info(
     repository: &Repository,
     name: &str,
     version_requirement: &str,
-) -> Result<Option<IndexMetadata>> {
+) -> Result<Option<IndexInfo>> {
     let version_requirement = VersionReq::parse(version_requirement)?;
-    let metadata_list = find_metadata_by_package_name(repository, name)?;
+    let metadata_list = find_index_info_by_package_name(repository, name)?;
 
     let mut latest_metadata = metadata_list
         .iter()
         .map(|metadata| Ok((Version::parse(&metadata.version)?, metadata)))
-        .collect::<Result<Vec<(Version, &IndexMetadata)>>>()?;
+        .collect::<Result<Vec<(Version, &IndexInfo)>>>()?;
     latest_metadata.sort_by(|a, b| a.0.cmp(&b.0));
     latest_metadata.reverse();
     let matching_metadata = latest_metadata
@@ -171,13 +171,13 @@ pub fn find_matching_metadata(
 
 pub fn update_index_repository(
     repository: &Repository,
-    index_metadata: &IndexMetadata,
+    index_info: &IndexInfo,
 ) -> Result<()> {
-    let (file, file_path) = create_or_find_package_file(repository, &index_metadata.name)?;
+    let (file, file_path) = create_or_find_package_file(repository, &index_info.name)?;
 
-    write_metadata_to_file(&file, index_metadata)
+    write_metadata_to_file(&file, index_info)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
-    create_package_commit(repository, &file_path, index_metadata)?;
+    create_package_commit(repository, &file_path, index_info)?;
 
     Ok(())
 }
@@ -331,7 +331,7 @@ pub fn pull_from_remote(repository: &Repository) -> Result<()> {
 mod tests {
     use crate::{
         repository::{
-            create_or_find_package_file, find_metadata_by_package_name, find_package_file_by_name,
+            create_or_find_package_file, find_index_info_by_package_name, find_package_file_by_name,
             get_or_create_repository, initialize_repository, update_index_repository,
             RepositoryConfiguration,
         },
@@ -498,11 +498,11 @@ mod tests {
     }
 
     #[test]
-    fn index_metadata_is_found() -> Result<()> {
+    fn index_info_is_found() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
         update_index_repository(&repository, &TEST_INDEX_METADATA)?;
         let metadata_list =
-            find_metadata_by_package_name(&repository, &TEST_INDEX_METADATA.name)?;
+            find_index_info_by_package_name(&repository, &TEST_INDEX_METADATA.name)?;
 
         insta::assert_debug_snapshot!(metadata_list);
         root_directory.close()?;

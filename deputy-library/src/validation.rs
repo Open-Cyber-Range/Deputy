@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::{
     constants::{self},
-    package::{Package, IndexMetadata},
+    package::{Package, IndexInfo},
     project::*,
 };
 use anyhow::{anyhow, Result};
@@ -19,13 +19,13 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
-        self.metadata.validate()?;
+        self.index_info.validate()?;
         self.validate_checksum()?;
         Ok(())
     }
 }
 
-impl Validate for IndexMetadata {
+impl Validate for IndexInfo {
     fn validate(&mut self) -> Result<()> {
         if self.name.is_empty() {
             return Err(anyhow!("Package name is empty"));

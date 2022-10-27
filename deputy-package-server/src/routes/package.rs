@@ -14,7 +14,7 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, Package, PackageFile, IndexMetadata},
+    package::{FromBytes, Package, PackageFile, IndexInfo},
     project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
@@ -28,7 +28,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn check_for_version_error(
-    package_metadata: &IndexMetadata,
+    package_metadata: &IndexInfo,
     repository: &Repository,
 ) -> Result<(), Error> {
     if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
@@ -60,7 +60,7 @@ pub async fn add_package(
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        let result = IndexMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+        let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
             error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
@@ -301,4 +301,33 @@ pub async fn download_file(
         error!("Failed to open the file: {error}");
         Error::from(error)
     })
+}
+
+#[get("package/{package_name}/{package_version}/metadata")]
+pub async fn get_metadata(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<Json<IndexInfo>, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let repository = &app_state.repository.lock().await;
+    let metadata = IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
+        error!("Failed to get latest metadata: {error}");
+        ServerResponseError(PackageServerError::MetadataParse.into())
+    })?;
+    match metadata {
+        Some(inner) => Ok(Json(inner)),
+        None => {
+            error!("Failed to get latest metadata");
+            Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
+        }
+    }
 }

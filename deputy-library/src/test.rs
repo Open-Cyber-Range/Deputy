@@ -1,4 +1,4 @@
-use crate::package::{Package, PackageFile, IndexMetadata};
+use crate::package::{Package, PackageFile, IndexInfo};
 use anyhow::{anyhow, Ok, Result};
 use byte_unit::Byte;
 use git2::{Repository, RepositoryInitOptions};
@@ -9,7 +9,7 @@ use std::{fs::File, io::Write};
 use tempfile::{Builder, NamedTempFile, TempDir, TempPath};
 
 lazy_static! {
-    pub static ref TEST_INDEX_METADATA: IndexMetadata = IndexMetadata {
+    pub static ref TEST_INDEX_METADATA: IndexInfo = IndexInfo {
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),
         name: "some-package-name".to_string(),
@@ -230,7 +230,7 @@ pub fn create_test_package() -> Result<Package> {
     let package_toml = PackageFile(package_toml, Some(toml_path));
     let readme = PackageFile(readme_file, Some(readme_path));
     Ok(Package {
-        metadata: TEST_INDEX_METADATA.clone(),
+        index_info: TEST_INDEX_METADATA.clone(),
         file,
         package_toml,
         readme: Some(readme),

@@ -35,8 +35,8 @@ mod tests {
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
-            &temp_package.metadata.name,
-            &temp_package.metadata.version,
+            &temp_package.index_info.name,
+            &temp_package.index_info.version,
         ]
         .iter()
         .collect();
@@ -72,8 +72,8 @@ mod tests {
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
-            &temp_package.metadata.name,
-            &temp_package.metadata.version,
+            &temp_package.index_info.name,
+            &temp_package.index_info.version,
         ]
         .iter()
         .collect();
@@ -185,8 +185,8 @@ mod tests {
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             &test_backend.configuration.storage_folders.package_folder,
-            &temp_package.metadata.name,
-            &temp_package.metadata.version,
+            &temp_package.index_info.name,
+            &temp_package.index_info.version,
         ]
         .iter()
         .collect();

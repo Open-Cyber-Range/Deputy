@@ -1,9 +1,9 @@
 ---
 source: deputy-library/src/package.rs
-expression: "IndexMetadata::get_latest_metadata(&test_package.metadata.name, &repository)?"
+expression: "IndexInfo::get_latest_index_info(&test_package.index_info.name, &repository)?"
 ---
 Some(
-    IndexMetadata {
+    IndexInfo {
         name: "some-package-name",
         version: "4.0.0",
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73",

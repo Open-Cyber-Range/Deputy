@@ -11,7 +11,7 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
-    package::{Package, PackageMetadata},
+    package::{Package, IndexMetadata},
     project::create_project_from_toml_path,
     repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
 };
@@ -106,7 +106,7 @@ impl Executor {
             .await??;
         self.update_registry_repositories()?;
         let registry_repository = self.get_registry(&options.registry_name)?;
-        PackageMetadata::validate_version(&toml_path, registry_repository)?;
+        IndexMetadata::validate_version(&toml_path, registry_repository)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(

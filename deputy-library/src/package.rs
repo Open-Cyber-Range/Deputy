@@ -25,16 +25,22 @@ use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PackageMetadata {
+pub struct IndexMetadata {
     pub name: String,
     pub version: String,
     pub checksum: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PackageMetadata {
+    pub name: String,
+    pub version: String,
     pub readme: String,
     pub license: String,
 }
 
-impl PackageMetadata {
-    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<Option<PackageMetadata>> {
+impl IndexMetadata {
+    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<Option<IndexMetadata>> {
         let metadata_list = find_metadata_by_package_name(repository, name)?;
 
         let latest_metadata = metadata_list
@@ -47,7 +53,7 @@ impl PackageMetadata {
 
     pub fn is_latest_version(&self, repository: &Repository) -> Result<bool> {
         if let Some(current_latest_version) =
-            PackageMetadata::get_latest_metadata(&self.name, repository)?
+            IndexMetadata::get_latest_metadata(&self.name, repository)?
         {
             return Ok(self.version.parse::<Version>()?
                 > current_latest_version.version.parse::<Version>()?);
@@ -57,12 +63,10 @@ impl PackageMetadata {
 
     pub fn validate_version(toml_path: &Path, registry_repository: &Repository) -> Result<()> {
         let package_body = Body::create_from_toml(toml_path)?;
-        let metadata = PackageMetadata {
+        let metadata = IndexMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: "".to_string(),
-            readme: "".to_string(),
-            license: "".to_string(),
         };
 
         if let Ok(is_valid) = metadata.is_latest_version(registry_repository) {
@@ -152,7 +156,7 @@ impl PackageFile {
 
 #[derive(Debug)]
 pub struct Package {
-    pub metadata: PackageMetadata,
+    pub metadata: IndexMetadata,
     pub file: PackageFile,
     pub package_toml: PackageFile,
     pub readme: Option<PackageFile>,
@@ -160,7 +164,7 @@ pub struct Package {
 
 impl Package {
     pub fn new(
-        metadata: PackageMetadata,
+        metadata: IndexMetadata,
         package_toml: PackageFile,
         readme: Option<PackageFile>,
         file: PackageFile,
@@ -210,15 +214,13 @@ impl Package {
         Ok(())
     }
 
-    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
+    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<IndexMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
         let archive_file = File::open(&archive_path)?;
-        let metadata = PackageMetadata {
+        let metadata = IndexMetadata {
             name: package_body.name,
             version: package_body.version,
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
-            readme: "".to_string(),
-            license: package_body.license,
         };
         Ok(metadata)
     }
@@ -263,12 +265,12 @@ impl DerefMut for PackageFile {
     }
 }
 
-impl TryFrom<&PackageMetadata> for Vec<u8> {
+impl TryFrom<&IndexMetadata> for Vec<u8> {
     type Error = anyhow::Error;
 
-    fn try_from(package_metadata: &PackageMetadata) -> Result<Self> {
+    fn try_from(index_metadata: &IndexMetadata) -> Result<Self> {
         let mut formatted_bytes = Vec::new();
-        let string = serde_json::to_string(&package_metadata)?;
+        let string = serde_json::to_string(&index_metadata)?;
         let main_bytes = string.as_bytes();
         let length: u32 = main_bytes.len().try_into()?;
 
@@ -279,7 +281,7 @@ impl TryFrom<&PackageMetadata> for Vec<u8> {
     }
 }
 
-impl TryFrom<&[u8]> for PackageMetadata {
+impl TryFrom<&[u8]> for IndexMetadata {
     type Error = anyhow::Error;
 
     fn try_from(metadata_bytes: &[u8]) -> Result<Self> {
@@ -445,7 +447,7 @@ impl TryFrom<&[u8]> for Package {
         let metadata_bytes = package_bytes
             .get(4..metadata_end)
             .ok_or_else(|| anyhow::anyhow!("Could not find metadata"))?;
-        let metadata = PackageMetadata::try_from(metadata_bytes)?;
+        let metadata = IndexMetadata::try_from(metadata_bytes)?;
 
         let (package_toml, package_toml_end) =
             PackageFile::from_bytes(metadata_end, package_bytes)?;
@@ -463,12 +465,12 @@ impl TryFrom<&[u8]> for Package {
 
 #[cfg(test)]
 mod tests {
-    use super::{PackageFile, PackageMetadata};
+    use super::{PackageFile, IndexMetadata};
     use crate::{
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
             initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES,
-            TEST_PACKAGE_METADATA,
+            TEST_INDEX_METADATA,
         },
         StorageFolders,
     };
@@ -533,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn latest_package_metadata_is_found() -> Result<()> {
+    fn latest_index_metadata_is_found() -> Result<()> {
         let test_package = create_test_package()?;
         let target_directory = tempdir()?;
         let (repository_directory, repository) = initialize_test_repository();
@@ -551,7 +553,7 @@ mod tests {
         new_test_package.metadata.version = String::from("4.0.0");
         new_test_package.save(&storage_folders, &repository)?;
 
-        insta::assert_debug_snapshot!(PackageMetadata::get_latest_metadata(
+        insta::assert_debug_snapshot!(IndexMetadata::get_latest_metadata(
             &test_package.metadata.name,
             &repository
         )?);
@@ -622,8 +624,8 @@ mod tests {
 
     #[test]
     fn metadata_is_converted_to_bytes() -> Result<()> {
-        let package_metadata: &PackageMetadata = &TEST_PACKAGE_METADATA;
-        let metadata_bytes = Vec::try_from(package_metadata)?;
+        let index_metadata: &IndexMetadata = &TEST_INDEX_METADATA;
+        let metadata_bytes = Vec::try_from(index_metadata)?;
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }
@@ -632,7 +634,7 @@ mod tests {
     fn metadata_is_parsed_from_bytes() -> Result<()> {
         let bytes = TEST_METADATA_BYTES.clone();
 
-        let metadata = PackageMetadata::try_from(&bytes as &[u8])?;
+        let metadata = IndexMetadata::try_from(&bytes as &[u8])?;
         insta::assert_debug_snapshot!(metadata);
         Ok(())
     }
@@ -677,7 +679,7 @@ mod tests {
             bytes.append(&mut chunk.to_vec());
             counter += 1;
             if counter == 1 {
-                PackageMetadata::try_from(bytes.as_slice())?;
+                IndexMetadata::try_from(bytes.as_slice())?;
             }
         }
         assert_eq!(counter, 7);

@@ -14,7 +14,7 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, Package, PackageFile, PackageMetadata},
+    package::{FromBytes, Package, PackageFile, IndexMetadata},
     project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
@@ -28,7 +28,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn check_for_version_error(
-    package_metadata: &PackageMetadata,
+    package_metadata: &IndexMetadata,
     repository: &Repository,
 ) -> Result<(), Error> {
     if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
@@ -60,7 +60,7 @@ pub async fn add_package(
 ) -> Result<HttpResponse, Error> {
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+        let result = IndexMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
             error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });

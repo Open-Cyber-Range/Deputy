@@ -2,7 +2,7 @@ use crate::constants::{
     CONFIGURATION_FOLDER_PATH_ENV_KEY, INDEX_REPOSITORY_BRANCH, INDEX_REPOSITORY_REMOTE, LOCKFILE,
 };
 use crate::lockfile::Standoff;
-use crate::package::PackageMetadata;
+use crate::package::IndexMetadata;
 use anyhow::{Error, Ok, Result};
 use git2::{
     build::CheckoutBuilder, AnnotatedCommit, AutotagOption, FetchOptions, Reference, Remote,
@@ -75,8 +75,8 @@ fn create_or_find_package_file(
     ))
 }
 
-fn write_metadata_to_file(mut file: &File, package_metadata: &PackageMetadata) -> Result<()> {
-    let mut metadata_string = serde_json::to_string(package_metadata)?;
+fn write_metadata_to_file(mut file: &File, index_metadata: &IndexMetadata) -> Result<()> {
+    let mut metadata_string = serde_json::to_string(index_metadata)?;
     metadata_string.push_str(LINE_ENDING);
     file.write_all(metadata_string.as_bytes())?;
     Ok(())
@@ -85,7 +85,7 @@ fn write_metadata_to_file(mut file: &File, package_metadata: &PackageMetadata) -
 fn create_package_commit(
     repository: &Repository,
     file_path: &Path,
-    package_metadata: &PackageMetadata,
+    index_metadata: &IndexMetadata,
 ) -> Result<()> {
     let mut index = repository.index()?;
     index.add_path(file_path)?;
@@ -96,7 +96,7 @@ fn create_package_commit(
     let parent = repository.find_commit(head_id)?;
     let commit_message = format!(
         "Adding package: {}, version: {}",
-        &package_metadata.name, &package_metadata.version
+        &index_metadata.name, &index_metadata.version
     );
     repository.commit(
         Some(HEAD_REF),
@@ -133,14 +133,14 @@ fn find_package_file_by_name(repository: &Repository, name: &str) -> Result<Opti
 pub fn find_metadata_by_package_name(
     repository: &Repository,
     name: &str,
-) -> Result<Vec<PackageMetadata>> {
+) -> Result<Vec<IndexMetadata>> {
     let mut metadata_list = Vec::new();
     if let Some(mut file) = find_package_file_by_name(repository, name)? {
         let mut file_content = String::new();
         file.read_to_string(&mut file_content).ok();
         for line in file_content.lines() {
-            if let Result::Ok(package_metadata) = serde_json::from_str::<PackageMetadata>(line) {
-                metadata_list.push(package_metadata);
+            if let Result::Ok(index_metadata) = serde_json::from_str::<IndexMetadata>(line) {
+                metadata_list.push(index_metadata);
             }
         }
     }
@@ -151,14 +151,14 @@ pub fn find_matching_metadata(
     repository: &Repository,
     name: &str,
     version_requirement: &str,
-) -> Result<Option<PackageMetadata>> {
+) -> Result<Option<IndexMetadata>> {
     let version_requirement = VersionReq::parse(version_requirement)?;
     let metadata_list = find_metadata_by_package_name(repository, name)?;
 
     let mut latest_metadata = metadata_list
         .iter()
         .map(|metadata| Ok((Version::parse(&metadata.version)?, metadata)))
-        .collect::<Result<Vec<(Version, &PackageMetadata)>>>()?;
+        .collect::<Result<Vec<(Version, &IndexMetadata)>>>()?;
     latest_metadata.sort_by(|a, b| a.0.cmp(&b.0));
     latest_metadata.reverse();
     let matching_metadata = latest_metadata
@@ -171,13 +171,13 @@ pub fn find_matching_metadata(
 
 pub fn update_index_repository(
     repository: &Repository,
-    package_metadata: &PackageMetadata,
+    index_metadata: &IndexMetadata,
 ) -> Result<()> {
-    let (file, file_path) = create_or_find_package_file(repository, &package_metadata.name)?;
+    let (file, file_path) = create_or_find_package_file(repository, &index_metadata.name)?;
 
-    write_metadata_to_file(&file, package_metadata)
+    write_metadata_to_file(&file, index_metadata)
         .or_else(|_| reset_repository_to_last_good_state(repository))?;
-    create_package_commit(repository, &file_path, package_metadata)?;
+    create_package_commit(repository, &file_path, index_metadata)?;
 
     Ok(())
 }
@@ -335,7 +335,7 @@ mod tests {
             get_or_create_repository, initialize_repository, update_index_repository,
             RepositoryConfiguration,
         },
-        test::{initialize_test_repository, TEST_PACKAGE_METADATA},
+        test::{initialize_test_repository, TEST_INDEX_METADATA},
     };
     use std::{
         fs::File,
@@ -402,7 +402,7 @@ mod tests {
         file_path.push("test-file");
 
         let file = File::create(&file_path)?;
-        write_metadata_to_file(&file, &TEST_PACKAGE_METADATA)?;
+        write_metadata_to_file(&file, &TEST_INDEX_METADATA)?;
         let read_file = File::open(file_path)?;
         let line = std::io::BufReader::new(read_file).lines().next().unwrap()?;
 
@@ -489,8 +489,8 @@ mod tests {
     #[test]
     fn existing_package_file_is_found() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
-        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
-        let file_option = find_package_file_by_name(&repository, &TEST_PACKAGE_METADATA.name)?;
+        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
+        let file_option = find_package_file_by_name(&repository, &TEST_INDEX_METADATA.name)?;
 
         assert!(file_option.is_some());
         root_directory.close()?;
@@ -498,11 +498,11 @@ mod tests {
     }
 
     #[test]
-    fn package_metadata_is_found() -> Result<()> {
+    fn index_metadata_is_found() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
-        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
+        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
         let metadata_list =
-            find_metadata_by_package_name(&repository, &TEST_PACKAGE_METADATA.name)?;
+            find_metadata_by_package_name(&repository, &TEST_INDEX_METADATA.name)?;
 
         insta::assert_debug_snapshot!(metadata_list);
         root_directory.close()?;
@@ -515,7 +515,7 @@ mod tests {
         let root = repository.path().parent().unwrap();
         File::create(&root.join("test"))?;
 
-        create_package_commit(&repository, Path::new("test"), &TEST_PACKAGE_METADATA)?;
+        create_package_commit(&repository, Path::new("test"), &TEST_INDEX_METADATA)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 
@@ -532,7 +532,7 @@ mod tests {
         let (temporary_directory, repository) = initialize_test_repository();
         let root = repository.path().parent().unwrap();
 
-        update_index_repository(&repository, &TEST_PACKAGE_METADATA)?;
+        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 

@@ -37,6 +37,8 @@ actix-web = "4"
 actix-files = "0.6"
 actix-http = { version = "3", features = ["http2", "ws"] }
 anyhow = "1"
+chrono = "0.4"
+diesel = { version = "2", features = ["mysql"] }
 divrem = "1.0.0"
 deputy-library = { path = "../deputy-library", default-features = false }
 env_logger = "0.9"

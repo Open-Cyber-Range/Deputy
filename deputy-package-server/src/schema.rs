@@ -2,11 +2,13 @@
 
 diesel::table! {
     packages (id) {
-        id -> Int4,
-        name -> Varchar,
-        version -> Varchar,
-        readme -> Text,
-        licence -> Varchar,
+        id -> Binary,
+        name -> Tinytext,
+        version -> Tinytext,
+        readme -> Longtext,
+        licence -> Longtext,
         created_at -> Timestamp,
+        updated_at -> Timestamp,
+        deleted_at -> Nullable<Timestamp>,
     }
 }

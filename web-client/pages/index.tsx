@@ -5,8 +5,8 @@ import styles from '../styles/Home.module.css';
 import PackageListView from '../components/PackageList';
 
 const Home: NextPage = () => {
-	const { t } = useTranslation('common');
-	return(
+	const {t} = useTranslation('common');
+	return (
 		<div>
 			<Head>
 				<title>{t('title')}</title>

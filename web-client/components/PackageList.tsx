@@ -9,7 +9,7 @@ import useTranslation from 'next-translate/useTranslation';
 const fetcher: Fetcher<Package[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageListView = () => {
-	const { t } = useTranslation('common');
+	const {t} = useTranslation('common');
 
 	const {data: packageList, error}: SWRResponse<Package[], string> = useSWR('/api/v1/package', fetcher);
 	if (error) {

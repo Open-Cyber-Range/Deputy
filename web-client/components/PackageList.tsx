@@ -4,13 +4,16 @@ import styles from '../styles/PackageList.module.css';
 import type {Package} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
+import useTranslation from 'next-translate/useTranslation';
 
 const fetcher: Fetcher<Package[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageListView = () => {
+	const { t } = useTranslation('common');
+
 	const {data: packageList, error}: SWRResponse<Package[], string> = useSWR('/api/v1/package', fetcher);
 	if (error) {
-		return <div>Failed to load</div>;
+		return <div>{t('failedLoading')} </div>;
 	}
 
 	if (!packageList) {

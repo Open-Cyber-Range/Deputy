@@ -1,3 +1,4 @@
+use actix::Actor;
 use actix_web::{
     web::{scope, Data},
     App, HttpServer,
@@ -15,14 +16,25 @@ use deputy_package_server::{
 use futures::lock::Mutex;
 use log::error;
 use std::sync::Arc;
+use deputy_package_server::services::database::Database;
 
 async fn real_main() -> Result<()> {
     env_logger::init();
     let configuration = read_configuration(std::env::args().collect())?;
+    let database = Database::try_new(&configuration.database_url)
+        .unwrap_or_else(|error| {
+            panic!(
+                "Failed to create database connection to {} due to: {error}",
+                &configuration.database_url
+            )
+        })
+        .start();
+
     if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
         let app_state = AppState {
             repository: Arc::new(Mutex::new(repository)),
             storage_folders: configuration.storage_folders,
+            database_address: database,
         };
 
         HttpServer::new(move || {

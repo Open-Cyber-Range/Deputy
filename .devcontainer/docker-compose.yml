@@ -18,6 +18,7 @@ services:
       - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
     environment:
       - RUST_LOG=debug
+      - DATABASE_URL=mysql://deputy:deputy@127.0.0.1:3306/deputy
 
   index-repository:
     image: nexus.ocr.cr14.net:8003/deputy-repository-server

@@ -41,3 +41,18 @@ To run the production build (no hot reloading):
 2. `yarn build` Build production artifacts
 
 3. `yarn start` Run the local server. If there are conflicts with the default port `3000` then assign your own `PORT` environment variable before the `next start` command in `package.json`
+
+### Deputy Package Server
+
+#### Database
+
+Deputy package server uses a MySQL database for saving metadata of packages.
+
+##### Setup
+
+1. Install MySQL (MariaDB) on your machine
+2. Create database `deputy` with `CREATE DATABASE deputy;`
+3. Create user and grant privileges on database 
+   1. `CREATE USER deputy@localhost IDENTIFIED BY 'deputy';`
+   2. `GRANT ALL PRIVILEGES ON deputy.* to deputy@localhost;`
+4. Run migrations with `diesel setup`

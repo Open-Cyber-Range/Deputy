@@ -26,6 +26,7 @@ use paginate::Pages;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use crate::services::database::package::GetPackages;
 
 fn check_for_version_error(
     package_metadata: &IndexInfo,
@@ -254,6 +255,22 @@ pub async fn get_all_packages(
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(paginated_result))
+}
+
+#[get("package2")]
+pub async fn get_all_packages2(
+    app_state: Data<AppState>,
+    query: Query<PackageQuery>,
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let packages = app_state
+        .database_address
+        .send(GetPackages)
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    Ok(Json(packages))
 }
 
 #[derive(Debug, Deserialize)]

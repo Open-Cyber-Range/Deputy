@@ -1,3 +1,6 @@
+use crate::{
+    schema::packages,
+};
 use serde::{Deserialize, Serialize};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -13,4 +16,14 @@ pub struct Package {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
+}
+
+impl Package {
+    fn all_with_deleted() -> All<packages::table, Self> {
+        packages::table.select(Self::as_select())
+    }
+
+    pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
+        Self::all_with_deleted().filter(packages::deleted_at.is_null())
+    }
 }

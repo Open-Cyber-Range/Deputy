@@ -12,6 +12,8 @@ license = 'Apache-2.0'
 type = 'Feature'
 
 [feature]
+type = 'Configuration'
+action = 'ping 8.8.8.8'
 assets = [
     [
     'src/configs/my-cool-config1.yml',

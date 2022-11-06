@@ -22,7 +22,7 @@ services:
   deputy-package-server-repository-combo:
     image: nexus.ocr.cr14.net:8003/deputy-package-server-repository-combo:latest
     volumes:
-      - ./config.toml:/etc/opt/deputy/deputy-package-server/config.yml
+      - ./config.yml:/etc/opt/deputy/deputy-package-server/config.yml
     container_name: deputy-package-server-repository-combo
     environment:
       - RUST_LOG=debug

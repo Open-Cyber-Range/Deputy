@@ -13,14 +13,16 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - /etc/letsencrypt/:/etc/letsencrypt/
-      - ./config.toml:/etc/opt/deputy/deputy-package-server/config.yml
     networks:
       - deputy
     dns:
       - '10.81.50.8'
       - '10.81.50.9'
+
   deputy-package-server-repository-combo:
     image: nexus.ocr.cr14.net:8003/deputy-package-server-repository-combo:latest
+    volumes:
+      - ./config.toml:/etc/opt/deputy/deputy-package-server/config.yml
     container_name: deputy-package-server-repository-combo
     environment:
       - RUST_LOG=debug

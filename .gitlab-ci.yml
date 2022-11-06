@@ -21,13 +21,6 @@ lint-and-test:
   script:
     - cargo clippy -- -Dwarnings
     - cargo test
-    # - cargo tarpaulin --skip-clean --out Xml
-  # coverage: '/^\d+.\d+% coverage/'
-  # artifacts:
-  #   reports:
-  #     coverage_report:
-  #       coverage_format: cobertura
-  #       path: coverage/cobertura-coverage.xml
   only:
     - develop
     - master

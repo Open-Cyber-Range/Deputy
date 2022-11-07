@@ -18,8 +18,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use actix::{Actor, Addr};
-use diesel::CombineDsl;
+use actix::Actor;
 use tokio::{
     sync::oneshot::{channel, Sender},
     time::timeout,
@@ -194,11 +193,11 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         folder: repository_folder.to_str().unwrap().to_string(),
     };
     let repository = get_or_create_repository(&repository_configuration)?;
-    let database = Database::try_new(&configuration.database_url)
+    let database = Database::try_new("mysql://deputy:deputy@127.0.0.1:3306/deputy")
         .unwrap_or_else(|error| {
             panic!(
                 "Failed to create database connection to {} due to: {error}",
-                &configuration.database_url
+                "mysql://deputy:deputy@127.0.0.1:3306/deputy"
             )
         })
         .start();

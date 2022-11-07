@@ -1,11 +1,8 @@
 use actix::Addr;
 use deputy_library::StorageFolders;
-use diesel::prelude::*;
-use diesel::mysql::MysqlConnection;
 use futures::lock::Mutex;
 use git2::Repository;
 use std::sync::Arc;
-use std::env;
 use crate::services::database::Database;
 
 pub mod configuration;

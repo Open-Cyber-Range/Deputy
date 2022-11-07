@@ -269,6 +269,10 @@ pub async fn get_all_packages2(
         .map_err(|error| {
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to do stuff");
+            ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(packages))
 }

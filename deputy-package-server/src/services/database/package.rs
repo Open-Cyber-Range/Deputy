@@ -2,6 +2,7 @@ use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
 use crate::models::Package;
+use diesel::RunQueryDsl;
 use super::Database;
 
 #[derive(Message)]
@@ -19,14 +20,10 @@ impl Handler<GetPackages> for Database {
                 let mut connection = connection_result?;
                 let package = block(move || {
                     let packages = Package::all().load(&mut connection)?;
-
                     Ok(packages)
-                })
-                    .await??;
-
+                }).await??;
                 Ok(package)
-            }
-                .into_actor(self),
+            }.into_actor(self),
         )
     }
 }

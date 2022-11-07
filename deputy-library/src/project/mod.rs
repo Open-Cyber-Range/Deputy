@@ -37,7 +37,20 @@ pub struct VirtualMachine {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub enum FeatureType {
+    #[serde(alias = "service", alias = "SERVICE")]
+    Service,
+    #[serde(alias = "configuration", alias = "CONFIGURATION")]
+    Configuration,
+    #[serde(alias = "artifact", alias = "ARTIFACT")]
+    Artifact,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Feature {
+    #[serde(rename = "type")]
+    pub feature_type: FeatureType,
+    pub action: Option<String>,
     pub assets: Vec<Vec<String>>,
 }
 

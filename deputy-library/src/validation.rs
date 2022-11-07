@@ -282,6 +282,8 @@ mod tests {
             [content]
             type = "feature"
             [feature]
+            type = "configuration"
+            action = "ping 8.8.8.8"
             assets = [
             ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
             ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],

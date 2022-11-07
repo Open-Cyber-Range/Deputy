@@ -6,3 +6,4 @@ Cargo.lock
 # Miscellaneous
 dist
 cobertura.xml
+node_modules

@@ -3,14 +3,13 @@ pub(crate) mod package;
 use actix::Actor;
 use anyhow::{anyhow, Result};
 use diesel::{
-    mysql::{Mysql, MysqlConnection},
     helper_types::{AsSelect, Filter, IsNull, Select},
+    mysql::{Mysql, MysqlConnection},
     r2d2::{ConnectionManager, Pool, PooledConnection},
 };
 
 pub type All<Table, T> = Select<Table, AsSelect<T, Mysql>>;
 pub type FilterExisting<Target, DeletedAtColumn> = Filter<Target, IsNull<DeletedAtColumn>>;
-
 
 pub struct Database {
     connection_pool: Pool<ConnectionManager<MysqlConnection>>,

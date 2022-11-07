@@ -2,7 +2,7 @@
 
 diesel::table! {
     packages (id) {
-        id -> Binary,
+        id -> Integer,
         name -> Tinytext,
         version -> Tinytext,
         readme -> Longtext,

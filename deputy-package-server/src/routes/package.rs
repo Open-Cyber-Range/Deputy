@@ -262,6 +262,7 @@ pub async fn get_all_packages2(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let _page = query.into_inner().page;
     let packages = app_state
         .database_address
         .send(GetPackages)
@@ -271,7 +272,7 @@ pub async fn get_all_packages2(
             ServerResponseError(PackageServerError::Pagination.into())
         })?
         .map_err(|error| {
-            error!("Failed to do stuff");
+            error!("Failed to do stuff {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(packages))

@@ -2,11 +2,11 @@ use crate::{
     schema::packages,
     services::database::{All, FilterExisting},
 };
-use serde::{Deserialize, Serialize};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Clone, Debug, Deserialize, Serialize)]
+#[derive(Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[diesel(table_name = packages)]
 pub struct Package {
     pub id: i32,

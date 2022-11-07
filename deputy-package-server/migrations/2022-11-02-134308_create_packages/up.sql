@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE packages (
-    id BINARY(16) PRIMARY KEY,
+    id INT PRIMARY KEY,
     name TINYTEXT NOT NULL,
     version TINYTEXT NOT NULL,
     readme LONGTEXT NOT NULL,

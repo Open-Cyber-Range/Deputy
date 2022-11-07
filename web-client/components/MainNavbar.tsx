@@ -1,5 +1,5 @@
-import { Navbar, NavbarGroup, NavbarHeading, NavbarDivider, Button, Classes } from "@blueprintjs/core";
-import Link from 'next/link'
+import {Navbar, NavbarGroup, NavbarHeading, NavbarDivider, Button, Classes} from '@blueprintjs/core';
+import Link from 'next/link';
 
 const MainNavbar = () => (
   <Navbar>

@@ -1,4 +1,4 @@
-import PackageListView from "../components/PackageList";
+import PackageListView from '../components/PackageList';
 
 const Packages = () => (
   <>

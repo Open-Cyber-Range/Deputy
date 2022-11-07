@@ -202,35 +202,6 @@ pub async fn download_package(
     })
 }
 
-fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
-    let paths = fs::read_dir(package_path)?;
-    let mut result_vec: Vec<Project> = Vec::new();
-
-    for package in paths {
-        let package = package?;
-        let tomls = get_file_content_by_path(package, &PathBuf::from(PACKAGE_TOML))?;
-        for toml in tomls {
-            let value: Project = toml::from_str(&toml).unwrap();
-            result_vec.push(value);
-        }
-    }
-    Ok(result_vec)
-}
-
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Body>> {
-    let projects: Vec<Project> = result;
-    let pages = Pages::new(
-        projects.len() + 1,
-        usize::try_from(query.limit + 1).unwrap(),
-    );
-    let page = pages.with_offset(usize::try_from(query.page)?);
-    Ok(projects[page.start..page.end]
-        .to_vec()
-        .iter()
-        .map(|project| project.package.clone())
-        .collect())
-}
-
 #[derive(Deserialize, Debug)]
 pub struct PackageQuery {
     #[serde(default = "default_page")]
@@ -241,24 +212,6 @@ pub struct PackageQuery {
 
 #[get("package")]
 pub async fn get_all_packages(
-    app_state: Data<AppState>,
-    query: Query<PackageQuery>,
-) -> Result<Json<Vec<Body>>, Error> {
-    let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
-    let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
-        error!("Failed to iterate over all packages: {error}");
-        ServerResponseError(PackageServerError::Pagination.into())
-    })?;
-    let paginated_result =
-        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
-            error!("Failed to paginate packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?;
-    Ok(Json(paginated_result))
-}
-
-#[get("package2")]
-pub async fn get_all_packages2(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error> {
@@ -272,7 +225,7 @@ pub async fn get_all_packages2(
             ServerResponseError(PackageServerError::Pagination.into())
         })?
         .map_err(|error| {
-            error!("Failed to do stuff {error}");
+            error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(packages))

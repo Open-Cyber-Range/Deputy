@@ -157,6 +157,8 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
+    let result = archive_file.get_readme();
+    println!("Readme: {:?}", result);
     // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
         name: index_info.clone().name,

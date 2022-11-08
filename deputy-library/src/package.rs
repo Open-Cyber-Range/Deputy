@@ -8,11 +8,14 @@ use crate::{
 use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
+use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use git2::Repository;
+use pulldown_cmark::{Parser, html};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use tar::Archive;
 use std::{
     fs::{self, File},
     io::{copy, BufReader, Read, Write},
@@ -97,6 +100,42 @@ impl PackageFile {
 
         fs::copy(original_path, final_file_path)?;
         Ok(())
+    }
+
+    pub fn get_file_from_package(&self, filepath: &Path) -> Result<Vec<u8>> {
+        let tarfile = MultiGzDecoder::new(&self.0);
+        let mut archive = Archive::new(tarfile);
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            if entry.path()?.to_str() == filepath.to_str() {
+                let mut buffer = Vec::new();
+                entry.read_to_end(&mut buffer)?;
+                return Ok(buffer);
+            }
+        }
+        Err(anyhow!("File not found"))
+    }
+
+    pub fn get_package_info(&self) -> Result<Body> {
+        let toml_file = self.get_file_from_package(&PathBuf::from("package.toml"))?;
+        let toml_file = String::from_utf8(toml_file)?;
+        let body = toml::from_str(&toml_file)?;
+        Ok(body)
+    }
+
+    pub fn get_readme(&self) -> Result<String> {
+        let readme_path = self.get_package_info().unwrap().readme;
+        let readme_file = self.get_file_from_package(&PathBuf::from(readme_path))?;
+        let readme = String::from_utf8(readme_file)?;
+        Ok(readme)
+     }
+
+     pub fn render_markdown(&self) -> String {
+        let mut html_buf = String::new();
+        let readme = self.get_readme().unwrap();
+        let parser = Parser::new(&readme);
+        html::push_html(&mut html_buf, parser);
+        html_buf
     }
 
     fn calculate_checksum(&mut self) -> Result<String> {

@@ -7,3 +7,4 @@ Cargo.lock
 dist
 cobertura.xml
 node_modules
+.env.local

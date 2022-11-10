@@ -14,10 +14,6 @@ const Home: NextPage = () => {
         <meta name={t('metaName')} content={t('metaContent')} />
       </Head>
 
-      <header className={styles.header}>
-        <span>{t('searchbox')}</span>
-      </header>
-
       <main className={styles.main}>
         <Dashboard />
       </main>

@@ -5,7 +5,6 @@
   "searchbox": "I'm a searchbox",
   "footer": "I'm a footer",
   "failedLoading": "Failed to load packages",
-  "docuUrlWarning": "Documentation URL environment variable not set",
   "documentationButton": "Documentation",
   "welcome": "Welcome to Deputy Digital Library"
 }

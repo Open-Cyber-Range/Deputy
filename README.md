@@ -44,4 +44,4 @@ To run the production build (no hot reloading):
 
 Additional configuration:
 
-- Create an `.env.local` file and set the `DOCUMENTATION_URL` environment variable to the URL of the documentation page
+- Modify the `.env` file to your liking, for example, set the `DOCUMENTATION_URL` to your own documentation page

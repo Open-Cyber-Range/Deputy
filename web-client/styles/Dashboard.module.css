@@ -5,3 +5,10 @@
   flex-direction: column;
   margin-top: 20%;
 }
+
+.searchbox {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  margin: 1rem;
+}

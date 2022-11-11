@@ -11,8 +11,6 @@ const Dashboard = () => {
 
     if (process.env.DOCUMENTATION_URL) {
       void router.push(process.env.DOCUMENTATION_URL);
-    } else {
-      console.warn(t('docuUrlWarning'));
     }
   };
 
@@ -20,8 +18,8 @@ const Dashboard = () => {
     <div>
       <main className={styles.dashboard}>
         <h2>{t('welcome')}</h2>
-        <Button large onClick={handleClick}>{t('documentationButton')}</Button> <br/>
-        <input className='bp4-input' type='search' placeholder={t('searchbox')} dir='auto'/>
+        <Button large onClick={handleClick}>{t('documentationButton')}</Button>
+        <input className={`bp4-input ${styles.searchbox}`} type='search' placeholder={t('searchbox')} dir='auto'/>
       </main>
     </div>
   );

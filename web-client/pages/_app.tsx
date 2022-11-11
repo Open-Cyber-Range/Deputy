@@ -4,11 +4,11 @@ import '../styles/global.css';
 import MainNavbar from '../components/MainNavbar';
 
 function MyApp({Component, pageProps}: AppProps) {
-  return(
+  return (
     <>
-    <MainNavbar/>
-     <Component {...pageProps} />
-     </>
+      <MainNavbar/>
+      <Component {...pageProps} />
+    </>
   );
 }
 

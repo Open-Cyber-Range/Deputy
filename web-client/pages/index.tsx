@@ -2,7 +2,6 @@ import type {NextPage} from 'next';
 import Head from 'next/head';
 import useTranslation from 'next-translate/useTranslation';
 import styles from '../styles/Home.module.css';
-import MainNavbar from '../components/MainNavbar';
 import Dashboard from './dashboard';
 
 const Home: NextPage = () => {

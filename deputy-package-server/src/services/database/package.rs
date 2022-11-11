@@ -6,6 +6,33 @@ use anyhow::{Ok, Result};
 use diesel::RunQueryDsl;
 
 #[derive(Message)]
+#[rtype(result = "Result<Package>")]
+pub struct CreatePackage(pub Package);
+
+impl Handler<CreatePackage> for Database {
+    type Result = ResponseActFuture<Self, Result<Package>>;
+
+    fn handle(&mut self, msg: CreatePackage, _ctx: &mut Self::Context) -> Self::Result {
+        let new_package = msg.0;
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    new_package.create_insert().execute(&mut connection)?;
+                    let package = Package::by_id(new_package.id).first(&mut connection)?;
+                    Ok(package)
+                })
+                .await??;
+                Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
 #[rtype(result = "Result<Vec<Package>>")]
 pub struct GetPackages;
 

@@ -11,10 +11,10 @@ mod errors;
 pub mod routes;
 #[cfg(feature = "test")]
 pub mod test;
-pub mod utils;
 pub mod schema;
 pub mod services;
 pub mod models;
+pub mod utilities;
 
 #[derive(Clone, Debug)]
 pub struct AppState {

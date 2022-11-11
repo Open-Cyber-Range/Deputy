@@ -1,7 +1,7 @@
+use crate::services::database::package::{CreatePackage, GetPackages};
 use crate::{
-    constants::{default_limit, default_page, PACKAGE_TOML},
+    constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    utils::get_file_content_by_path,
     AppState,
 };
 use actix_files::NamedFile;
@@ -14,19 +14,16 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, Package, PackageFile, IndexInfo},
-    project::{Body, Project},
+    package::{FromBytes, IndexInfo, Package, PackageFile},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
-use paginate::Pages;
 use serde::Deserialize;
-use std::fs;
 use std::path::PathBuf;
-use crate::services::database::package::GetPackages;
+use crate::models::helpers::uuid::Uuid;
 
 fn check_for_version_error(
     package_metadata: &IndexInfo,
@@ -47,6 +44,7 @@ fn check_for_version_error(
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
 ) -> Result<(), Error> {
+    println!("Hue");
     stream
         .filter_map(|x| async move { x.ok().map(Ok) })
         .forward(futures::sink::drain())
@@ -59,6 +57,7 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
+    println!("1");
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
         let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
@@ -74,6 +73,8 @@ pub async fn add_package(
         error!("Invalid stream chunk: No metadata");
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
+    println!("2");
+
 
     let repository = &app_state.repository.lock().await;
     if let Err(error) = check_for_version_error(&metadata, repository) {
@@ -92,6 +93,8 @@ pub async fn add_package(
             HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
         );
     };
+    println!("3");
+
 
     if toml_size > PAYLOAD_CHUNK_SIZE {
         error!("Invalid package.toml: abnormally large package.toml");
@@ -99,6 +102,8 @@ pub async fn add_package(
         return Ok(HttpResponse::UnprocessableEntity()
             .body("Invalid package.toml: abnormally large package.toml"));
     }
+    println!("4");
+
 
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
@@ -129,6 +134,8 @@ pub async fn add_package(
             HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid readme length")
         );
     };
+    println!("5");
+
 
     let optional_readme: Option<PackageFile> = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
@@ -152,6 +159,8 @@ pub async fn add_package(
         None
     };
 
+    println!("6");
+
     let archive_file: PackageFile =
         PackageFile::from_stream(body.skip(1), true)
             .await
@@ -165,6 +174,8 @@ pub async fn add_package(
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
+    println!("7");
+
 
     package
         .save(&app_state.storage_folders, repository)
@@ -172,6 +183,31 @@ pub async fn add_package(
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
+    println!("8");
+
+    println!("{:?}", package);
+    let returnable_package = app_state
+        .database_address
+        .send(CreatePackage(crate::models::Package {
+            id: Uuid::random(),
+            name: package.index_info.name,
+            version: package.index_info.version,
+            readme: "readme".to_string(),
+            license: "license".to_string(),
+            created_at: Default::default(),
+            updated_at: Default::default(),
+            deleted_at: None
+        }))
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    println!("{:?}", returnable_package);
     Ok(HttpResponse::Ok().body("OK"))
 }
 
@@ -215,7 +251,9 @@ pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error> {
-    let _page = query.into_inner().page;
+    // TODO Pagination
+    let _page = query.page;
+    let _limit = query.limit;
     let packages = app_state
         .database_address
         .send(GetPackages)

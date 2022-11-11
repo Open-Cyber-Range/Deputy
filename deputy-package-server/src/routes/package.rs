@@ -16,6 +16,7 @@ use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, IndexInfo, Package, PackageFile},
+    project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
@@ -23,6 +24,7 @@ use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
 use serde::Deserialize;
+use std::fs::{self, File};
 use std::path::PathBuf;
 use deputy_library::package::PackageMetadata;
 
@@ -332,4 +334,39 @@ pub async fn get_metadata(
             Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
         }
     }
+}
+
+#[get("package/{package_name}/{package_version}/readme")]
+pub async fn download_readme(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> impl Responder {
+    let package_folder = &app_state.storage_folders.package_folder;
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+
+    let archive_path = PathBuf::from(package_folder)
+        .join(package_name)
+        .join(package_version);
+
+    let archive_file = File::open(archive_path).map_err(|error| {
+        error!("Failed to open the archive: {error}");
+        Error::from(error)
+    })?;
+
+    let readme = PackageFile(archive_file, None).render_markdown();
+
+    NamedFile::open(readme).map_err(|error| {
+        error!("Failed to open the open readme: {error}");
+        Error::from(error)
+    })
 }

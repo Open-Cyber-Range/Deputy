@@ -1,17 +1,18 @@
 /** @type {import('next').NextConfig} */
-const nextTranslate = require('next-translate');
+const nextTranslate = require("next-translate");
 
-const nextConfig = {
+module.exports = nextTranslate({
   reactStrictMode: true,
   swcMinify: true,
+  env: {
+    DOCUMENTATION_URL: process.env.DOCUMENTATION_URL,
+  },
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*'
-      }
-    ]
-  }
-}
-
-module.exports = nextTranslate(nextConfig);
+        source: "/api/:path*",
+        destination: "http://localhost:8080/api/:path*",
+      },
+    ];
+  },
+});

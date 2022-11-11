@@ -41,3 +41,7 @@ To run the production build (no hot reloading):
 2. `yarn build` Build production artifacts
 
 3. `yarn start` Run the local server. If there are conflicts with the default port `3000` then assign your own `PORT` environment variable before the `next start` command in `package.json`
+
+Additional configuration:
+
+- Modify the `.env` file to your liking, for example, set the `DOCUMENTATION_URL` to your own documentation page

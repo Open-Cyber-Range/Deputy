@@ -8,6 +8,8 @@ services:
     volumes:
       - ..:/workspace:cached
     user: vscode
+    environment:
+      - DATABASE_URL=mysql://mysql_user:mysql_pass@mariadb:3306/deputy
 
   deputy-package-server:
     image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
@@ -18,9 +20,21 @@ services:
       - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
     environment:
       - RUST_LOG=debug
-      - DATABASE_URL=mysql://deputy:deputy@127.0.0.1:3306/deputy
+      - DATABASE_URL=mysql://mysql_user:mysql_pass@mariadb:3306/deputy
 
   index-repository:
     image: nexus.ocr.cr14.net:8003/deputy-repository-server
     volumes:
       - ./deputy-repository/.git:/srv/git/index.git
+
+  mariadb:
+    image: nexus.ocr.cr14.net:8003/mariadb:10.7
+    ports:
+      - "3306:3306"
+    volumes:
+      - ~/apps/mariadb:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysql_root
+      - MYSQL_PASSWORD=mysql_pass
+      - MYSQL_USER=mysql_user
+      - MYSQL_DATABASE=deputy

@@ -1,11 +1,21 @@
 import type {NextPage} from 'next';
-import Head from 'next/head';
+import {Button} from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
-import styles from '../styles/Home.module.css';
-import Dashboard from './dashboard';
+import {useRouter} from 'next/router';
+import styles from '../styles/Index.module.css';
+import Head from 'next/head';
 
 const Home: NextPage = () => {
   const {t} = useTranslation('common');
+  const router = useRouter();
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+
+    if (process.env.DOCUMENTATION_URL) {
+      void router.push(process.env.DOCUMENTATION_URL);
+    }
+  };
+
   return (
     <div>
       <Head>
@@ -14,7 +24,10 @@ const Home: NextPage = () => {
       </Head>
 
       <main className={styles.main}>
-        <Dashboard />
+        <div className = {styles.dashboard}>
+          <h1>{t('welcome')}</h1>
+          <Button intent='primary' large onClick={handleClick}>{t('documentationButton')}</Button>
+        </div>
       </main>
 
       <footer className={styles.footer}>

@@ -1,4 +1,6 @@
-.main, .header, .footer {
+.main,
+.header,
+.footer {
   flex: 1;
   display: flex;
   align-items: center;
@@ -10,8 +12,16 @@
   background-color: #eff0f2;
 }
 
-.header, .footer {
+.header,
+.footer {
   background-color: #142667;
-  color: #FFFFFF;
+  color: #ffffff;
   padding: 2rem 0;
+}
+
+.dashboard {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  margin: 2rem;
 }

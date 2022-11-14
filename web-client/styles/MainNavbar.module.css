@@ -1,14 +1,12 @@
-.dashboard {
-  flex: 1;
+.navbar {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  flex-direction: column;
-  margin-top: 20%;
 }
 
 .searchbox {
   display: flex;
-  align-items: center;
+  flex-grow: 1;
   flex-direction: column;
   margin: 1rem;
 }

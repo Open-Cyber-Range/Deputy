@@ -337,7 +337,7 @@ pub async fn get_metadata(
 }
 
 #[get("package/{package_name}/{package_version}/readme")]
-pub async fn download_readme(
+pub async fn get_readme_html(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
 ) -> impl Responder {
@@ -354,16 +354,31 @@ pub async fn download_readme(
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
 
-    let archive_path = PathBuf::from(package_folder)
-        .join(package_name)
-        .join(package_version);
-
-    let archive_file = File::open(archive_path).map_err(|error| {
+    let archive_file = File::open(
+        PathBuf::from(package_folder)
+            .join(package_name)
+            .join(package_version),
+    )
+    .map_err(|error| {
         error!("Failed to open the archive: {error}");
         Error::from(error)
     })?;
 
-    let readme = PackageFile(archive_file, None).render_markdown();
+    let readme_file = PackageFile(archive_file, None)
+        .get_readme()
+        .map_err(|error| {
+            error!("Failed to get the readme: {error}");
+            ServerResponseError(PackageServerError::FileSave.into())
+        })?;
+
+    let readme = PackageFile(
+        File::open(readme_file).map_err(|error| {
+            error!("Failed to render readme to HTML: {error}");
+            ServerResponseError(PackageServerError::FileSave.into())
+        })?,
+        None,
+    )
+    .render_markdown();
 
     NamedFile::open(readme).map_err(|error| {
         error!("Failed to open the open readme: {error}");

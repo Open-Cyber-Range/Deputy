@@ -17,9 +17,9 @@ const MainNavbar = () => {
       </NavbarGroup>
       <input className={`bp4-input ${styles.searchbox}`} type='search' placeholder={t('searchbox')} dir='auto'/>
       <NavbarGroup align='right'>
-        <Link href='/packages'>Browse All Packages</Link>
+        <Link href='/packages'>{t('browseAllPackages')}</Link>
         <NavbarDivider/>
-        <Link href='/'>Log In</Link>
+        <Link href='/'>{t('logIn')}</Link>
       </NavbarGroup>
 
     </Navbar>

@@ -6,5 +6,7 @@
   "footer": "I'm a footer",
   "failedLoading": "Failed to load packages",
   "documentationButton": "Documentation",
-  "welcome": "Welcome to Deputy Digital Library"
+  "welcome": "Welcome to Deputy Digital Library",
+  "browseAllPackages": "Browse All Packages",
+  "logIn": "Log In"
 }

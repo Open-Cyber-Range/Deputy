@@ -5,7 +5,6 @@ diesel::table! {
         id -> Binary,
         name -> Tinytext,
         version -> Tinytext,
-        readme -> Longtext,
         license -> Longtext,
         created_at -> Timestamp,
         updated_at -> Timestamp,

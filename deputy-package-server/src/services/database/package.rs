@@ -1,5 +1,5 @@
 use super::Database;
-use crate::models::Package;
+use crate::models::{NewPackage, Package};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
@@ -7,7 +7,7 @@ use diesel::RunQueryDsl;
 
 #[derive(Message)]
 #[rtype(result = "Result<Package>")]
-pub struct CreatePackage(pub Package);
+pub struct CreatePackage(pub NewPackage);
 
 impl Handler<CreatePackage> for Database {
     type Result = ResponseActFuture<Self, Result<Package>>;

@@ -15,7 +15,6 @@ pub struct Package {
     pub id: Uuid,
     pub name: String,
     pub version: String,
-    pub readme: String,
     pub license: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -37,6 +36,21 @@ impl Package {
         Self::all().filter(packages::id.eq(id))
     }
 
+    pub fn create_insert(&self) -> Create<&Self, packages::table> {
+        insert_into(packages::table).values(self)
+    }
+}
+
+#[derive(Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[diesel(table_name = packages)]
+pub struct NewPackage {
+    pub id: Uuid,
+    pub name: String,
+    pub version: String,
+    pub license: String,
+}
+
+impl NewPackage {
     pub fn create_insert(&self) -> Create<&Self, packages::table> {
         insert_into(packages::table).values(self)
     }

@@ -1,3 +1,4 @@
+use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
@@ -23,7 +24,6 @@ use git2::Repository;
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
-use crate::models::helpers::uuid::Uuid;
 
 fn check_for_version_error(
     package_metadata: &IndexInfo,
@@ -57,7 +57,6 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    println!("1");
     let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
         let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
@@ -73,8 +72,6 @@ pub async fn add_package(
         error!("Invalid stream chunk: No metadata");
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
     };
-    println!("2");
-
 
     let repository = &app_state.repository.lock().await;
     if let Err(error) = check_for_version_error(&metadata, repository) {
@@ -93,8 +90,6 @@ pub async fn add_package(
             HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
         );
     };
-    println!("3");
-
 
     if toml_size > PAYLOAD_CHUNK_SIZE {
         error!("Invalid package.toml: abnormally large package.toml");
@@ -102,9 +97,6 @@ pub async fn add_package(
         return Ok(HttpResponse::UnprocessableEntity()
             .body("Invalid package.toml: abnormally large package.toml"));
     }
-    println!("4");
-
-
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
         let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
@@ -134,8 +126,6 @@ pub async fn add_package(
             HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid readme length")
         );
     };
-    println!("5");
-
 
     let optional_readme: Option<PackageFile> = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
@@ -159,8 +149,6 @@ pub async fn add_package(
         None
     };
 
-    println!("6");
-
     let archive_file: PackageFile =
         PackageFile::from_stream(body.skip(1), true)
             .await
@@ -174,8 +162,6 @@ pub async fn add_package(
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
-    println!("7");
-
 
     package
         .save(&app_state.storage_folders, repository)
@@ -183,31 +169,24 @@ pub async fn add_package(
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-    println!("8");
 
-    println!("{:?}", package);
     let returnable_package = app_state
         .database_address
-        .send(CreatePackage(crate::models::Package {
+        .send(CreatePackage(crate::models::NewPackage {
             id: Uuid::random(),
             name: package.index_info.name,
             version: package.index_info.version,
-            readme: "readme".to_string(),
-            license: "license".to_string(),
-            created_at: Default::default(),
-            updated_at: Default::default(),
-            deleted_at: None
+            license: "TODO".to_string(),
         }))
         .await
         .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
         })?
         .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-    println!("{:?}", returnable_package);
     Ok(HttpResponse::Ok().body("OK"))
 }
 
@@ -332,10 +311,11 @@ pub async fn get_metadata(
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
     let repository = &app_state.repository.lock().await;
-    let metadata = IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
-        error!("Failed to get latest metadata: {error}");
-        ServerResponseError(PackageServerError::MetadataParse.into())
-    })?;
+    let metadata =
+        IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
+            error!("Failed to get latest metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?;
     match metadata {
         Some(inner) => Ok(Json(inner)),
         None => {

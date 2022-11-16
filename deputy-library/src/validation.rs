@@ -300,4 +300,29 @@ mod tests {
         file.close()?;
         Ok(())
     }
+
+    #[test]
+    fn condition_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "condition"
+            [condition]
+            command = "executable/path.sh"
+            interval = 30            
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
 }

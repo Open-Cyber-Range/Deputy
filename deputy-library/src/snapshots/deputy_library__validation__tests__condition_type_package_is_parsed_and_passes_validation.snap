@@ -1,0 +1,16 @@
+---
+source: deputy-library/src/validation.rs
+expression: project
+---
+[package]
+name = 'my-cool-feature'
+description = 'description'
+version = '1.0.0'
+license = 'Apache-2.0'
+
+[content]
+type = 'Condition'
+
+[condition]
+command = 'executable/path.sh'
+interval = 30

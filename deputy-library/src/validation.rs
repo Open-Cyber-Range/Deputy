@@ -305,7 +305,7 @@ mod tests {
     fn condition_type_package_is_parsed_and_passes_validation() -> Result<()> {
         let toml_content = br#"
             [package]
-            name = "my-cool-feature"
+            name = "my-cool-condition"
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"

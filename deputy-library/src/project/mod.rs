@@ -1,7 +1,7 @@
 pub(crate) mod enums;
 
 use crate::project::enums::{Architecture, OperatingSystem};
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -15,6 +15,37 @@ pub struct Project {
     pub virtual_machine: Option<VirtualMachine>,
     pub feature: Option<Feature>,
     pub condition: Option<Condition>,
+}
+
+impl Project {
+    pub fn validate_content(&mut self) -> Result<()> {
+        match self.content.content_type {
+            ContentType::VM => {
+                if self.virtual_machine.is_none() {
+                    return Err(anyhow!("Virtual machine package info not found"));
+                } else if self.condition.is_some() || self.feature.is_some() {
+                    return Err(anyhow!(
+                        "Content type (Virtual Machine) does not match package"
+                    ));
+                }
+            }
+            ContentType::Feature => {
+                if self.feature.is_none() {
+                    return Err(anyhow!("Feature package info not found"));
+                } else if self.condition.is_some() || self.virtual_machine.is_some() {
+                    return Err(anyhow!("Content type (Feature) does not match package",));
+                }
+            }
+            ContentType::Condition => {
+                if self.condition.is_none() {
+                    return Err(anyhow!("Condition package info not found"));
+                } else if self.virtual_machine.is_some() || self.feature.is_some() {
+                    return Err(anyhow!("Content type (Condition) does not match package",));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

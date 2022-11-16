@@ -14,6 +14,7 @@ pub struct Project {
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
     pub feature: Option<Feature>,
+    pub condition: Option<Condition>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -52,6 +53,14 @@ pub struct Feature {
     pub feature_type: FeatureType,
     pub action: Option<String>,
     pub assets: Vec<Vec<String>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Condition {
+    #[serde(alias = "Command", alias = "COMMAND")]
+    pub command: String,
+    #[serde(alias = "Interval", alias = "INTERVAL")]
+    pub interval: u32,
 }
 
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
@@ -118,6 +127,8 @@ pub enum ContentType {
     VM,
     #[serde(alias = "feature", alias = "FEATURE")]
     Feature,
+    #[serde(alias = "condition", alias = "CONDITION")]
+    Condition,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

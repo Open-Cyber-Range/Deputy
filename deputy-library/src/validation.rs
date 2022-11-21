@@ -115,7 +115,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let mut deserialized_toml: Project = toml::from_str(&*contents)?;
+    let mut deserialized_toml: Project = toml::from_str(&contents)?;
     deserialized_toml.validate()?;
     Ok(())
 }
@@ -310,6 +310,35 @@ mod tests {
     }
 
     #[test]
+    fn inject_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "inject"
+            [inject]
+            action = "ping 8.8.8.8"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
     fn condition_type_package_is_parsed_and_passes_validation() -> Result<()> {
         let toml_content = br#"
             [package]
@@ -321,7 +350,7 @@ mod tests {
             type = "condition"
             [condition]
             command = "executable/path.sh"
-            interval = 30            
+            interval = 30
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
@@ -346,7 +375,7 @@ mod tests {
             type = "feature"
             [condition]
             command = "executable/path.sh"
-            interval = 30            
+            interval = 30
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 
@@ -375,7 +404,7 @@ mod tests {
             ]
             [condition]
             command = "executable/path.sh"
-            interval = 30     
+            interval = 30
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 

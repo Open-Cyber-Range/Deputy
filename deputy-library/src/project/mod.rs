@@ -15,6 +15,7 @@ pub struct Project {
     pub virtual_machine: Option<VirtualMachine>,
     pub feature: Option<Feature>,
     pub condition: Option<Condition>,
+    pub inject: Option<Inject>,
 }
 
 impl Project {
@@ -23,7 +24,7 @@ impl Project {
             ContentType::VM => {
                 if self.virtual_machine.is_none() {
                     return Err(anyhow!("Virtual machine package info not found"));
-                } else if self.condition.is_some() || self.feature.is_some() {
+                } else if self.condition.is_some() || self.feature.is_some() || self.inject.is_some() {
                     return Err(anyhow!(
                         "Content type (Virtual Machine) does not match package"
                     ));
@@ -32,15 +33,22 @@ impl Project {
             ContentType::Feature => {
                 if self.feature.is_none() {
                     return Err(anyhow!("Feature package info not found"));
-                } else if self.condition.is_some() || self.virtual_machine.is_some() {
+                } else if self.condition.is_some() || self.virtual_machine.is_some() || self.inject.is_some() {
                     return Err(anyhow!("Content type (Feature) does not match package",));
                 }
             }
             ContentType::Condition => {
                 if self.condition.is_none() {
                     return Err(anyhow!("Condition package info not found"));
-                } else if self.virtual_machine.is_some() || self.feature.is_some() {
+                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.inject.is_some() {
                     return Err(anyhow!("Content type (Condition) does not match package",));
+                }
+            }
+            ContentType::Inject => {
+                if self.inject.is_none() {
+                    return Err(anyhow!("Inject package info not found"));
+                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.condition.is_some() {
+                    return Err(anyhow!("Content type (Inject) does not match package",));
                 }
             }
         }
@@ -94,11 +102,17 @@ pub struct Condition {
     pub interval: u32,
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Inject {
+    pub action: String,
+    pub assets: Vec<Vec<String>>,
+}
+
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
     let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();
     toml_file.read_to_string(&mut contents)?;
-    let deserialized_toml: Project = toml::from_str(&*contents)?;
+    let deserialized_toml: Project = toml::from_str(&contents)?;
     Ok(deserialized_toml)
 }
 
@@ -160,6 +174,8 @@ pub enum ContentType {
     Feature,
     #[serde(alias = "condition", alias = "CONDITION")]
     Condition,
+    #[serde(alias = "inject", alias = "INJECT")]
+    Inject,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

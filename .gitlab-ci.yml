@@ -4,7 +4,7 @@ stages:
   - release
 
 services:
-  - nexus.ocr.cr14.net:8003/mariadb:10.7
+  - mariadb:10.7
 
 variables:
   MYSQL_ROOT_PASSWORD: mysql_root

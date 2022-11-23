@@ -4,7 +4,7 @@ stages:
   - release
 
 services:
-  - mysql:latest
+  - nexus.ocr.cr14.net:8003/mariadb:10.7
 
 variables:
   MYSQL_DATABASE: $MYSQL_DATABASE

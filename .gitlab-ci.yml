@@ -3,6 +3,15 @@ stages:
   - deploy
   - release
 
+services:
+  - mysql:latest
+
+variables:
+  MYSQL_DATABASE: $MYSQL_DATABASE
+  MYSQL_USER: $MYSQL_USER
+  MYSQL_PASSWORD: $MYSQL_PASS
+  MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+
 build-frontend:
   stage: build
   image: $DOCKER_REGISTRY_PULL/frontend-builder

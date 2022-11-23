@@ -216,7 +216,7 @@ impl Package {
 
     fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<IndexInfo> {
         let package_body = Body::create_from_toml(toml_path)?;
-        let archive_file = File::open(&archive_path)?;
+        let archive_file = File::open(archive_path)?;
         let metadata = IndexInfo {
             name: package_body.name,
             version: package_body.version,

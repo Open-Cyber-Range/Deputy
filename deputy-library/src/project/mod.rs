@@ -45,7 +45,7 @@ pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow
     let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();
     toml_file.read_to_string(&mut contents)?;
-    let deserialized_toml: Project = toml::from_str(&*contents)?;
+    let deserialized_toml: Project = toml::from_str(contents.as_str())?;
     Ok(deserialized_toml)
 }
 

@@ -126,7 +126,7 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let deserialized_toml: Project = toml::from_str(&*contents)?;
+    let deserialized_toml: Project = toml::from_str(contents.as_str())?;
     validate_name(deserialized_toml.package.name)?;
     validate_version(deserialized_toml.package.version)?;
     validate_vm_accounts(deserialized_toml.virtual_machine)?;

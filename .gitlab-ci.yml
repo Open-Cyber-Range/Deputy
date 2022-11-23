@@ -7,10 +7,10 @@ services:
   - nexus.ocr.cr14.net:8003/mariadb:10.7
 
 variables:
-  MYSQL_DATABASE: $MYSQL_DATABASE
-  MYSQL_USER: $MYSQL_USER
-  MYSQL_PASSWORD: $MYSQL_PASS
-  MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+  MYSQL_ROOT_PASSWORD: mysql_root
+  MYSQL_USER: mysql_user
+  MYSQL_PASSWORD: mysql_pass
+  MYSQL_DATABASE: deputy
 
 build-frontend:
   stage: build

@@ -39,7 +39,7 @@ lazy_static! {
             toml_folder: "/tmp/package-tomls".to_string(),
             readme_folder: "/tmp/readmes".to_string(),
         },
-        database_url: "mysql://deputy:deputy@127.0.0.1:3306/deputy".to_string(),
+        database_url: "mysql://mysql_user:mysql_pass@127.0.0.1:3306/deputy".to_string(),
     };
 }
 
@@ -131,7 +131,7 @@ impl TestPackageServer {
 
     pub async fn start(self) -> Result<()> {
         let (tx, rx) = channel::<()>();
-        tokio::spawn(async move { self.initialize(tx).await });
+        actix_web::rt::spawn(async move { self.initialize(tx).await });
         timeout(Duration::from_millis(1000), rx).await??;
 
         Ok(())
@@ -193,11 +193,11 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         folder: repository_folder.to_str().unwrap().to_string(),
     };
     let repository = get_or_create_repository(&repository_configuration)?;
-    let database = Database::try_new("mysql://deputy:deputy@127.0.0.1:3306/deputy")
+    let database = Database::try_new("mysql://mysql_user:mysql_pass@127.0.0.1:3306/deputy")
         .unwrap_or_else(|error| {
             panic!(
                 "Failed to create database connection to {} due to: {error}",
-                "mysql://deputy:deputy@127.0.0.1:3306/deputy"
+                "mysql://mysql_user:mysql_pass@127.0.0.1:3306/deputy"
             )
         })
         .start();

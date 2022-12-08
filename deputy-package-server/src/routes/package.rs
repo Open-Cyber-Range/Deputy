@@ -163,14 +163,16 @@ pub async fn add_package(
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
 
-    package
-        .save(&app_state.storage_folders, repository)
-        .map_err(|error| {
-            error!("Failed to save the package: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
-
-    let returnable_package = app_state
+    /*
+    TODO
+    Moved index repository saving to act after database query,
+    since the database is more fragile at the moment.
+    Ideally these actions would either:
+    1. Execute at the same time, OR
+    2. If the second action fails, the first one will be undone, OR
+    3. Deputy repository would be removed entirely, needing major rework.
+     */
+    app_state
         .database_address
         .send(CreatePackage(crate::models::NewPackage {
             id: Uuid::random(),
@@ -185,6 +187,13 @@ pub async fn add_package(
         })?
         .map_err(|error| {
             error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
+
+    package
+        .save(&app_state.storage_folders, repository)
+        .map_err(|error| {
+            error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
     Ok(HttpResponse::Ok().body("OK"))

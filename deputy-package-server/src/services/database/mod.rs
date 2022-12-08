@@ -36,8 +36,7 @@ impl Database {
         let mut connection = connection_pool
             .get()
             .map_err(|error| anyhow!("Failed to get database connection: {}", error))?;
-        run_migrations(&mut connection)
-            .map_err(|error| anyhow!("Failed to run database migrations: {}", error))?;
+        let _ = run_migrations(&mut connection);
         Ok(Self { connection_pool })
     }
 

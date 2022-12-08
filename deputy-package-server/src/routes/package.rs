@@ -176,8 +176,8 @@ pub async fn add_package(
         .database_address
         .send(CreatePackage(crate::models::NewPackage {
             id: Uuid::random(),
-            name: package.index_info.name,
-            version: package.index_info.version,
+            name: package.index_info.clone().name,
+            version: package.index_info.clone().version,
             license: "TODO".to_string(),
         }))
         .await

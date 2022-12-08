@@ -15,4 +15,5 @@ Configuration {
         toml_folder: "/tmp/tomls",
         readme_folder: "/tmp/readmes",
     },
+    database_url: "mysql://deputy:deputy@127.0.0.1:3306/deputy",
 }

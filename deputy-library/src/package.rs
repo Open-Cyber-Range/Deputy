@@ -467,7 +467,11 @@ impl TryFrom<&[u8]> for Package {
             PackageFile::from_bytes(metadata_end, package_bytes)?;
         let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
         let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
-        let metadata = PackageMetadata::try_from(package_bytes)?;
+        let metadata = PackageMetadata {
+            name: index_info.clone().name,
+            version: index_info.clone().version,
+            license: "TODO".to_string(),
+        };
 
         Ok(Package {
             index_info,
@@ -481,12 +485,11 @@ impl TryFrom<&[u8]> for Package {
 
 #[cfg(test)]
 mod tests {
-    use super::{PackageFile, IndexInfo};
+    use super::{IndexInfo, PackageFile};
     use crate::{
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
-            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES,
-            TEST_INDEX_INFO,
+            initialize_test_repository, TEST_FILE_BYTES, TEST_INDEX_INFO, TEST_METADATA_BYTES,
         },
         StorageFolders,
     };

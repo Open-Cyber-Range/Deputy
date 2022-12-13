@@ -8,8 +8,6 @@ services:
     volumes:
       - ..:/workspace:cached
     user: vscode
-    environment:
-      - DATABASE_URL=mysql://mysql_user:mysql_pass@mariadb:3306/deputy
 
   deputy-package-server:
     image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
@@ -20,7 +18,6 @@ services:
       - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
     environment:
       - RUST_LOG=debug
-      - DATABASE_URL=mysql://mysql_user:mysql_pass@mariadb:3306/deputy
 
   index-repository:
     image: nexus.ocr.cr14.net:8003/deputy-repository-server

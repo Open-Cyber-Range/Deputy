@@ -335,7 +335,7 @@ mod tests {
             get_or_create_repository, initialize_repository, update_index_repository,
             RepositoryConfiguration,
         },
-        test::{initialize_test_repository, TEST_INDEX_METADATA},
+        test::{initialize_test_repository, TEST_INDEX_INFO},
     };
     use std::{
         fs::File,
@@ -402,7 +402,7 @@ mod tests {
         file_path.push("test-file");
 
         let file = File::create(&file_path)?;
-        write_metadata_to_file(&file, &TEST_INDEX_METADATA)?;
+        write_metadata_to_file(&file, &TEST_INDEX_INFO)?;
         let read_file = File::open(file_path)?;
         let line = std::io::BufReader::new(read_file).lines().next().unwrap()?;
 
@@ -489,8 +489,8 @@ mod tests {
     #[test]
     fn existing_package_file_is_found() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
-        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
-        let file_option = find_package_file_by_name(&repository, &TEST_INDEX_METADATA.name)?;
+        update_index_repository(&repository, &TEST_INDEX_INFO)?;
+        let file_option = find_package_file_by_name(&repository, &TEST_INDEX_INFO.name)?;
 
         assert!(file_option.is_some());
         root_directory.close()?;
@@ -500,9 +500,9 @@ mod tests {
     #[test]
     fn index_info_is_found() -> Result<()> {
         let (root_directory, repository) = initialize_test_repository();
-        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
+        update_index_repository(&repository, &TEST_INDEX_INFO)?;
         let metadata_list =
-            find_index_info_by_package_name(&repository, &TEST_INDEX_METADATA.name)?;
+            find_index_info_by_package_name(&repository, &TEST_INDEX_INFO.name)?;
 
         insta::assert_debug_snapshot!(metadata_list);
         root_directory.close()?;
@@ -515,7 +515,7 @@ mod tests {
         let root = repository.path().parent().unwrap();
         File::create(&root.join("test"))?;
 
-        create_package_commit(&repository, Path::new("test"), &TEST_INDEX_METADATA)?;
+        create_package_commit(&repository, Path::new("test"), &TEST_INDEX_INFO)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 
@@ -532,7 +532,7 @@ mod tests {
         let (temporary_directory, repository) = initialize_test_repository();
         let root = repository.path().parent().unwrap();
 
-        update_index_repository(&repository, &TEST_INDEX_METADATA)?;
+        update_index_repository(&repository, &TEST_INDEX_INFO)?;
         let head_id = repository.refname_to_id(HEAD_REF)?;
         let parent = repository.find_commit(head_id)?;
 

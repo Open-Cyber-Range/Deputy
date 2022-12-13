@@ -24,6 +24,7 @@ use git2::Repository;
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
+use deputy_library::package::PackageMetadata;
 
 fn check_for_version_error(
     package_metadata: &IndexInfo,
@@ -44,7 +45,6 @@ fn check_for_version_error(
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
 ) -> Result<(), Error> {
-    println!("Hue");
     stream
         .filter_map(|x| async move { x.ok().map(Ok) })
         .forward(futures::sink::drain())
@@ -57,10 +57,10 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
+    let index_info = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
         let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
+            error!("Failed to parse package index info: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
         if let Err(error) = result {
@@ -69,12 +69,12 @@ pub async fn add_package(
         }
         result?
     } else {
-        error!("Invalid stream chunk: No metadata");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+        error!("Invalid stream chunk: No index info");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No index info"));
     };
 
     let repository = &app_state.repository.lock().await;
-    if let Err(error) = check_for_version_error(&metadata, repository) {
+    if let Err(error) = check_for_version_error(&index_info, repository) {
         drain_stream(body).await?;
         return Err(error);
     }
@@ -157,7 +157,13 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let mut package = Package::new(metadata, toml_file, optional_readme, archive_file);
+    // TODO - this data should be fetched from toml file
+    let metadata = PackageMetadata {
+        name: index_info.clone().name,
+        version: index_info.clone().version,
+        license: "TODO".to_string(),
+    };
+    let mut package = Package::new(index_info, toml_file, optional_readme, archive_file, metadata);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
@@ -170,15 +176,15 @@ pub async fn add_package(
     Ideally these actions would either:
     1. Execute at the same time, OR
     2. If the second action fails, the first one will be undone, OR
-    3. Deputy repository would be removed entirely, needing major rework.
+    3. Deputy repository would be removed entirely, needing major rework. But should be done eventually
      */
     app_state
         .database_address
         .send(CreatePackage(crate::models::NewPackage {
             id: Uuid::random(),
-            name: package.index_info.clone().name,
-            version: package.index_info.clone().version,
-            license: "TODO".to_string(),
+            name: package.metadata.clone().name,
+            version: package.metadata.clone().version,
+            license: package.metadata.clone().license,
         }))
         .await
         .map_err(|error| {

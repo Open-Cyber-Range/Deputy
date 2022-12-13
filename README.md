@@ -46,13 +46,8 @@ To run the production build (no hot reloading):
 
 #### Database
 
-Deputy package server uses a MySQL database for saving metadata of packages.
+Deputy package server uses a MySQL database for saving metadata of packages. Default credentials are `mysql_user:mysql_pass`.
 
-##### Setup
+##### Testing
 
-1. Install MySQL (MariaDB) on your machine
-2. Create database `deputy` with `CREATE DATABASE deputy;`
-3. Create user and grant privileges on database 
-   1. `CREATE USER deputy@localhost IDENTIFIED BY 'deputy';`
-   2. `GRANT ALL PRIVILEGES ON deputy.* to deputy@localhost;`
-4. Run migrations with `diesel setup`
+For local testing, change the URL of the database from `mariadb` to `127.0.0.1`, even if running on containers.

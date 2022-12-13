@@ -31,11 +31,11 @@ pub struct IndexInfo {
     pub checksum: String,
 }
 
+// This struct will be used for db in the future, will have more fields added
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
     pub version: String,
-    pub readme: String,
     pub license: String,
 }
 
@@ -160,20 +160,23 @@ pub struct Package {
     pub file: PackageFile,
     pub package_toml: PackageFile,
     pub readme: Option<PackageFile>,
+    pub metadata: PackageMetadata,
 }
 
 impl Package {
     pub fn new(
-        metadata: IndexInfo,
+        index_info: IndexInfo,
         package_toml: PackageFile,
         readme: Option<PackageFile>,
         file: PackageFile,
+        metadata: PackageMetadata,
     ) -> Self {
         Self {
-            index_info: metadata,
+            index_info,
             package_toml,
             readme,
             file,
+            metadata,
         }
     }
 
@@ -214,7 +217,7 @@ impl Package {
         Ok(())
     }
 
-    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<IndexInfo> {
+    fn gather_index_info(toml_path: &Path, archive_path: &Path) -> Result<IndexInfo> {
         let package_body = Body::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
         let metadata = IndexInfo {
@@ -225,13 +228,23 @@ impl Package {
         Ok(metadata)
     }
 
+    fn gather_metadata(toml_path: &Path) -> Result<PackageMetadata> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        Ok(PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            license: package_body.license,
+        })
+    }
+
     pub fn from_file(
         optional_readme_path: Option<PathBuf>,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
-        let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
+        let index_info = Self::gather_index_info(&package_toml_path, &archive_path)?;
+        let metadata = Self::gather_metadata(&package_toml_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
         let optional_readme = match optional_readme_path {
@@ -239,10 +252,11 @@ impl Package {
             None => None,
         };
         Ok(Package {
-            index_info: metadata,
+            index_info,
             file: PackageFile(file, None),
             package_toml: PackageFile(package_toml, None),
             readme: optional_readme,
+            metadata,
         })
     }
 
@@ -453,12 +467,14 @@ impl TryFrom<&[u8]> for Package {
             PackageFile::from_bytes(metadata_end, package_bytes)?;
         let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
         let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
+        let metadata = PackageMetadata::try_from(package_bytes)?;
 
         Ok(Package {
             index_info,
             package_toml,
             readme: Some(readme),
             file,
+            metadata,
         })
     }
 }
@@ -470,7 +486,7 @@ mod tests {
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
             initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES,
-            TEST_INDEX_METADATA,
+            TEST_INDEX_INFO,
         },
         StorageFolders,
     };
@@ -624,7 +640,7 @@ mod tests {
 
     #[test]
     fn metadata_is_converted_to_bytes() -> Result<()> {
-        let index_metadata: &IndexInfo = &TEST_INDEX_METADATA;
+        let index_metadata: &IndexInfo = &TEST_INDEX_INFO;
         let metadata_bytes = Vec::try_from(index_metadata)?;
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())

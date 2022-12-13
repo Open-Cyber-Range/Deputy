@@ -11,7 +11,6 @@ use crate::{
 use anyhow::{anyhow, Result};
 use semver::Version;
 use spdx;
-use crate::package::PackageMetadata;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
@@ -43,27 +42,6 @@ impl Validate for IndexInfo {
             && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
         {
             return Err(anyhow!("Package checksum is not valid"));
-        }
-        Ok(())
-    }
-}
-
-impl Validate for PackageMetadata {
-    fn validate(&mut self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(anyhow!("Package name is empty"));
-        }
-        if self.version.is_empty() {
-            return Err(anyhow!("Package version is empty"));
-        }
-        if self.version.parse::<Version>().is_err() {
-            return Err(anyhow!("Package version is not valid"));
-        }
-        if self.readme.is_empty() {
-            return Err(anyhow!("Package README is empty"));
-        }
-        if self.license.is_empty() {
-            return Err(anyhow!("Package license is empty"));
         }
         Ok(())
     }

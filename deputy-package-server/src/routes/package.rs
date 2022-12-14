@@ -235,9 +235,9 @@ pub async fn download_package(
 #[derive(Deserialize, Debug)]
 pub struct PackageQuery {
     #[serde(default = "default_page")]
-    page: u32,
+    page: i64,
     #[serde(default = "default_limit")]
-    limit: u32,
+    limit: i64,
 }
 
 #[get("package")]
@@ -245,12 +245,12 @@ pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error> {
-    // TODO Pagination
-    let _page = query.page;
-    let _limit = query.limit;
     let packages = app_state
         .database_address
-        .send(GetPackages)
+        .send(GetPackages {
+            page: query.page,
+            per_page: query.limit,
+        })
         .await
         .map_err(|error| {
             error!("Failed to get all packages: {error}");

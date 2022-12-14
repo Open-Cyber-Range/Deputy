@@ -1,8 +1,8 @@
-pub const fn default_page() -> u32 {
-    0
+pub const fn default_page() -> i64 {
+    1
 }
 
-pub const fn default_limit() -> u32 {
+pub const fn default_limit() -> i64 {
     20
 }
 

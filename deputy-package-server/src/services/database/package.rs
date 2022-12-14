@@ -4,6 +4,7 @@ use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
 use diesel::RunQueryDsl;
+use crate::models::helpers::pagination::*;
 
 #[derive(Message)]
 #[rtype(result = "Result<Package>")]
@@ -34,20 +35,23 @@ impl Handler<CreatePackage> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Package>>")]
-pub struct GetPackages;
+pub struct GetPackages {
+    pub page: i64,
+    pub per_page: i64,
+}
 
 impl Handler<GetPackages> for Database {
     type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
 
-    fn handle(&mut self, _: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, get_packages: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
         let connection_result = self.get_connection();
 
         Box::pin(
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let packages = Package::all().load(&mut connection)?;
-                    Ok(packages)
+                    let packages = Package::all().paginate(get_packages.page).per_page(get_packages.per_page).load_and_count_pages(&mut connection)?;
+                    Ok(packages.0)
                 })
                 .await??;
                 Ok(package)

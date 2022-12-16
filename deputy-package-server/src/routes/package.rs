@@ -7,9 +7,9 @@ use crate::{
 use actix_files::NamedFile;
 use actix_http::error::PayloadError;
 use actix_web::{
-    get,
+    get, put,
     web::{Bytes, Data, Json, Path, Payload, Query},
-    Error, HttpResponse, Responder, post,
+    Error, HttpResponse, Responder,
 };
 use anyhow::Result;
 use deputy_library::{
@@ -53,7 +53,7 @@ async fn drain_stream(
     Ok(())
 }
 
-#[post("package")]
+#[put("package")]
 pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,

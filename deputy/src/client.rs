@@ -32,7 +32,7 @@ impl Client {
         let put_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
         let mut response = self
             .client
-            .post(put_uri.to_string())
+            .put(put_uri.to_string())
             .timeout(std::time::Duration::from_secs(timeout))
             .send_stream(stream)
             .await

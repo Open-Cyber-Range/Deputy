@@ -39,7 +39,7 @@ lazy_static! {
             toml_folder: "/tmp/package-tomls".to_string(),
             readme_folder: "/tmp/readmes".to_string(),
         },
-        database_url: "mysql://mysql_user:mysql_pass@mariadb:3307/deputy".to_string(),
+        database_url: "mysql://mysql_user:mysql_pass@mariadb:3306/deputy".to_string(),
     };
 }
 
@@ -193,11 +193,11 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         folder: repository_folder.to_str().unwrap().to_string(),
     };
     let repository = get_or_create_repository(&repository_configuration)?;
-    let database = Database::try_new("mysql://mysql_user:mysql_pass@mariadb:3307/deputy")
+    let database = Database::try_new("mysql://mysql_user:mysql_pass@mariadb:3306/deputy")
         .unwrap_or_else(|error| {
             panic!(
                 "Failed to create database connection to {} due to: {error}",
-                "mysql://mysql_user:mysql_pass@mariadb:3307/deputy"
+                "mysql://mysql_user:mysql_pass@mariadb:3306/deputy"
             )
         })
         .start();

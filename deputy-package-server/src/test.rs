@@ -193,11 +193,12 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         folder: repository_folder.to_str().unwrap().to_string(),
     };
     let repository = get_or_create_repository(&repository_configuration)?;
-    let database = Database::try_new("mysql://mysql_user:mysql_pass@mariadb:3306/deputy")
+    let database_url = "mysql://mysql_user:mysql_pass@mariadb:3306/deputy";
+    let database = Database::try_new(database_url)
         .unwrap_or_else(|error| {
             panic!(
                 "Failed to create database connection to {} due to: {error}",
-                "mysql://mysql_user:mysql_pass@mariadb:3306/deputy"
+                database_url
             )
         })
         .start();

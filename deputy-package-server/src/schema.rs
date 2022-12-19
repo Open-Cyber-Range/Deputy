@@ -5,7 +5,7 @@ diesel::table! {
         id -> Binary,
         name -> Tinytext,
         version -> Tinytext,
-        license -> Longtext,
+        license -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         deleted_at -> Nullable<Timestamp>,

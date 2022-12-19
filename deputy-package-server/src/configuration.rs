@@ -48,7 +48,7 @@ storage_folders:
   toml_folder: /tmp/tomls
   readme_folder: /tmp/readmes
   package_folder: /tmp/packages
-database_url: mysql://deputy:deputy@127.0.0.1:3306/deputy
+database_url: mysql://deputy:deputy@127.0.0.1:3307/deputy
     "#
         )?;
         let arguments = vec![String::from("program-name"), path_string];

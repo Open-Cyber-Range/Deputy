@@ -15,6 +15,11 @@ mod tests {
     use predicates::prelude::predicate;
     use tempfile::{Builder, TempDir};
 
+    /* TODO Fix tests timeouting
+    These tests fail because of a timeout caused by httpserver setup in
+    deputy-package-server/src/test.rs, lines 107-125.
+    */
+
     /*#[actix_web::test]
     async fn valid_small_package_was_sent_and_received() -> Result<()> {
         println!("1");

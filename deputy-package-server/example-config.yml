@@ -8,4 +8,4 @@ storage_folders:
   package_folder: /tmp/packages
   toml_folder: /tmp/tomls
   readme_folder: /tmp/readme
-database_url: mysql://mysql_user:mysql_pass@mariadb:3306/deputy
+database_url: mysql://mysql_user:mysql_pass@mariadb:3307/deputy

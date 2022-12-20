@@ -1,3 +1,4 @@
+use crate::constants::default_limit;
 use diesel::{MysqlConnection, QueryResult, RunQueryDsl,
              query_dsl::LoadQuery, QueryId,
              query_builder::Query,
@@ -13,14 +14,12 @@ impl<T> Paginate for T {
     fn paginate(self, page: i64) -> Paginated<Self> {
         Paginated {
             query: self,
-            per_page: DEFAULT_PER_PAGE,
+            per_page: default_limit() as i64,
             page,
-            offset: (page - 1) * DEFAULT_PER_PAGE,
+            offset: (page - 1) * default_limit() as i64,
         }
     }
 }
-
-const DEFAULT_PER_PAGE: i64 = 10;
 
 #[derive(Debug, Clone, Copy, QueryId)]
 pub struct Paginated<T> {

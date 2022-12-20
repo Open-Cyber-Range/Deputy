@@ -227,9 +227,9 @@ pub async fn download_package(
 #[derive(Deserialize, Debug)]
 pub struct PackageQuery {
     #[serde(default = "default_page")]
-    page: i64,
+    page: u32,
     #[serde(default = "default_limit")]
-    limit: i64,
+    limit: u32,
 }
 
 #[get("package")]
@@ -240,8 +240,8 @@ pub async fn get_all_packages(
     let packages = app_state
         .database_address
         .send(GetPackages {
-            page: query.page,
-            per_page: query.limit,
+            page: query.page as i64,
+            per_page: query.limit as i64,
         })
         .await
         .map_err(|error| {

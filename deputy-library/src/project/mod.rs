@@ -1,7 +1,7 @@
 pub(crate) mod enums;
 
 use crate::project::enums::{Architecture, OperatingSystem};
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -14,6 +14,54 @@ pub struct Project {
     #[serde(rename = "virtual-machine")]
     pub virtual_machine: Option<VirtualMachine>,
     pub feature: Option<Feature>,
+    pub condition: Option<Condition>,
+    pub event: Option<Event>,
+    pub inject: Option<Inject>,
+}
+
+impl Project {
+    pub fn validate_content(&mut self) -> Result<()> {
+        match self.content.content_type {
+            ContentType::VM => {
+                if self.virtual_machine.is_none() {
+                    return Err(anyhow!("Virtual machine package info not found"));
+                } else if self.condition.is_some() || self.feature.is_some() || self.inject.is_some() || self.event.is_some() {
+                    return Err(anyhow!(
+                        "Content type (Virtual Machine) does not match package"
+                    ));
+                }
+            }
+            ContentType::Feature => {
+                if self.feature.is_none() {
+                    return Err(anyhow!("Feature package info not found"));
+                } else if self.condition.is_some() || self.virtual_machine.is_some() || self.inject.is_some() || self.event.is_some() {
+                    return Err(anyhow!("Content type (Feature) does not match package",));
+                }
+            }
+            ContentType::Condition => {
+                if self.condition.is_none() {
+                    return Err(anyhow!("Condition package info not found"));
+                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.inject.is_some() || self.event.is_some() {
+                    return Err(anyhow!("Content type (Condition) does not match package",));
+                }
+            }
+            ContentType::Inject => {
+                if self.inject.is_none() {
+                    return Err(anyhow!("Inject package info not found"));
+                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.condition.is_some() || self.event.is_some() {
+                    return Err(anyhow!("Content type (Inject) does not match package",));
+                }
+            }
+            ContentType::Event => {
+                if self.event.is_none() {
+                    return Err(anyhow!("Event package info not found"));
+                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.condition.is_some() || self.inject.is_some() {
+                    return Err(anyhow!("Content type (Event) does not match package",));
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -37,7 +85,40 @@ pub struct VirtualMachine {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub enum FeatureType {
+    #[serde(alias = "service", alias = "SERVICE")]
+    Service,
+    #[serde(alias = "configuration", alias = "CONFIGURATION")]
+    Configuration,
+    #[serde(alias = "artifact", alias = "ARTIFACT")]
+    Artifact,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Feature {
+    #[serde(rename = "type")]
+    pub feature_type: FeatureType,
+    pub action: Option<String>,
+    pub assets: Vec<Vec<String>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Event {
+    pub action: String,
+    pub assets: Vec<Vec<String>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Condition {
+    #[serde(alias = "Command", alias = "COMMAND")]
+    pub command: String,
+    #[serde(alias = "Interval", alias = "INTERVAL")]
+    pub interval: u32,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Inject {
+    pub action: String,
     pub assets: Vec<Vec<String>>,
 }
 
@@ -45,7 +126,7 @@ pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow
     let mut toml_file = File::open(toml_path)?;
     let mut contents = String::new();
     toml_file.read_to_string(&mut contents)?;
-    let deserialized_toml: Project = toml::from_str(contents.as_str())?;
+    let deserialized_toml: Project = toml::from_str(&contents)?;
     Ok(deserialized_toml)
 }
 
@@ -105,6 +186,12 @@ pub enum ContentType {
     VM,
     #[serde(alias = "feature", alias = "FEATURE")]
     Feature,
+    #[serde(alias = "condition", alias = "CONDITION")]
+    Condition,
+    #[serde(alias = "inject", alias = "INJECT")]
+    Inject,
+    #[serde(alias = "event", alias = "EVENT")]
+    Event,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

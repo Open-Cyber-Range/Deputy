@@ -47,6 +47,17 @@ impl Validate for IndexInfo {
     }
 }
 
+impl Validate for Project {
+    fn validate(&mut self) -> Result<()> {
+        self.validate_content()?;
+        validate_name(self.package.name.clone())?;
+        validate_version(self.package.version.clone())?;
+        validate_vm_accounts(self.virtual_machine.clone())?;
+        validate_license(self.package.license.clone())?;
+        Ok(())
+    }
+}
+
 pub fn validate_name(name: String) -> Result<()> {
     if !constants::VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
@@ -104,11 +115,8 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let deserialized_toml: Project = toml::from_str(contents.as_str())?;
-    validate_name(deserialized_toml.package.name)?;
-    validate_version(deserialized_toml.package.version)?;
-    validate_vm_accounts(deserialized_toml.virtual_machine)?;
-    validate_license(deserialized_toml.package.license)?;
+    let mut deserialized_toml: Project = toml::from_str(&contents)?;
+    deserialized_toml.validate()?;
     Ok(())
 }
 
@@ -282,6 +290,8 @@ mod tests {
             [content]
             type = "feature"
             [feature]
+            type = "configuration"
+            action = "ping 8.8.8.8"
             assets = [
             ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
             ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
@@ -295,6 +305,139 @@ mod tests {
                 insta::assert_toml_snapshot!(project);
         });
 
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn inject_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "inject"
+            [inject]
+            action = "ping 8.8.8.8"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn condition_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "condition"
+            [condition]
+            command = "executable/path.sh"
+            interval = 30
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn event_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "event"
+            [event]
+            action = "ping 1.3.3.7"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_content_type_not_matching_content() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "feature"
+            [condition]
+            command = "executable/path.sh"
+            interval = 30
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_multiple_contents() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            [content]
+            type = "feature"
+            [feature]
+            type = "configuration"
+            action = "ping 8.8.8.8"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            [condition]
+            command = "executable/path.sh"
+            interval = 30
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_err());
         file.close()?;
         Ok(())
     }

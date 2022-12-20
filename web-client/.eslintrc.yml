@@ -7,15 +7,19 @@ extends:
   - xo
 overrides:
   - extends:
+      - xo
       - xo-typescript
+      - xo-typescript/space
     files:
-      - '*.ts'
-      - '*.tsx'
+      - "*.ts"
+      - "*.tsx"
 parserOptions:
   ecmaVersion: latest
   sourceType: module
 plugins:
   - react
-rules: {
-  "react/react-in-jsx-scope": "off"
-}
+rules:
+  {
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/indent": ["error", 2],
+  }

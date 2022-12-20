@@ -9,10 +9,9 @@ version = '1.0.0'
 license = 'Apache-2.0'
 
 [content]
-type = 'Feature'
+type = 'Inject'
 
-[feature]
-type = 'Configuration'
+[inject]
 action = 'ping 8.8.8.8'
 assets = [
     [

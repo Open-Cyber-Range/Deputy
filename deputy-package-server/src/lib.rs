@@ -15,6 +15,7 @@ pub mod schema;
 pub mod services;
 pub mod models;
 pub mod utilities;
+pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct AppState {

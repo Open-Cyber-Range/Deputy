@@ -31,7 +31,6 @@ pub struct IndexInfo {
     pub checksum: String,
 }
 
-// This struct will be used for db in the future, will have more fields added
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,

@@ -50,7 +50,10 @@ impl Handler<GetPackages> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let packages = Package::all().paginate(get_packages.page).per_page(get_packages.per_page).load_and_count_pages(&mut connection)?;
+                    let packages = Package::all()
+                        .paginate(get_packages.page)
+                        .per_page(get_packages.per_page)
+                        .load_and_count_pages(&mut connection)?;
                     Ok(packages.0)
                 })
                 .await??;

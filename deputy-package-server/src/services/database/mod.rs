@@ -36,8 +36,8 @@ impl Database {
         let mut connection = connection_pool
             .get()
             .map_err(|error| anyhow!("Failed to get database connection: {}", error))?;
-        // TODO migration error is currently ignored. Works IRL, but fails on checksum tests
-        let _ = run_migrations(&mut connection);
+        run_migrations(&mut connection)
+            .map_err(|error| anyhow!("Failed to run database migrations: {}", error))?;
         Ok(Self { connection_pool })
     }
 

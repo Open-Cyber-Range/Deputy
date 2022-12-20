@@ -169,15 +169,6 @@ pub async fn add_package(
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
 
-    /*
-    TODO
-    Moved index repository saving to act after database query,
-    since the database is more fragile at the moment.
-    Ideally these actions would either:
-    1. Execute at the same time, OR
-    2. If the second action fails, the first one will be undone, OR
-    3. Deputy repository would be removed entirely, needing major rework. But should be done eventually
-     */
     app_state
         .database_address
         .send(CreatePackage(crate::models::NewPackage {
@@ -196,6 +187,7 @@ pub async fn add_package(
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
+    // TODO Remove deputy repository usage
     package
         .save(&app_state.storage_folders, repository)
         .map_err(|error| {

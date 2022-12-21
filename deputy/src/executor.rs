@@ -11,9 +11,9 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
-    package::{Package, PackageMetadata},
+    package::{Package, IndexInfo},
     project::create_project_from_toml_path,
-    repository::{find_matching_metadata, get_or_clone_repository, pull_from_remote},
+    repository::{find_matching_index_info, get_or_clone_repository, pull_from_remote},
 };
 use git2::Repository;
 use path_absolutize::Absolutize;
@@ -74,7 +74,7 @@ impl Executor {
         self.update_registry_repositories()?;
         let registry_repository = self.get_registry(registry_name)?;
         let version =
-            find_matching_metadata(registry_repository, package_name, version_requirement)?
+            find_matching_index_info(registry_repository, package_name, version_requirement)?
                 .map(|metadata| metadata.version)
                 .ok_or_else(|| anyhow::anyhow!("No version matching requirements found"))?;
         Ok(version)
@@ -106,7 +106,7 @@ impl Executor {
             .await??;
         self.update_registry_repositories()?;
         let registry_repository = self.get_registry(&options.registry_name)?;
-        PackageMetadata::validate_version(&toml_path, registry_repository)?;
+        IndexInfo::validate_version(&toml_path, registry_repository)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -159,7 +159,7 @@ impl Executor {
                 "Fetching the version".to_string(),
             )))
             .await??;
-        let _version = find_matching_metadata(
+        let _version = find_matching_index_info(
             registry_repository,
             &options.package_name,
             &options.version_requirement,
@@ -213,7 +213,7 @@ impl Executor {
     pub fn checksum(&self, options: ChecksumOptions) -> Result<()> {
         self.update_registry_repositories()?;
         let registry = self.get_registry(&options.registry_name)?;
-        let checksum = find_matching_metadata(
+        let checksum = find_matching_index_info(
             registry,
             &options.package_name,
             &options.version_requirement,

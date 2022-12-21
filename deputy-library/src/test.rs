@@ -1,4 +1,4 @@
-use crate::package::{Package, PackageFile, PackageMetadata};
+use crate::package::{Package, PackageFile, IndexInfo, PackageMetadata};
 use anyhow::{anyhow, Ok, Result};
 use byte_unit::Byte;
 use git2::{Repository, RepositoryInitOptions};
@@ -9,10 +9,15 @@ use std::{fs::File, io::Write};
 use tempfile::{Builder, NamedTempFile, TempDir, TempPath};
 
 lazy_static! {
-    pub static ref TEST_PACKAGE_METADATA: PackageMetadata = PackageMetadata {
+    pub static ref TEST_INDEX_INFO: IndexInfo = IndexInfo {
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),
         name: "some-package-name".to_string(),
+    };
+    pub static ref TEST_METADATA: PackageMetadata = PackageMetadata {
+        name: "some-package-name".to_string(),
+        version: "0.1.0".to_string(),
+        license: "Apache-2.0".to_string(),
     };
     pub static ref TEST_INVALID_PACKAGE_TOML_SCHEMA: &'static str = r#"
         [package]
@@ -230,10 +235,11 @@ pub fn create_test_package() -> Result<Package> {
     let package_toml = PackageFile(package_toml, Some(toml_path));
     let readme = PackageFile(readme_file, Some(readme_path));
     Ok(Package {
-        metadata: TEST_PACKAGE_METADATA.clone(),
+        index_info: TEST_INDEX_INFO.clone(),
         file,
         package_toml,
         readme: Some(readme),
+        metadata: TEST_METADATA.clone(),
     })
 }
 

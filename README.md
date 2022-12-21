@@ -45,3 +45,13 @@ To run the production build (no hot reloading):
 Additional configuration:
 
 - Modify the `.env` file to your liking, for example, set the `DOCUMENTATION_URL` to your own documentation page
+
+### Deputy Package Server
+
+#### Database
+
+Deputy package server uses a MySQL database for saving metadata of packages. Default credentials are `mysql_user:mysql_pass`.
+
+##### Testing
+
+For local testing, change the URL of the database from `mariadb` to `127.0.0.1`, even if running on containers.

@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackages};
+use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -16,7 +16,6 @@ use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
     package::{FromBytes, IndexInfo, Package, PackageFile},
-    project::{Body, Project},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
@@ -24,7 +23,6 @@ use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
 use serde::Deserialize;
-use std::fs::{self, File};
 use std::path::PathBuf;
 use deputy_library::package::PackageMetadata;
 
@@ -159,13 +157,12 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let result = archive_file.get_readme();
-    println!("Readme: {:?}", result);
     // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
         name: index_info.clone().name,
         version: index_info.clone().version,
         license: "TODO".to_string(),
+        readme: "TODO".to_string(),
     };
     let mut package = Package::new(index_info, toml_file, optional_readme, archive_file, metadata);
     package.validate().map_err(|error| {
@@ -180,6 +177,7 @@ pub async fn add_package(
             name: package.metadata.clone().name,
             version: package.metadata.clone().version,
             license: package.metadata.clone().license,
+            readme: package.metadata.clone().readme,
         }))
         .await
         .map_err(|error| {
@@ -337,11 +335,10 @@ pub async fn get_metadata(
 }
 
 #[get("package/{package_name}/{package_version}/readme")]
-pub async fn get_readme_html(
+pub async fn get_readme(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
-) -> impl Responder {
-    let package_folder = &app_state.storage_folders.package_folder;
+) -> Result<String, Error> {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
 
@@ -354,34 +351,20 @@ pub async fn get_readme_html(
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
 
-    let archive_file = File::open(
-        PathBuf::from(package_folder)
-            .join(package_name)
-            .join(package_version),
-    )
-    .map_err(|error| {
-        error!("Failed to open the archive: {error}");
-        Error::from(error)
-    })?;
-
-    let readme_file = PackageFile(archive_file, None)
-        .get_readme()
+    let package: crate::models::Package = app_state
+        .database_address
+        .send(GetPackageByNameAndVersion {
+            name: package_name.to_string(),
+            version: package_version.to_string(),
+        })
+        .await
         .map_err(|error| {
-            error!("Failed to get the readme: {error}");
-            ServerResponseError(PackageServerError::FileSave.into())
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
         })?;
-
-    let readme = PackageFile(
-        File::open(readme_file).map_err(|error| {
-            error!("Failed to render readme to HTML: {error}");
-            ServerResponseError(PackageServerError::FileSave.into())
-        })?,
-        None,
-    )
-    .render_markdown();
-
-    NamedFile::open(readme).map_err(|error| {
-        error!("Failed to open the open readme: {error}");
-        Error::from(error)
-    })
+    Ok(package.readme)
 }

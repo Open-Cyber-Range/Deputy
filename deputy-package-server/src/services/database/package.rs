@@ -63,3 +63,31 @@ impl Handler<GetPackages> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<Package>")]
+pub struct GetPackageByNameAndVersion {
+    pub name: String,
+    pub version: String,
+}
+
+impl Handler<GetPackageByNameAndVersion> for Database {
+    type Result = ResponseActFuture<Self, Result<Package>>;
+
+    fn handle(&mut self, query_params: GetPackageByNameAndVersion, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    let package = Package::by_name_and_version(query_params.name, query_params.version).first(&mut connection)?;
+                    Ok(package)
+                })
+                .await??;
+                Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}

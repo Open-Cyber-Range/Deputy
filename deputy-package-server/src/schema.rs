@@ -6,6 +6,7 @@ diesel::table! {
         name -> Tinytext,
         version -> Tinytext,
         license -> Text,
+        readme -> Longtext,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         deleted_at -> Nullable<Timestamp>,

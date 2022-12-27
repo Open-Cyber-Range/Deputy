@@ -1,13 +1,13 @@
 use crate::{
     schema::packages,
-    services::database::{All, FilterExisting},
+    services::database::{All, FilterExisting, Create, SelectById},
 };
+use diesel::helper_types::FindBy;
 use chrono::NaiveDateTime;
 use diesel::insert_into;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::{Create, SelectById};
 
 #[derive(Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[diesel(table_name = packages)]
@@ -16,6 +16,7 @@ pub struct Package {
     pub name: String,
     pub version: String,
     pub license: String,
+    pub readme: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -36,6 +37,14 @@ impl Package {
         Self::all().filter(packages::id.eq(id))
     }
 
+    pub fn by_name_and_version(
+        name: String,
+        version: String,
+    ) -> FindBy<FindBy<packages::table, packages::name, String>, packages::version, String> {
+        // TODO query without deleted packages
+        packages::table.filter(packages::name.eq(name)).filter(packages::version.eq(version))
+    }
+
     pub fn create_insert(&self) -> Create<&Self, packages::table> {
         insert_into(packages::table).values(self)
     }
@@ -48,6 +57,7 @@ pub struct NewPackage {
     pub name: String,
     pub version: String,
     pub license: String,
+    pub readme: String,
 }
 
 impl NewPackage {

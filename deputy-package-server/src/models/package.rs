@@ -37,6 +37,7 @@ impl Package {
         Self::all().filter(packages::id.eq(id))
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn by_name_and_version(
         name: String,
         version: String,

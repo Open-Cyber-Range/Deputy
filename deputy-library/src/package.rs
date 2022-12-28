@@ -237,7 +237,7 @@ impl Package {
     }
 
     pub fn from_file(
-        readme_path: String,
+        readme_path: PathBuf,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {

@@ -159,7 +159,7 @@ pub struct Package {
     pub index_info: IndexInfo,
     pub file: PackageFile,
     pub package_toml: PackageFile,
-    pub readme: Option<PackageFile>,
+    pub readme: PackageFile,
     pub metadata: PackageMetadata,
 }
 
@@ -167,7 +167,7 @@ impl Package {
     pub fn new(
         index_info: IndexInfo,
         package_toml: PackageFile,
-        readme: Option<PackageFile>,
+        readme: PackageFile,
         file: PackageFile,
         metadata: PackageMetadata,
     ) -> Self {
@@ -194,13 +194,11 @@ impl Package {
             &self.index_info.version,
         )?;
 
-        if let Some(readme) = &self.readme {
-            readme.save(
-                &storage_folders.readme_folder,
-                &self.index_info.name,
-                &self.index_info.version,
-            )?;
-        }
+        self.readme.save(
+            &storage_folders.readme_folder,
+            &self.index_info.name,
+            &self.index_info.version,
+        )?;
         Ok(())
     }
 
@@ -239,7 +237,7 @@ impl Package {
     }
 
     pub fn from_file(
-        optional_readme_path: Option<PathBuf>,
+        readme_path: String,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {
@@ -248,15 +246,12 @@ impl Package {
         let metadata = Self::gather_metadata(&package_toml_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
-        let optional_readme = match optional_readme_path {
-            Some(readme_path) => Some(PackageFile(File::open(readme_path)?, None)),
-            None => None,
-        };
+        let readme = PackageFile(File::open(readme_path)?, None);
         Ok(Package {
             index_info,
             file: PackageFile(file, None),
             package_toml: PackageFile(package_toml, None),
-            readme: optional_readme,
+            readme,
             metadata,
         })
     }
@@ -346,14 +341,7 @@ impl TryFrom<Package> for Vec<u8> {
         let toml_bytes = Vec::try_from(package.package_toml)?;
         payload.extend(toml_bytes);
 
-        let readme_bytes: Vec<u8> = match package.readme {
-            Some(readme) => Vec::try_from(readme)?,
-            None => {
-                let mut readme_length_bytes = Vec::new();
-                readme_length_bytes.extend_from_slice(&0_u32.to_le_bytes());
-                readme_length_bytes
-            }
-        };
+        let readme_bytes: Vec<u8> = Vec::try_from(package.readme)?;
         payload.extend(readme_bytes);
         let file_bytes = Vec::try_from(package_file)?;
         payload.extend(file_bytes);
@@ -418,32 +406,18 @@ impl Package {
         let toml_file = TokioFile::from(self.package_toml.0);
         let toml_size = toml_file.metadata().await?.len();
 
-        let (optional_readme_file, readme_size) = match self.readme {
-            Some(readme) => {
-                let readme_file = TokioFile::from(readme.0);
-                let readme_size = readme_file.metadata().await?.len();
-                (Some(readme_file), readme_size)
-            }
-            None => (None, 0_u64),
-        };
+        let readme_file = TokioFile::from(self.readme.0);
+        let readme_size: u64 = readme_file.metadata().await?.len();
 
         let stream = stream
             .chain(toml_size.to_stream())
             .chain(toml_file.to_stream())
-            .chain(readme_size.to_stream());
+            .chain(readme_size.to_stream())
+            .chain(readme_file.to_stream())
+            .chain(archive_size.to_stream())
+            .chain(archive_file.to_stream());
 
-        if let Some(readme_file) = optional_readme_file {
-            let stream = stream
-                .chain(readme_file.to_stream())
-                .chain(archive_size.to_stream())
-                .chain(archive_file.to_stream());
-            return Ok(stream.boxed_local());
-        } else {
-            let stream = stream
-                .chain(archive_size.to_stream())
-                .chain(archive_file.to_stream());
-            return Ok(stream.boxed_local());
-        }
+        return Ok(stream.boxed_local());
     }
 }
 
@@ -478,7 +452,7 @@ impl TryFrom<&[u8]> for Package {
         Ok(Package {
             index_info,
             package_toml,
-            readme: Some(readme),
+            readme,
             file,
             metadata,
         })

@@ -242,7 +242,7 @@ pub fn create_test_package() -> Result<Package> {
         index_info: TEST_INDEX_INFO.clone(),
         file,
         package_toml,
-        readme: Some(readme),
+        readme,
         metadata: TEST_METADATA.clone(),
     })
 }

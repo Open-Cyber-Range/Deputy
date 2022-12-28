@@ -157,6 +157,7 @@ mod tests {
             description = "description"
             version = "version 23"
             license = "Very bad licence"
+            readme = "readme.md"
             [content]
             type = "vm"
             "#;
@@ -245,6 +246,7 @@ mod tests {
             description = "description"
             version = "1.2.3"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "vm"
             [virtual-machine]
@@ -266,6 +268,7 @@ mod tests {
             description = "description"
             version = "1.2.3"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "vm"
             [virtual-machine]
@@ -287,6 +290,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "feature"
             [feature]
@@ -317,6 +321,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "inject"
             [inject]
@@ -346,6 +351,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "condition"
             [condition]
@@ -371,6 +377,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "event"
             [event]
@@ -400,6 +407,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "feature"
             [condition]
@@ -421,6 +429,7 @@ mod tests {
             description = "description"
             version = "1.0.0"
             license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "feature"
             [feature]

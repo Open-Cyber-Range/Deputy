@@ -1,3 +1,4 @@
+use std::io::Read;
 use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
 use crate::{
@@ -127,7 +128,7 @@ pub async fn add_package(
         );
     };
 
-    let optional_readme: Option<PackageFile> = if readme_size > 0 {
+    let mut readme: PackageFile = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
         let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
 
@@ -144,10 +145,14 @@ pub async fn add_package(
             drain_stream(body).await?;
             return Err(error.into());
         }
-        Some(result?)
+        result?
     } else {
-        None
+        error!("Invalid stream chunk: No readme");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No readme"));
     };
+    let mut readme_content: String = String::new();
+    readme.0.read_to_string(&mut readme_content).expect("Invalid readme file content");
 
     let archive_file: PackageFile =
         PackageFile::from_stream(body.skip(1), true)
@@ -162,9 +167,9 @@ pub async fn add_package(
         name: index_info.clone().name,
         version: index_info.clone().version,
         license: "TODO".to_string(),
-        readme: "TODO".to_string(),
+        readme: readme_content,
     };
-    let mut package = Package::new(index_info, toml_file, optional_readme, archive_file, metadata);
+    let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())

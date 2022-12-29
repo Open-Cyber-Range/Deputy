@@ -109,9 +109,9 @@ impl PackageFile {
         Ok(format!("{:x}", hash_bytes))
     }
 
-    pub fn markdown_to_html(markdown_content: &String) -> String {
+    pub fn markdown_to_html(markdown_content: &str) -> String {
         let mut html_buf = String::new();
-        let parser = Parser::new(&markdown_content);
+        let parser = Parser::new(markdown_content);
         html::push_html(&mut html_buf, parser);
         html_buf
     }

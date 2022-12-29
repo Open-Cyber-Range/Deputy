@@ -25,7 +25,11 @@ impl Project {
             ContentType::VM => {
                 if self.virtual_machine.is_none() {
                     return Err(anyhow!("Virtual machine package info not found"));
-                } else if self.condition.is_some() || self.feature.is_some() || self.inject.is_some() || self.event.is_some() {
+                } else if self.condition.is_some()
+                    || self.feature.is_some()
+                    || self.inject.is_some()
+                    || self.event.is_some()
+                {
                     return Err(anyhow!(
                         "Content type (Virtual Machine) does not match package"
                     ));
@@ -34,28 +38,44 @@ impl Project {
             ContentType::Feature => {
                 if self.feature.is_none() {
                     return Err(anyhow!("Feature package info not found"));
-                } else if self.condition.is_some() || self.virtual_machine.is_some() || self.inject.is_some() || self.event.is_some() {
+                } else if self.condition.is_some()
+                    || self.virtual_machine.is_some()
+                    || self.inject.is_some()
+                    || self.event.is_some()
+                {
                     return Err(anyhow!("Content type (Feature) does not match package",));
                 }
             }
             ContentType::Condition => {
                 if self.condition.is_none() {
                     return Err(anyhow!("Condition package info not found"));
-                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.inject.is_some() || self.event.is_some() {
+                } else if self.virtual_machine.is_some()
+                    || self.feature.is_some()
+                    || self.inject.is_some()
+                    || self.event.is_some()
+                {
                     return Err(anyhow!("Content type (Condition) does not match package",));
                 }
             }
             ContentType::Inject => {
                 if self.inject.is_none() {
                     return Err(anyhow!("Inject package info not found"));
-                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.condition.is_some() || self.event.is_some() {
+                } else if self.virtual_machine.is_some()
+                    || self.feature.is_some()
+                    || self.condition.is_some()
+                    || self.event.is_some()
+                {
                     return Err(anyhow!("Content type (Inject) does not match package",));
                 }
             }
             ContentType::Event => {
                 if self.event.is_none() {
                     return Err(anyhow!("Event package info not found"));
-                } else if self.virtual_machine.is_some() || self.feature.is_some() || self.condition.is_some() || self.inject.is_some() {
+                } else if self.virtual_machine.is_some()
+                    || self.feature.is_some()
+                    || self.condition.is_some()
+                    || self.inject.is_some()
+                {
                     return Err(anyhow!("Content type (Event) does not match package",));
                 }
             }
@@ -96,29 +116,37 @@ pub enum FeatureType {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Feature {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", alias = "Type", alias = "TYPE")]
     pub feature_type: FeatureType,
+    #[serde(alias = "Action", alias = "ACTION")]
     pub action: Option<String>,
+    #[serde(alias = "Assets", alias = "ASSETS")]
     pub assets: Vec<Vec<String>>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
+    #[serde(alias = "Action", alias = "ACTION")]
     pub action: String,
+    #[serde(alias = "Assets", alias = "ASSETS")]
     pub assets: Vec<Vec<String>>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Condition {
-    #[serde(alias = "Command", alias = "COMMAND")]
-    pub command: String,
+    #[serde(alias = "Action", alias = "ACTION")]
+    pub action: String,
+    #[serde(alias = "Assets", alias = "ASSETS")]
+    pub assets: Vec<Vec<String>>,
     #[serde(alias = "Interval", alias = "INTERVAL")]
     pub interval: u32,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Inject {
+    #[serde(alias = "Action", alias = "ACTION")]
     pub action: String,
+    #[serde(alias = "Assets", alias = "ASSETS")]
     pub assets: Vec<Vec<String>>,
 }
 

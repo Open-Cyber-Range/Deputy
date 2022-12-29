@@ -1,4 +1,3 @@
-use std::io::Read;
 use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
 use crate::{
@@ -128,7 +127,7 @@ pub async fn add_package(
         );
     };
 
-    let mut readme: PackageFile = if readme_size > 0 {
+    let readme: PackageFile = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
         let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
 
@@ -151,8 +150,6 @@ pub async fn add_package(
         drain_stream(body).await?;
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No readme"));
     };
-    let mut readme_content: String = String::new();
-    readme.0.read_to_string(&mut readme_content).expect("Invalid readme file content");
 
     let archive_file: PackageFile =
         PackageFile::from_stream(body.skip(1), true)
@@ -162,12 +159,16 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
+    let (readme, readme_string) = PackageFile::content_to_string(readme);
+    let readme_html: String = PackageFile::markdown_to_html(&readme_string);
+
     // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
         name: index_info.clone().name,
         version: index_info.clone().version,
         license: "TODO".to_string(),
-        readme: readme_content,
+        readme: readme_string,
+        readme_html,
     };
     let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
     package.validate().map_err(|error| {
@@ -183,6 +184,7 @@ pub async fn add_package(
             version: package.metadata.clone().version,
             license: package.metadata.clone().license,
             readme: package.metadata.clone().readme,
+            readme_html: package.metadata.clone().readme_html,
         }))
         .await
         .map_err(|error| {

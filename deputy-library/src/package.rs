@@ -20,6 +20,7 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
 };
+use pulldown_cmark::{html, Parser};
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -37,6 +38,7 @@ pub struct PackageMetadata {
     pub version: String,
     pub license: String,
     pub readme: String,
+    pub readme_html: String,
 }
 
 impl IndexInfo {
@@ -105,6 +107,19 @@ impl PackageFile {
         copy(&mut self.0, &mut hasher)?;
         let hash_bytes = hasher.finalize();
         Ok(format!("{:x}", hash_bytes))
+    }
+
+    pub fn markdown_to_html(markdown_content: &String) -> String {
+        let mut html_buf = String::new();
+        let parser = Parser::new(&markdown_content);
+        html::push_html(&mut html_buf, parser);
+        html_buf
+    }
+
+    pub fn content_to_string(mut package_file: PackageFile) -> (PackageFile, String) {
+        let mut file_content = String::new();
+        package_file.read_to_string(&mut file_content).expect("Invalid readme file content");
+        (package_file, file_content)
     }
 
     pub async fn from_stream(
@@ -228,11 +243,15 @@ impl Package {
 
     fn gather_metadata(toml_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
+        let readme_html = PackageFile::markdown_to_html(&package_body.readme);
         Ok(PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             license: package_body.license,
             readme: package_body.readme,
+            // TODO this is just the path of readme, not the file content itself
+            // Upon removing index_repository, this will also be removed
+            readme_html,
         })
     }
 
@@ -441,12 +460,15 @@ impl TryFrom<&[u8]> for Package {
         let (package_toml, package_toml_end) =
             PackageFile::from_bytes(metadata_end, package_bytes)?;
         let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
+        let (readme, readme_string) = PackageFile::content_to_string(readme);
+        let readme_html = PackageFile::markdown_to_html(&readme_string);
         let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
         let metadata = PackageMetadata {
             name: index_info.clone().name,
             version: index_info.clone().version,
             license: "TODO".to_string(),
-            readme: "TODO".to_string(),
+            readme: readme_string,
+            readme_html,
         };
 
         Ok(Package {

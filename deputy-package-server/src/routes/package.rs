@@ -15,7 +15,7 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, IndexInfo, Package, PackageFile},
+    package::{FromBytes, IndexInfo, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
@@ -24,23 +24,22 @@ use git2::Repository;
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
-use deputy_library::package::PackageMetadata;
 
-fn check_for_version_error(
-    package_metadata: &IndexInfo,
-    repository: &Repository,
-) -> Result<(), Error> {
-    if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
-        if !is_valid {
-            error!("Package version on the server is either same or later");
-            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
-        }
-    } else {
-        error!("Failed to validate versioning");
-        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
-    }
-    Ok(())
-}
+// fn check_for_version_error(
+//     package_metadata: &PackageMetadata,
+//     repository: &Repository,
+// ) -> Result<(), Error> {
+//     if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
+//         if !is_valid {
+//             error!("Package version on the server is either same or later");
+//             return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
+//         }
+//     } else {
+//         error!("Failed to validate versioning");
+//         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
+//     }
+//     Ok(())
+// }
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
@@ -73,11 +72,12 @@ pub async fn add_package(
         return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No index info"));
     };
 
-    let repository = &app_state.repository.lock().await;
-    if let Err(error) = check_for_version_error(&index_info, repository) {
-        drain_stream(body).await?;
-        return Err(error);
-    }
+    // TODO Version error checking
+    // let repository = &app_state.repository.lock().await;
+    // if let Err(error) = check_for_version_error(&index_info, repository) {
+    //     drain_stream(body).await?;
+    //     return Err(error);
+    // }
 
     let toml_size = if let Some(Ok(bytes)) = body.next().await {
         u64::from_bytes(bytes).map_err(|error| {
@@ -198,7 +198,7 @@ pub async fn add_package(
 
     // TODO Remove deputy repository usage
     package
-        .save(&app_state.storage_folders, repository)
+        .save(&app_state.storage_folders)
         .map_err(|error| {
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
@@ -315,7 +315,7 @@ pub async fn download_file(
 pub async fn get_metadata(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
-) -> Result<Json<IndexInfo>, Error> {
+) -> Result<Json<crate::models::Package>, Error> {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
     validate_name(package_name.to_string()).map_err(|error| {
@@ -326,19 +326,22 @@ pub async fn get_metadata(
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
-    let repository = &app_state.repository.lock().await;
-    let metadata =
-        IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
-            error!("Failed to get latest metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
+    let package: crate::models::Package = app_state
+        .database_address
+        .send(GetPackageByNameAndVersion {
+            name: package_name.to_string(),
+            version: package_version.to_string(),
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
         })?;
-    match metadata {
-        Some(inner) => Ok(Json(inner)),
-        None => {
-            error!("Failed to get latest metadata");
-            Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
-        }
-    }
+    Ok(Json(package))
 }
 
 #[get("package/{package_name}/{package_version}/readme")]

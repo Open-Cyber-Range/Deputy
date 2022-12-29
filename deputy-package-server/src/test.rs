@@ -5,17 +5,15 @@ use actix_web::{
 };
 use anyhow::{anyhow, Error, Result};
 use deputy_library::{
-    repository::{get_or_create_repository, RepositoryConfiguration},
     test::{generate_random_string, get_free_port},
     StorageFolders,
 };
-use futures::{lock::Mutex, TryFutureExt};
+use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{
     env,
     fs::{create_dir_all, remove_dir_all},
     path::{Path, PathBuf},
-    sync::Arc,
     time::Duration,
 };
 use actix::Actor;
@@ -29,11 +27,6 @@ lazy_static! {
     pub static ref CONFIGURATION: Configuration = Configuration {
         host: "127.0.0.1".to_string(),
         port: 9090,
-        repository: RepositoryConfiguration {
-            folder: "/tmp/test-repo".to_string(),
-            username: "some-username".to_string(),
-            email: "some@email.com".to_string(),
-        },
         storage_folders: StorageFolders {
             package_folder: "/tmp/packages".to_string(),
             toml_folder: "/tmp/package-tomls".to_string(),
@@ -67,11 +60,6 @@ impl TestPackageServer {
     fn create_configuration() -> Result<(Configuration, String)> {
         let mut configuration = CONFIGURATION.clone();
         configuration.port = get_free_port()?;
-        configuration.repository.folder = format!(
-            "{}-{}",
-            configuration.repository.folder,
-            generate_random_string(10)?
-        );
         configuration.storage_folders.package_folder = format!(
             "{}-{}",
             configuration.storage_folders.package_folder,
@@ -94,39 +82,34 @@ impl TestPackageServer {
                 )
             })
             .start();
-        if let Ok(repository) = get_or_create_repository(&configuration.repository) {
-            let app_data = AppState {
-                repository: Arc::new(Mutex::new(repository)),
-                storage_folders: StorageFolders {
-                    package_folder,
-                    toml_folder,
-                    readme_folder,
-                },
-                database_address: database,
-            };
-            try_join!(
-                HttpServer::new(move || {
-                    let app_data = Data::new(app_data.clone());
-                    App::new().app_data(app_data).service(
-                        scope("/api/v1")
-                            .service(add_package)
-                            .service(download_package),
-                    )
-                })
-                .bind((configuration.host, configuration.port))?
-                .workers(1)
-                .run()
-                .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
-                async move {
-                    tx.send(())
-                        .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
-                    Ok::<(), Error>(())
-                }
-            )?;
-            return Ok(());
-        }
-
-        Err(anyhow!("Failed to create the repository"))
+        let app_data = AppState {
+            storage_folders: StorageFolders {
+                package_folder,
+                toml_folder,
+                readme_folder,
+            },
+            database_address: database,
+        };
+        try_join!(
+            HttpServer::new(move || {
+                let app_data = Data::new(app_data.clone());
+                App::new().app_data(app_data).service(
+                    scope("/api/v1")
+                        .service(add_package)
+                        .service(download_package),
+                )
+            })
+            .bind((configuration.host, configuration.port))?
+            .workers(1)
+            .run()
+            .map_err(|error| anyhow!("Failed to start the server: {:?}", error)),
+            async move {
+                tx.send(())
+                    .map_err(|error| anyhow!("Failed to send message: {:?}", error))?;
+                Ok::<(), Error>(())
+            }
+        )?;
+        Ok(())
     }
 
     pub async fn start(self) -> Result<()> {
@@ -146,9 +129,6 @@ impl Drop for TestPackageServer {
     fn drop(&mut self) {
         if Path::new(&self.configuration.storage_folders.package_folder).is_dir() {
             remove_dir_all(&self.configuration.storage_folders.package_folder).unwrap();
-        }
-        if Path::new(&self.configuration.repository.folder).is_dir() {
-            remove_dir_all(&self.configuration.repository.folder).unwrap();
         }
     }
 }
@@ -186,13 +166,6 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     let readme_folder: PathBuf =
         temporary_directory.join(format!("test-readme-folder-{}", randomizer));
     create_dir_all(&readme_folder)?;
-
-    let repository_configuration = RepositoryConfiguration {
-        username: String::from("test-username"),
-        email: String::from("test@email.com"),
-        folder: repository_folder.to_str().unwrap().to_string(),
-    };
-    let repository = get_or_create_repository(&repository_configuration)?;
     let database_url = "mysql://mysql_user:mysql_pass@mariadb:3306/deputy";
     let database = Database::try_new(database_url)
         .unwrap_or_else(|error| {
@@ -204,7 +177,6 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         .start();
 
     Ok(Data::new(AppState {
-        repository: Arc::new(Mutex::new(repository)),
         storage_folders: StorageFolders {
             package_folder: package_folder.to_str().unwrap().to_string(),
             toml_folder: toml_folder.to_str().unwrap().to_string(),

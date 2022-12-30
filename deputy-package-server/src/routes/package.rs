@@ -25,21 +25,21 @@ use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
 
-// fn check_for_version_error(
-//     package_metadata: &PackageMetadata,
-//     repository: &Repository,
-// ) -> Result<(), Error> {
-//     if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
-//         if !is_valid {
-//             error!("Package version on the server is either same or later");
-//             return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
-//         }
-//     } else {
-//         error!("Failed to validate versioning");
-//         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
-//     }
-//     Ok(())
-// }
+fn check_for_version_error(
+    package_metadata: &PackageMetadata,
+    repository: &Repository,
+) -> Result<(), Error> {
+    if let Ok(is_valid) = package_metadata.is_latest_version() {
+        if !is_valid {
+            error!("Package version on the server is either same or later");
+            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
+        }
+    } else {
+        error!("Failed to validate versioning");
+        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
+    }
+    Ok(())
+}
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,

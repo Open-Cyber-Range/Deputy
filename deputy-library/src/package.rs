@@ -41,6 +41,40 @@ pub struct PackageMetadata {
     pub readme_html: String,
 }
 
+impl PackageMetadata {
+    // pub fn get_latest_package_metadata(name: &str) -> Result<PackageMetadata> {
+    //     let package: crate::models::Package = app_state
+    //         .database_address
+    //         .send(GetPackageByNameAndVersion {
+    //             name: package_name.to_string(),
+    //             version: package_version.to_string(),
+    //         })
+    //         .await
+    //         .map_err(|error| {
+    //             error!("Failed to get package: {error}");
+    //             ServerResponseError(PackageServerError::Pagination.into())
+    //         })?
+    //         .map_err(|error| {
+    //             error!("Failed to get package: {error}");
+    //             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+    //         })?;
+    // }
+
+    pub fn validate_version(toml_path: &Path) -> Result<()> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let package_metadata = PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            license: package_body.license,
+            readme: "".to_string(),
+            readme_html: "".to_string()
+        };
+        Ok(())
+    }
+
+    pub fn is_latest_version()
+}
+
 impl IndexInfo {
     pub fn get_latest_index_info(name: &str, repository: &Repository) -> Result<Option<IndexInfo>> {
         let index_info_list = find_index_info_by_package_name(repository, name)?;

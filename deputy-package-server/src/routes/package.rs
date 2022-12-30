@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackages};
+use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -127,7 +127,7 @@ pub async fn add_package(
         );
     };
 
-    let optional_readme: Option<PackageFile> = if readme_size > 0 {
+    let readme: PackageFile = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
         let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
 
@@ -144,9 +144,11 @@ pub async fn add_package(
             drain_stream(body).await?;
             return Err(error.into());
         }
-        Some(result?)
+        result?
     } else {
-        None
+        error!("Invalid stream chunk: No readme");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No readme"));
     };
 
     let archive_file: PackageFile =
@@ -157,13 +159,18 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
+    let (readme, readme_string) = PackageFile::content_to_string(readme);
+    let readme_html: String = PackageFile::markdown_to_html(&readme_string);
+
     // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
         name: index_info.clone().name,
         version: index_info.clone().version,
         license: "TODO".to_string(),
+        readme: readme_string,
+        readme_html,
     };
-    let mut package = Package::new(index_info, toml_file, optional_readme, archive_file, metadata);
+    let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
@@ -176,6 +183,8 @@ pub async fn add_package(
             name: package.metadata.clone().name,
             version: package.metadata.clone().version,
             license: package.metadata.clone().license,
+            readme: package.metadata.clone().readme,
+            readme_html: package.metadata.clone().readme_html,
         }))
         .await
         .map_err(|error| {
@@ -330,4 +339,39 @@ pub async fn get_metadata(
             Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
         }
     }
+}
+
+#[get("package/{package_name}/{package_version}/readme")]
+pub async fn get_readme(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<String, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+
+    let package: crate::models::Package = app_state
+        .database_address
+        .send(GetPackageByNameAndVersion {
+            name: package_name.to_string(),
+            version: package_version.to_string(),
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?;
+    Ok(package.readme)
 }

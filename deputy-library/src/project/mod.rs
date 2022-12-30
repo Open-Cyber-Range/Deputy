@@ -164,6 +164,7 @@ pub struct Body {
     pub version: String,
     pub authors: Option<Vec<String>>,
     pub license: String,
+    pub readme: String,
 }
 
 impl Body {
@@ -175,6 +176,7 @@ impl Body {
             version: deserialized_toml.package.version,
             authors: deserialized_toml.package.authors,
             license: deserialized_toml.package.license,
+            readme: deserialized_toml.package.readme,
         };
         Ok(result)
     }

@@ -114,12 +114,8 @@ impl Executor {
             )))
             .await??;
         let project = create_project_from_toml_path(&toml_path)?;
-        let optional_readme_path: Option<PathBuf> = match project.virtual_machine {
-            Some(vm) => vm.readme_path.map(PathBuf::from),
-            None => None,
-        };
 
-        let package = Package::from_file(optional_readme_path, toml_path, options.compression)?;
+        let package = Package::from_file(project.package.readme, toml_path, options.compression)?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),

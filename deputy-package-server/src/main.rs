@@ -16,6 +16,7 @@ use deputy_package_server::{
 use futures::lock::Mutex;
 use log::error;
 use std::sync::Arc;
+use deputy_package_server::routes::package::get_readme;
 use deputy_package_server::services::database::Database;
 
 async fn real_main() -> Result<()> {
@@ -44,7 +45,8 @@ async fn real_main() -> Result<()> {
                     scope("/v1")
                         .service(get_all_packages)
                         .service(add_package)
-                        .service(download_package),
+                        .service(download_package)
+                        .service(get_readme),
                 ),
             )
         })

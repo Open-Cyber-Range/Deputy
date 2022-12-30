@@ -1,13 +1,13 @@
+use crate::models::helpers::uuid::Uuid;
 use crate::{
     schema::packages,
-    services::database::{All, FilterExisting},
+    services::database::{All, Create, FilterExisting, SelectById},
 };
 use chrono::NaiveDateTime;
+use diesel::helper_types::FindBy;
 use diesel::insert_into;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::models::helpers::uuid::Uuid;
-use crate::services::database::{Create, SelectById};
 
 #[derive(Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[diesel(table_name = packages)]
@@ -16,6 +16,8 @@ pub struct Package {
     pub name: String,
     pub version: String,
     pub license: String,
+    pub readme: String,
+    pub readme_html: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -36,6 +38,24 @@ impl Package {
         Self::all().filter(packages::id.eq(id))
     }
 
+    #[allow(clippy::type_complexity)]
+    pub fn by_name_and_version(
+        name: String,
+        version: String,
+    ) -> FindBy<
+        FindBy<
+            FilterExisting<All<packages::table, Self>, packages::deleted_at>,
+            packages::name,
+            String,
+        >,
+        packages::version,
+        String,
+    > {
+        Self::all()
+            .filter(packages::name.eq(name))
+            .filter(packages::version.eq(version))
+    }
+
     pub fn create_insert(&self) -> Create<&Self, packages::table> {
         insert_into(packages::table).values(self)
     }
@@ -48,6 +68,8 @@ pub struct NewPackage {
     pub name: String,
     pub version: String,
     pub license: String,
+    pub readme: String,
+    pub readme_html: String,
 }
 
 impl NewPackage {

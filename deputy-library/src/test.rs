@@ -18,6 +18,8 @@ lazy_static! {
         name: "some-package-name".to_string(),
         version: "0.1.0".to_string(),
         license: "Apache-2.0".to_string(),
+        readme: "readme".to_string(),
+        readme_html: "<html><body><h1>Hello, world!</h1></body></html>".to_string(),
     };
     pub static ref TEST_INVALID_PACKAGE_TOML_SCHEMA: &'static str = r#"
         [package]
@@ -26,6 +28,7 @@ lazy_static! {
         version = "1.0.4"
         authors = ["Robert robert@exmaple.com"]
         license = "very bad licence"
+        readme = "readme"
         [content]
         type = "vm"
         [virtual-machine]
@@ -40,6 +43,7 @@ lazy_static! {
         version = "1.0.4"
         authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
         license = "Apache-2.0"
+        readme = "readme"
         [content]
         type = "vm"
         [virtual-machine]
@@ -142,6 +146,7 @@ impl TempArchiveBuilder {
                 version = "1.0.4"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
                 license = "Apache-2.0"
+                readme = "readme"
                 [content]
                 type = "vm"
                 [virtual-machine]
@@ -238,7 +243,7 @@ pub fn create_test_package() -> Result<Package> {
         index_info: TEST_INDEX_INFO.clone(),
         file,
         package_toml,
-        readme: Some(readme),
+        readme,
         metadata: TEST_METADATA.clone(),
     })
 }

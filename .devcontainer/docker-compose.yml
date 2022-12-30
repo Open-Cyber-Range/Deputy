@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 services:
   deputy-development:
@@ -23,3 +23,16 @@ services:
     image: nexus.ocr.cr14.net:8003/deputy-repository-server
     volumes:
       - ./deputy-repository/.git:/srv/git/index.git
+
+  deputy-mariadb:
+    image: nexus.ocr.cr14.net:8003/mariadb:10.7
+    ports:
+      - "3307:3307"
+    volumes:
+      - ~/apps/deputy-mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql_root
+      MYSQL_USER: mysql_user
+      MYSQL_PASSWORD: mysql_pass
+      MYSQL_DATABASE: deputy
+      MYSQL_TCP_PORT: 3307

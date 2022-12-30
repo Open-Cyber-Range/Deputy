@@ -1,8 +1,4 @@
-use crate::{
-    configuration::Configuration,
-    routes::package::{add_package, download_package},
-    AppState,
-};
+use crate::{configuration::Configuration, routes::package::{add_package, download_package}, AppState, Database};
 use actix_web::{
     web::{scope, Data},
     App, HttpServer,
@@ -22,6 +18,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use actix::Actor;
 use tokio::{
     sync::oneshot::{channel, Sender},
     time::timeout,
@@ -42,6 +39,7 @@ lazy_static! {
             toml_folder: "/tmp/package-tomls".to_string(),
             readme_folder: "/tmp/readmes".to_string(),
         },
+        database_url: "mysql://mysql_user:mysql_pass@mariadb:3306/deputy".to_string(),
     };
 }
 
@@ -88,6 +86,14 @@ impl TestPackageServer {
         let package_folder = configuration.storage_folders.package_folder;
         let toml_folder = configuration.storage_folders.toml_folder;
         let readme_folder = configuration.storage_folders.readme_folder;
+        let database = Database::try_new(&configuration.database_url)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "Failed to create database connection to {} due to: {error}",
+                    &configuration.database_url
+                )
+            })
+            .start();
         if let Ok(repository) = get_or_create_repository(&configuration.repository) {
             let app_data = AppState {
                 repository: Arc::new(Mutex::new(repository)),
@@ -96,6 +102,7 @@ impl TestPackageServer {
                     toml_folder,
                     readme_folder,
                 },
+                database_address: database,
             };
             try_join!(
                 HttpServer::new(move || {
@@ -124,7 +131,7 @@ impl TestPackageServer {
 
     pub async fn start(self) -> Result<()> {
         let (tx, rx) = channel::<()>();
-        tokio::spawn(async move { self.initialize(tx).await });
+        actix_web::rt::spawn(async move { self.initialize(tx).await });
         timeout(Duration::from_millis(1000), rx).await??;
 
         Ok(())
@@ -186,6 +193,15 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
         folder: repository_folder.to_str().unwrap().to_string(),
     };
     let repository = get_or_create_repository(&repository_configuration)?;
+    let database_url = "mysql://mysql_user:mysql_pass@mariadb:3306/deputy";
+    let database = Database::try_new(database_url)
+        .unwrap_or_else(|error| {
+            panic!(
+                "Failed to create database connection to {} due to: {error}",
+                database_url
+            )
+        })
+        .start();
 
     Ok(Data::new(AppState {
         repository: Arc::new(Mutex::new(repository)),
@@ -194,5 +210,6 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
             toml_folder: toml_folder.to_str().unwrap().to_string(),
             readme_folder: readme_folder.to_str().unwrap().to_string(),
         },
+        database_address: database,
     }))
 }

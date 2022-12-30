@@ -1,5 +1,5 @@
 pub const fn default_page() -> u32 {
-    0
+    1
 }
 
 pub const fn default_limit() -> u32 {

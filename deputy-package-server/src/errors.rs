@@ -25,6 +25,8 @@ pub enum PackageServerError {
     VersionConflict,
     #[error("Failed to paginate packages")]
     Pagination,
+    #[error("Not found")]
+    DatabaseRecordNotFound,
 }
 
 #[derive(Debug)]
@@ -47,6 +49,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::PackageVersionValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageNameValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionConflict => StatusCode::CONFLICT,
+                PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

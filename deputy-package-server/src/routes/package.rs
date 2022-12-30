@@ -1,7 +1,8 @@
+use crate::models::helpers::uuid::Uuid;
+use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
 use crate::{
-    constants::{default_limit, default_page, PACKAGE_TOML},
+    constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    utils::get_file_content_by_path,
     AppState,
 };
 use actix_files::NamedFile;
@@ -14,21 +15,19 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, Package, PackageFile, PackageMetadata},
-    project::{Body, Project},
+    package::{FromBytes, IndexInfo, Package, PackageFile},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use git2::Repository;
 use log::error;
-use paginate::Pages;
 use serde::Deserialize;
-use std::fs;
 use std::path::PathBuf;
+use deputy_library::package::PackageMetadata;
 
 fn check_for_version_error(
-    package_metadata: &PackageMetadata,
+    package_metadata: &IndexInfo,
     repository: &Repository,
 ) -> Result<(), Error> {
     if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
@@ -58,10 +57,10 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
+    let index_info = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
+        let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package index info: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
         if let Err(error) = result {
@@ -70,12 +69,12 @@ pub async fn add_package(
         }
         result?
     } else {
-        error!("Invalid stream chunk: No metadata");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
+        error!("Invalid stream chunk: No index info");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No index info"));
     };
 
     let repository = &app_state.repository.lock().await;
-    if let Err(error) = check_for_version_error(&metadata, repository) {
+    if let Err(error) = check_for_version_error(&index_info, repository) {
         drain_stream(body).await?;
         return Err(error);
     }
@@ -98,7 +97,6 @@ pub async fn add_package(
         return Ok(HttpResponse::UnprocessableEntity()
             .body("Invalid package.toml: abnormally large package.toml"));
     }
-
     let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
         let toml_bytes_vector = toml_bytes.to_vec();
         let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
@@ -129,7 +127,7 @@ pub async fn add_package(
         );
     };
 
-    let optional_readme: Option<PackageFile> = if readme_size > 0 {
+    let readme: PackageFile = if readme_size > 0 {
         let mut vector_bytes: Vec<u8> = Vec::new();
         let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
 
@@ -146,9 +144,11 @@ pub async fn add_package(
             drain_stream(body).await?;
             return Err(error.into());
         }
-        Some(result?)
+        result?
     } else {
-        None
+        error!("Invalid stream chunk: No readme");
+        drain_stream(body).await?;
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No readme"));
     };
 
     let archive_file: PackageFile =
@@ -159,12 +159,44 @@ pub async fn add_package(
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let mut package = Package::new(metadata, toml_file, optional_readme, archive_file);
+    let (readme, readme_string) = PackageFile::content_to_string(readme);
+    let readme_html: String = PackageFile::markdown_to_html(&readme_string);
+
+    // TODO - this data should be fetched from toml file
+    let metadata = PackageMetadata {
+        name: index_info.clone().name,
+        version: index_info.clone().version,
+        license: "TODO".to_string(),
+        readme: readme_string,
+        readme_html,
+    };
+    let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
 
+    app_state
+        .database_address
+        .send(CreatePackage(crate::models::NewPackage {
+            id: Uuid::random(),
+            name: package.metadata.clone().name,
+            version: package.metadata.clone().version,
+            license: package.metadata.clone().license,
+            readme: package.metadata.clone().readme,
+            readme_html: package.metadata.clone().readme_html,
+        }))
+        .await
+        .map_err(|error| {
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
+
+    // TODO Remove deputy repository usage
     package
         .save(&app_state.storage_folders, repository)
         .map_err(|error| {
@@ -201,35 +233,6 @@ pub async fn download_package(
     })
 }
 
-fn iterate_and_parse_packages(package_path: &PathBuf) -> Result<Vec<Project>> {
-    let paths = fs::read_dir(package_path)?;
-    let mut result_vec: Vec<Project> = Vec::new();
-
-    for package in paths {
-        let package = package?;
-        let tomls = get_file_content_by_path(package, &PathBuf::from(PACKAGE_TOML))?;
-        for toml in tomls {
-            let value: Project = toml::from_str(&toml).unwrap();
-            result_vec.push(value);
-        }
-    }
-    Ok(result_vec)
-}
-
-fn paginate_json(result: Vec<Project>, query: PackageQuery) -> Result<Vec<Body>> {
-    let projects: Vec<Project> = result;
-    let pages = Pages::new(
-        projects.len() + 1,
-        usize::try_from(query.limit + 1).unwrap(),
-    );
-    let page = pages.with_offset(usize::try_from(query.page)?);
-    Ok(projects[page.start..page.end]
-        .to_vec()
-        .iter()
-        .map(|project| project.package.clone())
-        .collect())
-}
-
 #[derive(Deserialize, Debug)]
 pub struct PackageQuery {
     #[serde(default = "default_page")]
@@ -242,18 +245,23 @@ pub struct PackageQuery {
 pub async fn get_all_packages(
     app_state: Data<AppState>,
     query: Query<PackageQuery>,
-) -> Result<Json<Vec<Body>>, Error> {
-    let package_path = PathBuf::from(&app_state.storage_folders.package_folder);
-    let iteration_result = iterate_and_parse_packages(&package_path).map_err(|error| {
-        error!("Failed to iterate over all packages: {error}");
-        ServerResponseError(PackageServerError::Pagination.into())
-    })?;
-    let paginated_result =
-        paginate_json(iteration_result, query.into_inner()).map_err(|error| {
-            error!("Failed to paginate packages: {error}");
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let packages = app_state
+        .database_address
+        .send(GetPackages {
+            page: query.page as i64,
+            per_page: query.limit as i64,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    Ok(Json(paginated_result))
+    Ok(Json(packages))
 }
 
 #[derive(Debug, Deserialize)]
@@ -301,4 +309,69 @@ pub async fn download_file(
         error!("Failed to open the file: {error}");
         Error::from(error)
     })
+}
+
+#[get("package/{package_name}/{package_version}/metadata")]
+pub async fn get_metadata(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<Json<IndexInfo>, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let repository = &app_state.repository.lock().await;
+    let metadata =
+        IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
+            error!("Failed to get latest metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?;
+    match metadata {
+        Some(inner) => Ok(Json(inner)),
+        None => {
+            error!("Failed to get latest metadata");
+            Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
+        }
+    }
+}
+
+#[get("package/{package_name}/{package_version}/readme")]
+pub async fn get_readme(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<String, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+
+    let package: crate::models::Package = app_state
+        .database_address
+        .send(GetPackageByNameAndVersion {
+            name: package_name.to_string(),
+            version: package_version.to_string(),
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get package: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?;
+    Ok(package.readme)
 }

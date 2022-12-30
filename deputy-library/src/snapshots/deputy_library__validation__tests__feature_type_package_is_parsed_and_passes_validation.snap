@@ -6,11 +6,15 @@ expression: project
 name = 'my-cool-feature'
 description = 'description'
 version = '1.0.0'
+license = 'Apache-2.0'
+readme = 'readme.md'
 
 [content]
 type = 'Feature'
 
 [feature]
+type = 'Configuration'
+action = 'ping 8.8.8.8'
 assets = [
     [
     'src/configs/my-cool-config1.yml',

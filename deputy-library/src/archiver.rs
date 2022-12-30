@@ -56,7 +56,7 @@ pub fn decompress_archive(compressed_file_path: &Path) -> Result<PathBuf> {
 }
 
 fn compress_archive(archive_path: &Path, compression: u32) -> Result<PathBuf> {
-    let archive_file = File::open(&archive_path)?;
+    let archive_file = File::open(archive_path)?;
     let compressed_file_path = archive_path.with_extension("tar.gz");
     let compressed_file = File::create(&compressed_file_path)?;
     let mut parallel_compressor: ParallelCompression = ParCompressBuilder::new()

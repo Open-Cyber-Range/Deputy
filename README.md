@@ -41,3 +41,17 @@ To run the production build (no hot reloading):
 2. `yarn build` Build production artifacts
 
 3. `yarn start` Run the local server. If there are conflicts with the default port `3000` then assign your own `PORT` environment variable before the `next start` command in `package.json`
+
+Additional configuration:
+
+- Modify the `.env` file to your liking, for example, set the `DOCUMENTATION_URL` to your own documentation page
+
+### Deputy Package Server
+
+#### Database
+
+Deputy package server uses a MySQL database for saving metadata of packages. Default credentials are `mysql_user:mysql_pass`.
+
+##### Testing
+
+For local testing, change the URL of the database from `mariadb` to `127.0.0.1`, even if running on containers.

@@ -5,11 +5,12 @@ use std::path::Path;
 
 use crate::{
     constants::{self},
-    package::{Package, PackageMetadata},
+    package::{IndexInfo, Package},
     project::*,
 };
 use anyhow::{anyhow, Result};
 use semver::Version;
+use spdx;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
@@ -17,13 +18,13 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
-        self.metadata.validate()?;
+        self.index_info.validate()?;
         self.validate_checksum()?;
         Ok(())
     }
 }
 
-impl Validate for PackageMetadata {
+impl Validate for IndexInfo {
     fn validate(&mut self) -> Result<()> {
         if self.name.is_empty() {
             return Err(anyhow!("Package name is empty"));
@@ -46,6 +47,17 @@ impl Validate for PackageMetadata {
     }
 }
 
+impl Validate for Project {
+    fn validate(&mut self) -> Result<()> {
+        self.validate_content()?;
+        validate_name(self.package.name.clone())?;
+        validate_version(self.package.version.clone())?;
+        validate_vm_accounts(self.virtual_machine.clone())?;
+        validate_license(self.package.license.clone())?;
+        Ok(())
+    }
+}
+
 pub fn validate_name(name: String) -> Result<()> {
     if !constants::VALID_NAME.is_match(&name)? {
         return Err(anyhow!(
@@ -62,6 +74,15 @@ pub fn validate_version(version: String) -> Result<()> {
         Err(_) => Err(anyhow!(
             "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",
             version
+        )),
+    }
+}
+
+pub fn validate_license(license: String) -> Result<()> {
+    match spdx::license_id(&license) {
+        Some(_) => Ok(()),
+        None => Err(anyhow!(
+            "License must match SPDX specifications https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60"
         )),
     }
 }
@@ -94,10 +115,8 @@ pub fn validate_package_toml<P: AsRef<Path> + Debug>(package_path: P) -> Result<
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let deserialized_toml: Project = toml::from_str(&*contents)?;
-    validate_name(deserialized_toml.package.name)?;
-    validate_version(deserialized_toml.package.version)?;
-    validate_vm_accounts(deserialized_toml.virtual_machine)?;
+    let mut deserialized_toml: Project = toml::from_str(&contents)?;
+    deserialized_toml.validate()?;
     Ok(())
 }
 
@@ -131,12 +150,14 @@ mod tests {
         Ok(deserialized_toml)
     }
 
-    fn create_incorrect_name_and_version_toml() -> Result<(NamedTempFile, Project)> {
+    fn create_incorrect_name_version_license_toml() -> Result<(NamedTempFile, Project)> {
         let toml_content = br#"
             [package]
             name = "this is incorrect formatting"
             description = "description"
             version = "version 23"
+            license = "Very bad licence"
+            readme = "readme.md"
             [content]
             type = "vm"
             "#;
@@ -155,7 +176,7 @@ mod tests {
 
     #[test]
     fn negative_result_name_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
         assert!(validate_name(deserialized_toml.package.name).is_err());
         file.close()?;
         Ok(())
@@ -163,8 +184,16 @@ mod tests {
 
     #[test]
     fn negative_result_version_field() -> Result<()> {
-        let (file, deserialized_toml) = create_incorrect_name_and_version_toml()?;
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
         assert!(validate_version(deserialized_toml.package.version).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_license_field() -> Result<()> {
+        let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
+        assert!(validate_license(deserialized_toml.package.license).is_err());
         file.close()?;
         Ok(())
     }
@@ -216,6 +245,8 @@ mod tests {
             name = "my-cool-package"
             description = "description"
             version = "1.2.3"
+            license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "vm"
             [virtual-machine]
@@ -236,6 +267,8 @@ mod tests {
             name = "my-cool-package"
             description = "description"
             version = "1.2.3"
+            license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "vm"
             [virtual-machine]
@@ -256,9 +289,13 @@ mod tests {
             name = "my-cool-feature"
             description = "description"
             version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
             [content]
             type = "feature"
             [feature]
+            type = "configuration"
+            action = "ping 8.8.8.8"
             assets = [
             ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
             ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
@@ -272,6 +309,159 @@ mod tests {
                 insta::assert_toml_snapshot!(project);
         });
 
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn inject_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-feature"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            [content]
+            type = "inject"
+            [inject]
+            action = "ping 8.8.8.8"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn condition_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            [content]
+            type = "condition"
+            [condition]
+            action = "executable/path.sh"
+            interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn event_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            [content]
+            type = "event"
+            [event]
+            action = "ping 1.3.3.7"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_content_type_not_matching_content() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            [content]
+            type = "feature"
+            [condition]
+            action = "executable/path.sh"
+            interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_err());
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn negative_result_on_multiple_contents() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            [content]
+            type = "feature"
+            [feature]
+            type = "configuration"
+            action = "ping 8.8.8.8"
+            assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+            ]
+            [condition]
+            action = "executable/path.sh"
+            interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
+            "#;
+        let (file, _) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(&file.path()).is_err());
         file.close()?;
         Ok(())
     }

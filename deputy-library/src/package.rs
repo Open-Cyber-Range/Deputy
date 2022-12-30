@@ -1,7 +1,7 @@
 use crate::{
     archiver,
     project::Body,
-    repository::{find_metadata_by_package_name, update_index_repository},
+    repository::{find_index_info_by_package_name, update_index_repository},
     StorageFolders,
 };
 
@@ -20,32 +20,42 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
 };
+use pulldown_cmark::{html, Parser};
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PackageMetadata {
+pub struct IndexInfo {
     pub name: String,
     pub version: String,
     pub checksum: String,
 }
 
-impl PackageMetadata {
-    fn get_latest_metadata(name: &str, repository: &Repository) -> Result<Option<PackageMetadata>> {
-        let metadata_list = find_metadata_by_package_name(repository, name)?;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PackageMetadata {
+    pub name: String,
+    pub version: String,
+    pub license: String,
+    pub readme: String,
+    pub readme_html: String,
+}
 
-        let latest_metadata = metadata_list
+impl IndexInfo {
+    pub fn get_latest_index_info(name: &str, repository: &Repository) -> Result<Option<IndexInfo>> {
+        let index_info_list = find_index_info_by_package_name(repository, name)?;
+
+        let latest_index_info = index_info_list
             .iter()
             .max_by(|a, b| a.version.cmp(&b.version))
             .cloned();
 
-        Ok(latest_metadata)
+        Ok(latest_index_info)
     }
 
     pub fn is_latest_version(&self, repository: &Repository) -> Result<bool> {
         if let Some(current_latest_version) =
-            PackageMetadata::get_latest_metadata(&self.name, repository)?
+            IndexInfo::get_latest_index_info(&self.name, repository)?
         {
             return Ok(self.version.parse::<Version>()?
                 > current_latest_version.version.parse::<Version>()?);
@@ -55,13 +65,13 @@ impl PackageMetadata {
 
     pub fn validate_version(toml_path: &Path, registry_repository: &Repository) -> Result<()> {
         let package_body = Body::create_from_toml(toml_path)?;
-        let metadata = PackageMetadata {
+        let index_info = IndexInfo {
             name: package_body.name,
             version: package_body.version,
             checksum: "".to_string(),
         };
 
-        if let Ok(is_valid) = metadata.is_latest_version(registry_repository) {
+        if let Ok(is_valid) = index_info.is_latest_version(registry_repository) {
             if !is_valid {
                 return Err(anyhow::anyhow!(
                     "Package version on the server is either same or later"
@@ -97,6 +107,19 @@ impl PackageFile {
         copy(&mut self.0, &mut hasher)?;
         let hash_bytes = hasher.finalize();
         Ok(format!("{:x}", hash_bytes))
+    }
+
+    pub fn markdown_to_html(markdown_content: &str) -> String {
+        let mut html_buf = String::new();
+        let parser = Parser::new(markdown_content);
+        html::push_html(&mut html_buf, parser);
+        html_buf
+    }
+
+    pub fn content_to_string(mut package_file: PackageFile) -> (PackageFile, String) {
+        let mut file_content = String::new();
+        package_file.read_to_string(&mut file_content).expect("Invalid readme file content");
+        (package_file, file_content)
     }
 
     pub async fn from_stream(
@@ -148,68 +171,69 @@ impl PackageFile {
 
 #[derive(Debug)]
 pub struct Package {
-    pub metadata: PackageMetadata,
+    pub index_info: IndexInfo,
     pub file: PackageFile,
     pub package_toml: PackageFile,
-    pub readme: Option<PackageFile>,
+    pub readme: PackageFile,
+    pub metadata: PackageMetadata,
 }
 
 impl Package {
     pub fn new(
-        metadata: PackageMetadata,
+        index_info: IndexInfo,
         package_toml: PackageFile,
-        readme: Option<PackageFile>,
+        readme: PackageFile,
         file: PackageFile,
+        metadata: PackageMetadata,
     ) -> Self {
         Self {
-            metadata,
+            index_info,
             package_toml,
             readme,
             file,
+            metadata,
         }
     }
 
     pub fn save(&self, storage_folders: &StorageFolders, repository: &Repository) -> Result<()> {
-        update_index_repository(repository, &self.metadata)?;
+        update_index_repository(repository, &self.index_info)?;
         self.file.save(
             &storage_folders.package_folder,
-            &self.metadata.name,
-            &self.metadata.version,
+            &self.index_info.name,
+            &self.index_info.version,
         )?;
 
         self.package_toml.save(
             &storage_folders.toml_folder,
-            &self.metadata.name,
-            &self.metadata.version,
+            &self.index_info.name,
+            &self.index_info.version,
         )?;
 
-        if let Some(readme) = &self.readme {
-            readme.save(
-                &storage_folders.readme_folder,
-                &self.metadata.name,
-                &self.metadata.version,
-            )?;
-        }
+        self.readme.save(
+            &storage_folders.readme_folder,
+            &self.index_info.name,
+            &self.index_info.version,
+        )?;
         Ok(())
     }
 
     pub fn validate_checksum(&mut self) -> Result<()> {
         let calculated = self.file.calculate_checksum()?;
 
-        if calculated != self.metadata.checksum {
+        if calculated != self.index_info.checksum {
             return Err(anyhow!(
                 "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
                 calculated,
-                self.metadata.checksum
+                self.index_info.checksum
             ));
         }
         Ok(())
     }
 
-    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
+    fn gather_index_info(toml_path: &Path, archive_path: &Path) -> Result<IndexInfo> {
         let package_body = Body::create_from_toml(toml_path)?;
-        let archive_file = File::open(&archive_path)?;
-        let metadata = PackageMetadata {
+        let archive_file = File::open(archive_path)?;
+        let metadata = IndexInfo {
             name: package_body.name,
             version: package_body.version,
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
@@ -217,24 +241,37 @@ impl Package {
         Ok(metadata)
     }
 
+    fn gather_metadata(toml_path: &Path) -> Result<PackageMetadata> {
+        let package_body = Body::create_from_toml(toml_path)?;
+        let readme_html = PackageFile::markdown_to_html(&package_body.readme);
+        Ok(PackageMetadata {
+            name: package_body.name,
+            version: package_body.version,
+            license: package_body.license,
+            readme: package_body.readme,
+            // TODO this is just the path of readme, not the file content itself
+            // Upon removing index_repository, this will also be removed
+            readme_html,
+        })
+    }
+
     pub fn from_file(
-        optional_readme_path: Option<PathBuf>,
+        readme_path: String,
         package_toml_path: PathBuf,
         compression: u32,
     ) -> Result<Self> {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
-        let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
+        let index_info = Self::gather_index_info(&package_toml_path, &archive_path)?;
+        let metadata = Self::gather_metadata(&package_toml_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
-        let optional_readme = match optional_readme_path {
-            Some(readme_path) => Some(PackageFile(File::open(readme_path)?, None)),
-            None => None,
-        };
+        let readme = PackageFile(File::open(readme_path)?, None);
         Ok(Package {
-            metadata,
+            index_info,
             file: PackageFile(file, None),
             package_toml: PackageFile(package_toml, None),
-            readme: optional_readme,
+            readme,
+            metadata,
         })
     }
 
@@ -257,12 +294,12 @@ impl DerefMut for PackageFile {
     }
 }
 
-impl TryFrom<&PackageMetadata> for Vec<u8> {
+impl TryFrom<&IndexInfo> for Vec<u8> {
     type Error = anyhow::Error;
 
-    fn try_from(package_metadata: &PackageMetadata) -> Result<Self> {
+    fn try_from(index_info: &IndexInfo) -> Result<Self> {
         let mut formatted_bytes = Vec::new();
-        let string = serde_json::to_string(&package_metadata)?;
+        let string = serde_json::to_string(&index_info)?;
         let main_bytes = string.as_bytes();
         let length: u32 = main_bytes.len().try_into()?;
 
@@ -273,11 +310,11 @@ impl TryFrom<&PackageMetadata> for Vec<u8> {
     }
 }
 
-impl TryFrom<&[u8]> for PackageMetadata {
+impl TryFrom<&[u8]> for IndexInfo {
     type Error = anyhow::Error;
 
-    fn try_from(metadata_bytes: &[u8]) -> Result<Self> {
-        Ok(serde_json::from_slice(metadata_bytes)?)
+    fn try_from(index_info_bytes: &[u8]) -> Result<Self> {
+        Ok(serde_json::from_slice(index_info_bytes)?)
     }
 }
 
@@ -302,9 +339,9 @@ impl TryFrom<PackageFile> for Vec<u8> {
 impl TryFrom<&[u8]> for PackageFile {
     type Error = anyhow::Error;
 
-    fn try_from(metadata_bytes: &[u8]) -> Result<Self> {
+    fn try_from(index_info_bytes: &[u8]) -> Result<Self> {
         let mut file = tempfile::NamedTempFile::new()?;
-        file.write_all(metadata_bytes)?;
+        file.write_all(index_info_bytes)?;
         file.flush()?;
         let new_handler = file.reopen()?;
         let temporary_path = file.into_temp_path();
@@ -318,19 +355,12 @@ impl TryFrom<Package> for Vec<u8> {
     fn try_from(package: Package) -> Result<Self> {
         let mut payload: Vec<u8> = Vec::new();
         let package_file = package.file;
-        let metadata_bytes = Vec::try_from(&package.metadata)?;
-        payload.extend(metadata_bytes);
+        let index_info_bytes = Vec::try_from(&package.index_info)?;
+        payload.extend(index_info_bytes);
         let toml_bytes = Vec::try_from(package.package_toml)?;
         payload.extend(toml_bytes);
 
-        let readme_bytes: Vec<u8> = match package.readme {
-            Some(readme) => Vec::try_from(readme)?,
-            None => {
-                let mut readme_length_bytes = Vec::new();
-                readme_length_bytes.extend_from_slice(&0_u32.to_le_bytes());
-                readme_length_bytes
-            }
-        };
+        let readme_bytes: Vec<u8> = Vec::try_from(package.readme)?;
         payload.extend(readme_bytes);
         let file_bytes = Vec::try_from(package_file)?;
         payload.extend(file_bytes);
@@ -382,11 +412,11 @@ impl Streamer for TokioFile {
 
 impl Package {
     pub async fn to_stream(self) -> Result<PackageStream> {
-        let mut metadata_bytes_with_lenght = Vec::try_from(&self.metadata)?;
-        if metadata_bytes_with_lenght.len() < 4 {
-            return Err(anyhow!("Metadata is too short"));
+        let mut index_info_bytes_with_length = Vec::try_from(&self.index_info)?;
+        if index_info_bytes_with_length.len() < 4 {
+            return Err(anyhow!("Index info is too short"));
         }
-        let metadata_bytes = metadata_bytes_with_lenght.drain(4..).collect::<Vec<_>>();
+        let metadata_bytes = index_info_bytes_with_length.drain(4..).collect::<Vec<_>>();
         let stream: PackageStream =
             Box::pin(futures::stream::iter(vec![Ok(Bytes::from(metadata_bytes))]));
 
@@ -395,32 +425,18 @@ impl Package {
         let toml_file = TokioFile::from(self.package_toml.0);
         let toml_size = toml_file.metadata().await?.len();
 
-        let (optional_readme_file, readme_size) = match self.readme {
-            Some(readme) => {
-                let readme_file = TokioFile::from(readme.0);
-                let readme_size = readme_file.metadata().await?.len();
-                (Some(readme_file), readme_size)
-            }
-            None => (None, 0_u64),
-        };
+        let readme_file = TokioFile::from(self.readme.0);
+        let readme_size: u64 = readme_file.metadata().await?.len();
 
         let stream = stream
             .chain(toml_size.to_stream())
             .chain(toml_file.to_stream())
-            .chain(readme_size.to_stream());
+            .chain(readme_size.to_stream())
+            .chain(readme_file.to_stream())
+            .chain(archive_size.to_stream())
+            .chain(archive_file.to_stream());
 
-        if let Some(readme_file) = optional_readme_file {
-            let stream = stream
-                .chain(readme_file.to_stream())
-                .chain(archive_size.to_stream())
-                .chain(archive_file.to_stream());
-            return Ok(stream.boxed_local());
-        } else {
-            let stream = stream
-                .chain(archive_size.to_stream())
-                .chain(archive_file.to_stream());
-            return Ok(stream.boxed_local());
-        }
+        return Ok(stream.boxed_local());
     }
 }
 
@@ -439,30 +455,39 @@ impl TryFrom<&[u8]> for Package {
         let metadata_bytes = package_bytes
             .get(4..metadata_end)
             .ok_or_else(|| anyhow::anyhow!("Could not find metadata"))?;
-        let metadata = PackageMetadata::try_from(metadata_bytes)?;
+        let index_info = IndexInfo::try_from(metadata_bytes)?;
 
         let (package_toml, package_toml_end) =
             PackageFile::from_bytes(metadata_end, package_bytes)?;
         let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
+        let (readme, readme_string) = PackageFile::content_to_string(readme);
+        let readme_html = PackageFile::markdown_to_html(&readme_string);
         let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
+        let metadata = PackageMetadata {
+            name: index_info.clone().name,
+            version: index_info.clone().version,
+            license: "TODO".to_string(),
+            readme: readme_string,
+            readme_html,
+        };
 
         Ok(Package {
-            metadata,
+            index_info,
             package_toml,
-            readme: Some(readme),
+            readme,
             file,
+            metadata,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{PackageFile, PackageMetadata};
+    use super::{IndexInfo, PackageFile};
     use crate::{
         test::{
             create_readable_temporary_file, create_test_package, get_last_commit_message,
-            initialize_test_repository, TEST_FILE_BYTES, TEST_METADATA_BYTES,
-            TEST_PACKAGE_METADATA,
+            initialize_test_repository, TEST_FILE_BYTES, TEST_INDEX_INFO, TEST_METADATA_BYTES,
         },
         StorageFolders,
     };
@@ -527,7 +552,7 @@ mod tests {
     }
 
     #[test]
-    fn latest_package_metadata_is_found() -> Result<()> {
+    fn latest_index_metadata_is_found() -> Result<()> {
         let test_package = create_test_package()?;
         let target_directory = tempdir()?;
         let (repository_directory, repository) = initialize_test_repository();
@@ -542,11 +567,11 @@ mod tests {
         test_package.save(&storage_folders, &repository)?;
 
         let mut new_test_package = create_test_package()?;
-        new_test_package.metadata.version = String::from("4.0.0");
+        new_test_package.index_info.version = String::from("4.0.0");
         new_test_package.save(&storage_folders, &repository)?;
 
-        insta::assert_debug_snapshot!(PackageMetadata::get_latest_metadata(
-            &test_package.metadata.name,
+        insta::assert_debug_snapshot!(IndexInfo::get_latest_index_info(
+            &test_package.index_info.name,
             &repository
         )?);
         target_directory.close()?;
@@ -560,7 +585,7 @@ mod tests {
         let target_directory = tempdir()?;
         let (repository_directory, repository) = initialize_test_repository();
 
-        assert!(test_package.metadata.is_latest_version(&repository)?);
+        assert!(test_package.index_info.is_latest_version(&repository)?);
         target_directory.close()?;
         repository_directory.close()?;
         Ok(())
@@ -582,9 +607,9 @@ mod tests {
         test_package.save(&storage_folders, &repository)?;
 
         let mut new_test_package = create_test_package()?;
-        new_test_package.metadata.version = String::from("4.0.0");
+        new_test_package.index_info.version = String::from("4.0.0");
 
-        assert!(new_test_package.metadata.is_latest_version(&repository)?);
+        assert!(new_test_package.index_info.is_latest_version(&repository)?);
         target_directory.close()?;
         repository_directory.close()?;
         Ok(())
@@ -606,9 +631,9 @@ mod tests {
         test_package.save(&storage_folders, &repository)?;
 
         let mut new_test_package = create_test_package()?;
-        new_test_package.metadata.version = String::from("0.0.1");
+        new_test_package.index_info.version = String::from("0.0.1");
 
-        assert!(!new_test_package.metadata.is_latest_version(&repository)?);
+        assert!(!new_test_package.index_info.is_latest_version(&repository)?);
         target_directory.close()?;
         repository_directory.close()?;
         Ok(())
@@ -616,8 +641,8 @@ mod tests {
 
     #[test]
     fn metadata_is_converted_to_bytes() -> Result<()> {
-        let package_metadata: &PackageMetadata = &TEST_PACKAGE_METADATA;
-        let metadata_bytes = Vec::try_from(package_metadata)?;
+        let index_metadata: &IndexInfo = &TEST_INDEX_INFO;
+        let metadata_bytes = Vec::try_from(index_metadata)?;
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }
@@ -626,7 +651,7 @@ mod tests {
     fn metadata_is_parsed_from_bytes() -> Result<()> {
         let bytes = TEST_METADATA_BYTES.clone();
 
-        let metadata = PackageMetadata::try_from(&bytes as &[u8])?;
+        let metadata = IndexInfo::try_from(&bytes as &[u8])?;
         insta::assert_debug_snapshot!(metadata);
         Ok(())
     }
@@ -671,7 +696,7 @@ mod tests {
             bytes.append(&mut chunk.to_vec());
             counter += 1;
             if counter == 1 {
-                PackageMetadata::try_from(bytes.as_slice())?;
+                IndexInfo::try_from(bytes.as_slice())?;
             }
         }
         assert_eq!(counter, 7);

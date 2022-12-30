@@ -3,6 +3,15 @@ stages:
   - deploy
   - release
 
+services:
+  - mariadb:10.7
+
+variables:
+  MYSQL_ROOT_PASSWORD: mysql_root
+  MYSQL_USER: mysql_user
+  MYSQL_PASSWORD: mysql_pass
+  MYSQL_DATABASE: deputy
+
 build-frontend:
   stage: build
   image: $DOCKER_REGISTRY_PULL/frontend-builder

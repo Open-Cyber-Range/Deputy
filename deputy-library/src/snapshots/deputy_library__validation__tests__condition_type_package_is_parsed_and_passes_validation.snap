@@ -13,5 +13,21 @@ readme = 'readme.md'
 type = 'Condition'
 
 [condition]
-command = 'executable/path.sh'
+action = 'executable/path.sh'
+assets = [
+    [
+    'src/configs/my-cool-config1.yml',
+    '/var/opt/my-cool-service1',
+    '744',
+],
+    [
+    'src/configs/my-cool-config2.yml',
+    '/var/opt/my-cool-service2',
+    '777',
+],
+    [
+    'src/configs/my-cool-config3.yml',
+    '/var/opt/my-cool-service3',
+],
+]
 interval = 30

@@ -240,11 +240,10 @@ pub fn create_test_package() -> Result<Package> {
     let package_toml = PackageFile(package_toml, Some(toml_path));
     let readme = PackageFile(readme_file, Some(readme_path));
     Ok(Package {
-        index_info: TEST_INDEX_INFO.clone(),
+        metadata: TEST_METADATA.clone(),
         file,
         package_toml,
         readme,
-        metadata: TEST_METADATA.clone(),
     })
 }
 

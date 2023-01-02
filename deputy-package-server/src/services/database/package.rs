@@ -91,3 +91,30 @@ impl Handler<GetPackageByNameAndVersion> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Package>>")]
+pub struct GetPackagesByName {
+    pub name: String,
+}
+
+impl Handler<GetPackagesByName> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+
+    fn handle(&mut self, query_params: GetPackagesByName, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    let packages = Package::by_name(query_params.name).load(&mut connection)?;
+                    Ok(packages)
+                })
+                    .await??;
+                Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}

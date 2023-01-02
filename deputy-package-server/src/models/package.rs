@@ -56,6 +56,12 @@ impl Package {
             .filter(packages::version.eq(version))
     }
 
+    pub fn by_name(
+        name: String,
+    ) -> FindBy<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::name, String> {
+        Self::all().filter(packages::name.eq(name))
+    }
+
     pub fn create_insert(&self) -> Create<&Self, packages::table> {
         insert_into(packages::table).values(self)
     }

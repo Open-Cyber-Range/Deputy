@@ -5,12 +5,13 @@ use std::path::Path;
 
 use crate::{
     constants::{self},
-    package::{Package, IndexInfo},
+    package::Package,
     project::*,
 };
 use anyhow::{anyhow, Result};
 use semver::Version;
 use spdx;
+use crate::package::PackageMetadata;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
@@ -18,13 +19,13 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
-        self.index_info.validate()?;
+        self.metadata.validate()?;
         self.validate_checksum()?;
         Ok(())
     }
 }
 
-impl Validate for IndexInfo {
+impl Validate for PackageMetadata {
     fn validate(&mut self) -> Result<()> {
         if self.name.is_empty() {
             return Err(anyhow!("Package name is empty"));
@@ -35,6 +36,8 @@ impl Validate for IndexInfo {
         if self.version.parse::<Version>().is_err() {
             return Err(anyhow!("Package version is not valid"));
         }
+        // TODO validation for other fields, checksum
+        /*
         if self.checksum.is_empty() {
             return Err(anyhow!("Package checksum is empty"));
         }
@@ -43,6 +46,7 @@ impl Validate for IndexInfo {
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
+         */
         Ok(())
     }
 }

@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
+use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages, GetPackagesByName};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -15,16 +15,17 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, IndexInfo, Package, PackageFile, PackageMetadata},
+    package::{FromBytes, Package, PackageFile, PackageMetadata},
     validation::{validate_name, validate_version, Validate},
 };
 use divrem::DivCeil;
 use futures::{Stream, StreamExt};
-use git2::Repository;
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
+use semver::Version;
 
+/*
 fn check_for_version_error(
     package_metadata: &PackageMetadata,
     repository: &Repository,
@@ -39,6 +40,23 @@ fn check_for_version_error(
         return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
     }
     Ok(())
+}
+ */
+
+fn get_latest_version (
+    packages: Vec<crate::models::Package>
+) -> Option<crate::models::Package> {
+    packages
+        .iter()
+        .max_by(|a, b| a.version.cmp(&b.version))
+        .cloned()
+}
+
+fn is_latest_version (current_package: crate::models::Package, latest_package: Option<crate::models::Package>) -> Result<bool> {
+    match latest_package {
+        Some(package) => Ok(package.version.parse::<Version>()? > current_package.version.parse::<Version>()?),
+        None => Ok(true)
+    }
 }
 
 async fn drain_stream(
@@ -56,10 +74,10 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let index_info = if let Some(Ok(metadata_bytes)) = body.next().await {
+    let package_metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package index info: {error}");
+        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
         if let Err(error) = result {
@@ -68,10 +86,25 @@ pub async fn add_package(
         }
         result?
     } else {
-        error!("Invalid stream chunk: No index info");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No index info"));
+        error!("Invalid stream chunk: No package metadata");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No package metadata"));
     };
 
+    println!("Package metadata: {:?}", package_metadata);
+
+    let same_name_packages: Vec<crate::models::Package> = app_state
+        .database_address
+        .send(GetPackagesByName { name: package_metadata.clone().name })
+        .await
+        .map_err(|error| {
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
+    let latest_package: Option<crate::models::Package> = get_latest_version(same_name_packages);
     // TODO Version error checking
     // let repository = &app_state.repository.lock().await;
     // if let Err(error) = check_for_version_error(&index_info, repository) {
@@ -164,13 +197,13 @@ pub async fn add_package(
 
     // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
-        name: index_info.clone().name,
-        version: index_info.clone().version,
+        name: package_metadata.clone().name,
+        version: package_metadata.clone().version,
         license: "TODO".to_string(),
         readme: readme_string,
         readme_html,
     };
-    let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
+    let mut package = Package::new(metadata, toml_file, readme, archive_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())

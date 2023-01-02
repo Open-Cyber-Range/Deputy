@@ -52,11 +52,24 @@ fn get_latest_version (
         .cloned()
 }
 
-fn is_latest_version (current_package: crate::models::Package, latest_package: Option<crate::models::Package>) -> Result<bool> {
+fn is_latest_version (uploadable_version: &str, latest_package: Option<crate::models::Package>) -> Result<bool> {
     match latest_package {
-        Some(package) => Ok(package.version.parse::<Version>()? > current_package.version.parse::<Version>()?),
+        Some(package) => Ok(uploadable_version.parse::<Version>()? > package.version.parse::<Version>()?),
         None => Ok(true)
     }
+}
+
+fn validate_version2 (uploadable_version: &str, latest_package: Option<crate::models::Package>) -> Result<(), Error> {
+    if let Ok(is_valid) = is_latest_version(uploadable_version, latest_package) {
+        if !is_valid {
+            error!("Package version on the server is either same or later");
+            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
+        }
+    } else {
+        error!("Failed to validate versioning");
+        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
+    }
+    Ok(())
 }
 
 async fn drain_stream(
@@ -105,12 +118,10 @@ pub async fn add_package(
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
     let latest_package: Option<crate::models::Package> = get_latest_version(same_name_packages);
-    // TODO Version error checking
-    // let repository = &app_state.repository.lock().await;
-    // if let Err(error) = check_for_version_error(&index_info, repository) {
-    //     drain_stream(body).await?;
-    //     return Err(error);
-    // }
+    if let Err(error) = validate_version2(package_metadata.version.as_str(), latest_package) {
+        drain_stream(body).await?;
+        return Err(error);
+    }
 
     let toml_size = if let Some(Ok(bytes)) = body.next().await {
         u64::from_bytes(bytes).map_err(|error| {

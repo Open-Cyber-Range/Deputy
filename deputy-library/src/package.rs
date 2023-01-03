@@ -429,12 +429,10 @@ impl TryFrom<&[u8]> for Package {
 #[cfg(test)]
 mod tests {
     use super::{IndexInfo, PackageFile};
-    use crate::{
-        test::{
-            create_readable_temporary_file, create_test_package,
-            TEST_FILE_BYTES, TEST_INDEX_INFO, TEST_METADATA_BYTES,
-        }
-    };
+    use crate::{StorageFolders, test::{
+        create_readable_temporary_file, create_test_package,
+        TEST_FILE_BYTES, TEST_INDEX_INFO, TEST_METADATA_BYTES,
+    }};
     use anyhow::{Ok, Result};
     use futures::StreamExt;
     use std::{fs::File, io::Read, path::PathBuf};
@@ -471,118 +469,24 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn package_can_be_saved() -> Result<()> {
-    //     let test_package = create_test_package()?;
-    //     let target_directory = tempdir()?;
-    //     let (repository_directory, repository) = initialize_test_repository();
-    //     let package_folder = target_directory.path().to_str().unwrap().to_string();
-    //     let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let storage_folders = StorageFolders {
-    //         package_folder,
-    //         toml_folder,
-    //         readme_folder,
-    //     };
-    //     test_package.save(&storage_folders, &repository)?;
-    //
-    //     assert!(target_directory.path().join("some-package-name").exists());
-    //     assert_eq!(
-    //         get_last_commit_message(&repository),
-    //         "Adding package: some-package-name, version: 0.1.0"
-    //     );
-    //     target_directory.close()?;
-    //     repository_directory.close()?;
-    //     Ok(())
-    // }
-    //
-    // #[test]
-    // fn latest_index_metadata_is_found() -> Result<()> {
-    //     let test_package = create_test_package()?;
-    //     let target_directory = tempdir()?;
-    //     let (repository_directory, repository) = initialize_test_repository();
-    //     let package_folder = target_directory.path().to_str().unwrap().to_string();
-    //     let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let storage_folders = StorageFolders {
-    //         package_folder,
-    //         toml_folder,
-    //         readme_folder,
-    //     };
-    //     test_package.save(&storage_folders, &repository)?;
-    //
-    //     let mut new_test_package = create_test_package()?;
-    //     new_test_package.index_info.version = String::from("4.0.0");
-    //     new_test_package.save(&storage_folders, &repository)?;
-    //
-    //     insta::assert_debug_snapshot!(IndexInfo::get_latest_index_info(
-    //         &test_package.index_info.name,
-    //         &repository
-    //     )?);
-    //     target_directory.close()?;
-    //     repository_directory.close()?;
-    //     Ok(())
-    // }
-    //
-    // #[test]
-    // fn is_the_latest_package_version_if_is_the_first() -> Result<()> {
-    //     let test_package = create_test_package()?;
-    //     let target_directory = tempdir()?;
-    //     let (repository_directory, repository) = initialize_test_repository();
-    //
-    //     assert!(test_package.index_info.is_latest_version(&repository)?);
-    //     target_directory.close()?;
-    //     repository_directory.close()?;
-    //     Ok(())
-    // }
-    //
-    // #[test]
-    // fn is_the_latest_package_version() -> Result<()> {
-    //     let test_package = create_test_package()?;
-    //     let target_directory = tempdir()?;
-    //     let (repository_directory, repository) = initialize_test_repository();
-    //     let package_folder = target_directory.path().to_str().unwrap().to_string();
-    //     let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let storage_folders = StorageFolders {
-    //         package_folder,
-    //         toml_folder,
-    //         readme_folder,
-    //     };
-    //     test_package.save(&storage_folders, &repository)?;
-    //
-    //     let mut new_test_package = create_test_package()?;
-    //     new_test_package.index_info.version = String::from("4.0.0");
-    //
-    //     assert!(new_test_package.index_info.is_latest_version(&repository)?);
-    //     target_directory.close()?;
-    //     repository_directory.close()?;
-    //     Ok(())
-    // }
-    //
-    // #[test]
-    // fn is_not_the_latest_package_version() -> Result<()> {
-    //     let test_package = create_test_package()?;
-    //     let target_directory = tempdir()?;
-    //     let (repository_directory, repository) = initialize_test_repository();
-    //     let package_folder = target_directory.path().to_str().unwrap().to_string();
-    //     let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
-    //     let storage_folders = StorageFolders {
-    //         package_folder,
-    //         toml_folder,
-    //         readme_folder,
-    //     };
-    //     test_package.save(&storage_folders, &repository)?;
-    //
-    //     let mut new_test_package = create_test_package()?;
-    //     new_test_package.index_info.version = String::from("0.0.1");
-    //
-    //     assert!(!new_test_package.index_info.is_latest_version(&repository)?);
-    //     target_directory.close()?;
-    //     repository_directory.close()?;
-    //     Ok(())
-    // }
+    #[test]
+    fn package_can_be_saved() -> Result<()> {
+        let test_package = create_test_package()?;
+        let target_directory = tempdir()?;
+        let package_folder = target_directory.path().to_str().unwrap().to_string();
+        let toml_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let readme_folder = tempdir()?.path().to_str().unwrap().to_string();
+        let storage_folders = StorageFolders {
+            package_folder,
+            toml_folder,
+            readme_folder,
+        };
+        test_package.save(&storage_folders)?;
+
+        assert!(target_directory.path().join("some-package-name").exists());
+        target_directory.close()?;
+        Ok(())
+    }
 
     #[test]
     fn metadata_is_converted_to_bytes() -> Result<()> {

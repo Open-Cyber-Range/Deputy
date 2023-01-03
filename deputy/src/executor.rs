@@ -11,7 +11,7 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{
-    package::{Package, IndexInfo},
+    package::Package,
     project::create_project_from_toml_path,
     repository::{find_matching_index_info, get_or_clone_repository, pull_from_remote},
 };
@@ -99,14 +99,6 @@ impl Executor {
             )))
             .await??;
         let toml_path = find_toml(current_dir()?)?;
-        progress_actor
-            .send(AdvanceProgressBar(ProgressStatus::InProgress(
-                "Validating version".to_string(),
-            )))
-            .await??;
-        self.update_registry_repositories()?;
-        let registry_repository = self.get_registry(&options.registry_name)?;
-        IndexInfo::validate_version(&toml_path, registry_repository)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -114,14 +106,21 @@ impl Executor {
             )))
             .await??;
         let project = create_project_from_toml_path(&toml_path)?;
-
         let package = Package::from_file(project.package.readme, toml_path, options.compression)?;
+
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating client".to_string(),
             )))
             .await??;
         let client = self.try_create_client(options.registry_name)?;
+
+        progress_actor
+            .send(AdvanceProgressBar(ProgressStatus::InProgress(
+                "Validating version".to_string(),
+            )))
+            .await??;
+        client.validate_version(package.metadata.clone().name, package.metadata.clone().version).await?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),

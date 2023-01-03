@@ -70,4 +70,25 @@ impl Client {
             response.body().await?.to_vec(),
         )?)
     }
+
+    pub async fn validate_version(&self, name: String, version: String) -> Result<()> {
+        let get_uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(&format!("{name}/"))?
+            .join(&format!("{version}/"))?
+            .join("exists")?;
+        let mut response = self.client
+            .get(get_uri.to_string())
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to validate package version: {:?}", error))?;
+        if response.status().is_success() {
+            return Ok(());
+        };
+        Err(Client::response_to_error(
+            "Package version error",
+            response.body().await?.to_vec(),
+        )?)
+    }
 }

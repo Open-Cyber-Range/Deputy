@@ -8,11 +8,10 @@ use deputy_package_server::{
     configuration::read_configuration,
     routes::{
         basic::{status, version},
-        package::{add_package, download_package, get_all_packages},
+        package::{add_package, download_package, get_all_packages, get_readme, version_exists},
     },
     AppState,
 };
-use deputy_package_server::routes::package::get_readme;
 use deputy_package_server::services::database::Database;
 
 async fn real_main() -> Result<()> {
@@ -40,7 +39,8 @@ async fn real_main() -> Result<()> {
                     .service(get_all_packages)
                     .service(add_package)
                     .service(download_package)
-                    .service(get_readme),
+                    .service(get_readme)
+                    .service(version_exists),
             ),
         )
     })

@@ -55,7 +55,7 @@ impl Validate for Project {
     fn validate(&mut self) -> Result<()> {
         self.validate_content()?;
         validate_name(self.package.name.clone())?;
-        validate_version(self.package.version.clone())?;
+        validate_version_semantic(self.package.version.clone())?;
         validate_vm_accounts(self.virtual_machine.clone())?;
         validate_license(self.package.license.clone())?;
         Ok(())
@@ -72,7 +72,7 @@ pub fn validate_name(name: String) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_version(version: String) -> Result<()> {
+pub fn validate_version_semantic(version: String) -> Result<()> {
     match Version::parse(version.as_str()) {
         Ok(_) => Ok(()),
         Err(_) => Err(anyhow!(
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn negative_result_version_field() -> Result<()> {
         let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
-        assert!(validate_version(deserialized_toml.package.version).is_err());
+        assert!(validate_version_semantic(deserialized_toml.package.version).is_err());
         file.close()?;
         Ok(())
     }

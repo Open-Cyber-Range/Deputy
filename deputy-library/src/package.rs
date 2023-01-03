@@ -1,7 +1,6 @@
 use crate::{
     archiver,
     project::Body,
-    repository::find_index_info_by_package_name,
     StorageFolders,
 };
 
@@ -9,8 +8,6 @@ use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use futures::{Stream, StreamExt};
-use git2::Repository;
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -39,69 +36,6 @@ pub struct PackageMetadata {
     pub license: String,
     pub readme: String,
     pub readme_html: String,
-}
-
-impl PackageMetadata {
-    // pub fn get_latest_package_metadata(name: &str) -> Result<PackageMetadata> {
-    //     let package: crate::models::Package = app_state
-    //         .database_address
-    //         .send(GetPackageByNameAndVersion {
-    //             name: package_name.to_string(),
-    //             version: package_version.to_string(),
-    //         })
-    //         .await
-    //         .map_err(|error| {
-    //             error!("Failed to get package: {error}");
-    //             ServerResponseError(PackageServerError::Pagination.into())
-    //         })?
-    //         .map_err(|error| {
-    //             error!("Failed to get package: {error}");
-    //             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
-    //         })?;
-    // }
-}
-
-impl IndexInfo {
-    pub fn get_latest_index_info(name: &str, repository: &Repository) -> Result<Option<IndexInfo>> {
-        let index_info_list = find_index_info_by_package_name(repository, name)?;
-
-        let latest_index_info = index_info_list
-            .iter()
-            .max_by(|a, b| a.version.cmp(&b.version))
-            .cloned();
-
-        Ok(latest_index_info)
-    }
-
-    pub fn is_latest_version(&self, repository: &Repository) -> Result<bool> {
-        if let Some(current_latest_version) =
-            IndexInfo::get_latest_index_info(&self.name, repository)?
-        {
-            return Ok(self.version.parse::<Version>()?
-                > current_latest_version.version.parse::<Version>()?);
-        }
-        Ok(true)
-    }
-
-    pub fn validate_version(toml_path: &Path, registry_repository: &Repository) -> Result<()> {
-        let package_body = Body::create_from_toml(toml_path)?;
-        let index_info = IndexInfo {
-            name: package_body.name,
-            version: package_body.version,
-            checksum: "".to_string(),
-        };
-
-        if let Ok(is_valid) = index_info.is_latest_version(registry_repository) {
-            if !is_valid {
-                return Err(anyhow::anyhow!(
-                    "Package version on the server is either same or later"
-                ));
-            }
-        } else {
-            return Err(anyhow::anyhow!("Failed to validate versioning"));
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -480,8 +414,7 @@ impl TryFrom<&[u8]> for Package {
         let (package_toml, package_toml_end) =
             PackageFile::from_bytes(metadata_end, package_bytes)?;
         let (readme, readme_end) = PackageFile::from_bytes(package_toml_end, package_bytes)?;
-        let (readme, readme_string) = PackageFile::content_to_string(readme);
-        let readme_html = PackageFile::markdown_to_html(&readme_string);
+        let (readme, _readme_string) = PackageFile::content_to_string(readme);
         let (file, _) = PackageFile::from_bytes(readme_end, package_bytes)?;
 
         Ok(Package {

@@ -36,6 +36,7 @@ pub struct PackageMetadata {
     pub license: String,
     pub readme: String,
     pub readme_html: String,
+    pub checksum: String,
 }
 
 #[derive(Debug)]
@@ -169,20 +170,19 @@ impl Package {
 
     pub fn validate_checksum(&mut self) -> Result<()> {
         let calculated = self.file.calculate_checksum()?;
-/*
-        if calculated != self.index_info.checksum {
+        if calculated != self.metadata.checksum {
             return Err(anyhow!(
                 "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
                 calculated,
-                self.index_info.checksum
+                self.metadata.checksum
             ));
         }
-*/
         Ok(())
     }
 
-    fn gather_metadata(toml_path: &Path) -> Result<PackageMetadata> {
+    fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
+        let archive_file = File::open(archive_path)?;
         let readme_html = PackageFile::markdown_to_html(&package_body.readme);
         Ok(PackageMetadata {
             name: package_body.name,
@@ -192,6 +192,7 @@ impl Package {
             // TODO this is just the path of readme, not the file content itself
             // Upon removing index_repository, this will also be removed
             readme_html,
+            checksum: PackageFile(archive_file, None).calculate_checksum()?,
         })
     }
 
@@ -201,7 +202,7 @@ impl Package {
         compression: u32,
     ) -> Result<Self> {
         let archive_path = archiver::create_package(&package_toml_path, compression)?;
-        let metadata = Self::gather_metadata(&package_toml_path)?;
+        let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let package_toml = File::open(package_toml_path)?;
         let readme = PackageFile(File::open(readme_path)?, None);

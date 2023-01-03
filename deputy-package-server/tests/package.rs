@@ -36,7 +36,7 @@ mod tests {
         .await;
 
         let test_package = create_test_package()?;
-        let package_name = test_package.index_info.name.clone();
+        let package_name = test_package.metadata.name.clone();
 
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
@@ -59,7 +59,7 @@ mod tests {
         .await;
 
         let test_package = create_test_package()?;
-        let package_name = test_package.index_info.name.clone();
+        let package_name = test_package.metadata.name.clone();
 
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
@@ -82,7 +82,7 @@ mod tests {
         .await;
 
         let mut test_package = create_test_package()?;
-        test_package.index_info.checksum = String::from("ssssss");
+        test_package.metadata.checksum = String::from("ssssss");
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
@@ -130,8 +130,8 @@ mod tests {
 
         let test_package = create_test_package()?;
 
-        let package_name = test_package.index_info.name.clone();
-        let package_version = test_package.index_info.version.clone();
+        let package_name = test_package.metadata.name.clone();
+        let package_version = test_package.metadata.version.clone();
 
         let app = test::init_service(
             App::new()

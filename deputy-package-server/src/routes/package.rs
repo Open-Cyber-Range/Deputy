@@ -151,6 +151,7 @@ pub async fn add_package(
         license: package_metadata.clone().license,
         readme: readme_string,
         readme_html,
+        checksum: package_metadata.clone().checksum,
     };
     let mut package = Package::new(metadata, toml_file, readme, archive_file);
     package.validate().map_err(|error| {

@@ -95,6 +95,30 @@ impl Client {
         )?)
     }
 
+    pub async fn try_get_latest_version(&self, name: String, version: String) -> Result<String> {
+        let get_uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(&format!("{name}/"))?
+            .join(&format!("{version}/"))?
+            .join("try_get_latest")?;
+        let mut response = self
+            .client
+            .get(get_uri.to_string())
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to check if latest version: {:?}", error))?;
+        if response.status().is_success() {
+            let version = String::from_utf8(Vec::from(response.body().await?))?;
+            return Ok(version);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to check if latest version",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
     pub async fn validate_version(&self, name: String, version: String) -> Result<()> {
         let get_uri = self
             .api_base_url

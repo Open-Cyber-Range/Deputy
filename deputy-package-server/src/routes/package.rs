@@ -23,7 +23,7 @@ use futures::{Stream, StreamExt};
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
-use crate::models::helpers::versioning::{get_package_by_name_and_version, get_packages_by_name, validate_version};
+use crate::models::helpers::versioning::{get_latest_version, get_package_by_name_and_version, get_packages_by_name, validate_version};
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
@@ -316,6 +316,39 @@ pub async fn get_metadata(
         app_state,
     ).await?;
     Ok(Json(package))
+}
+
+#[get("package/{package_name}/{package_version}/try_get_latest")]
+pub async fn try_get_latest_version(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    /*
+    Check if wanted version is latest.
+    If yes, then return it
+    If no, query db and return latest
+     */
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state.clone()).await?;
+    // TODO think about how to make it not print errors in server logs
+    if validate_version(package_version, same_name_packages.clone()).is_ok() {
+        return Ok(HttpResponse::Ok().body(package_version.to_string()));
+    }
+
+    let latest_version = get_latest_version(same_name_packages);
+    if let Err(error) = latest_version {
+        return Err(error);
+    };
+    Ok(HttpResponse::Ok().body(latest_version?))
 }
 
 #[get("package/{package_name}/{package_version}/readme")]

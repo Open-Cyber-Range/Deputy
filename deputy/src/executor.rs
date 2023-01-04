@@ -41,8 +41,21 @@ impl Executor {
         version_requirement: &str,
     ) -> Result<String> {
         let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
-        let metadata = client.get_package_metadata(package_name.to_string(), version_requirement.to_string()).await?;
-        Ok(metadata.version)
+        let metadata = client.get_package_metadata(package_name.to_string(), version_requirement.to_string()).await;
+        if metadata.is_ok() {
+            Ok(metadata?.version)
+        } else {
+            Ok(self.get_latest_version(client, package_name, version_requirement).await?)
+        }
+    }
+
+    async fn get_latest_version(
+        &self,
+        client: Client,
+        package_name: &str,
+        version_requirement: &str,
+    ) -> Result<String> {
+        client.try_get_latest_version(package_name.to_string(), version_requirement.to_string()).await
     }
 
     pub fn new(configuration: Configuration) -> Self {
@@ -145,9 +158,13 @@ impl Executor {
 
     pub async fn checksum(&self, options: ChecksumOptions) -> Result<()> {
         let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
+        let version = self.get_version(
+            &options.package_name,
+            &options.version_requirement,
+        ).await?;
         let checksum = client.get_package_metadata(
             options.package_name.to_string(),
-            options.version_requirement.to_string()
+            version,
         ).await?.checksum;
         println!("{checksum}");
         Ok(())

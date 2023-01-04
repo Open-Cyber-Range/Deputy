@@ -62,6 +62,16 @@ fn is_latest_version (
     }
 }
 
+pub fn get_latest_version (
+    packages: Vec<Package>,
+) -> Result<String, Error> {
+    let latest_package = get_latest_package(packages);
+    match latest_package {
+        Some(package) => Ok(package.version),
+        None => Err(ServerResponseError(PackageServerError::DatabaseRecordNotFound.into()).into())
+    }
+}
+
 pub fn validate_version (uploadable_version: &str, packages: Vec<Package>) -> Result<HttpResponse, Error> {
     if let Ok(is_valid) = is_latest_version(uploadable_version, packages) {
         if !is_valid {

@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{anyhow, Error, Result};
 use awc::Client as ActixWebClient;
-use deputy_library::package::PackageStream;
+use deputy_library::package::{PackageMetadata, PackageStream};
 use log::error;
 use std::str::from_utf8;
 use url::Url;
@@ -67,6 +67,30 @@ impl Client {
 
         Err(Client::response_to_error(
             "Failed to download package",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn get_package_metadata(&self, name: String, version: String) -> Result<PackageMetadata> {
+        let get_uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(&format!("{name}/"))?
+            .join(&format!("{version}/"))?
+            .join("metadata")?;
+        let mut response = self
+            .client
+            .get(get_uri.to_string())
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
+        if response.status().is_success() {
+            let metadata = PackageMetadata::try_from(&*response.body().await?.to_vec())?;
+            return Ok(metadata);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to fetch package metadata",
             response.body().await?.to_vec(),
         )?)
     }

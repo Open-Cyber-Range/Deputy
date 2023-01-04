@@ -168,6 +168,7 @@ pub async fn add_package(
             license: package.metadata.clone().license,
             readme: package.metadata.clone().readme,
             readme_html: package.metadata.clone().readme_html,
+            checksum: package.metadata.clone().checksum,
         }))
         .await
         .map_err(|error| {
@@ -359,8 +360,6 @@ pub async fn version_exists(
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
     let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state.clone()).await?;
-    if let Err(error) = validate_version(package_version, same_name_packages) {
-        return Err(error);
-    };
+    validate_version(package_version, same_name_packages)?;
     Ok(HttpResponse::Ok().body("OK"))
 }

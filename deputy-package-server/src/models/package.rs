@@ -18,6 +18,7 @@ pub struct Package {
     pub license: String,
     pub readme: String,
     pub readme_html: String,
+    pub checksum: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -76,6 +77,7 @@ pub struct NewPackage {
     pub license: String,
     pub readme: String,
     pub readme_html: String,
+    pub checksum: String,
 }
 
 impl NewPackage {

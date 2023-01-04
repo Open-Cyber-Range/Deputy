@@ -1,4 +1,3 @@
-mod repository;
 mod test_backend;
 
 #[cfg(test)]
@@ -31,7 +30,6 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
 
         assert!(&temp_dir.path().join("some-package-name-0.1.0").exists());
         Ok(())

@@ -1,4 +1,3 @@
-mod repository;
 mod test_backend;
 
 #[cfg(test)]
@@ -124,7 +123,6 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
 
         Ok(())
     }
@@ -156,7 +154,6 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
 
         Ok(())
     }

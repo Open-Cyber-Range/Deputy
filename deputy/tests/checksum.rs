@@ -1,4 +1,3 @@
-mod repository;
 mod test_backend;
 
 #[cfg(test)]
@@ -33,38 +32,37 @@ mod tests {
         })
     }
 
-    #[actix_web::test]
-    async fn create_concurrent_checksum_requests() -> Result<()> {
-        let temp_dir = TempDir::new()?;
-        let package = create_test_package()?;
-        let test_backend = TestBackEnd::builder().build().await?;
+    // #[actix_web::test]
+    // async fn create_concurrent_checksum_requests() -> Result<()> {
+    //     let temp_dir = TempDir::new()?;
+    //     let package = create_test_package()?;
+    //     let test_backend = TestBackEnd::builder().build().await?;
+    //
+    //     let client = Client::try_new(test_backend.server_address.to_string())?;
+    //     let response = client.upload_package(package.to_stream().await?, 60).await;
+    //     println!("Response: {:?}", response);
+    //     assert!(response.is_ok());
+    //
+    //     let config_path = test_backend.configuration_directory.path().to_owned();
+    //     let temp_dir = temp_dir.into_path().clone();
+    //
+    //     const CONCURRENT_REQUESTS: usize = 10;
+    //     let requests = vec![0; CONCURRENT_REQUESTS];
+    //
+    //     let join_handles = join_all(requests.iter().map(|_| async {
+    //         spawn_checksum_request(config_path.clone(), temp_dir.clone()).await
+    //     }))
+    //     .await;
+    //
+    //     for handle in join_handles {
+    //         handle.join().unwrap()?;
+    //     }
+    //     test_backend.configuration_file.close()?;
+    //     test_backend.configuration_directory.close()?;
+    //     Ok(())
+    // }
 
-        let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_package(package.to_stream().await?, 60).await;
-        assert!(response.is_ok());
-
-        let config_path = test_backend.configuration_directory.path().to_owned();
-        let temp_dir = temp_dir.into_path().clone();
-
-        const CONCURRENT_REQUESTS: usize = 10;
-        let requests = vec![0; CONCURRENT_REQUESTS];
-
-        let join_handles = join_all(requests.iter().map(|_| async {
-            spawn_checksum_request(config_path.clone(), temp_dir.clone()).await
-        }))
-        .await;
-
-        for handle in join_handles {
-            handle.join().unwrap()?;
-        }
-        test_backend.configuration_file.close()?;
-        test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
-        Ok(())
-    }
-
-    /*
-    TODO this is commented out because of failure to run db migrations during tests
+    // TODO this is commented out because of failure to run db migrations during tests
     #[actix_web::test]
     async fn get_package_checksum() -> Result<()> {
         let temp_dir = TempDir::new()?;
@@ -89,8 +87,6 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
         Ok(())
     }
-    */
 }

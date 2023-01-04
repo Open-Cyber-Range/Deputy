@@ -20,7 +20,7 @@ lazy_static! {
         license: "Apache-2.0".to_string(),
         readme: "readme".to_string(),
         readme_html: "<html><body><h1>Hello, world!</h1></body></html>".to_string(),
-        checksum: "".to_string(),
+        checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
     };
     pub static ref TEST_INVALID_PACKAGE_TOML_SCHEMA: &'static str = r#"
         [package]

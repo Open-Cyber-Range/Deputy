@@ -344,11 +344,8 @@ pub async fn try_get_latest_version(
         return Ok(HttpResponse::Ok().body(package_version.to_string()));
     }
 
-    let latest_version = get_latest_version(same_name_packages);
-    if let Err(error) = latest_version {
-        return Err(error);
-    };
-    Ok(HttpResponse::Ok().body(latest_version?))
+    let latest_version = get_latest_version(same_name_packages)?;
+    Ok(HttpResponse::Ok().body(latest_version))
 }
 
 #[get("package/{package_name}/{package_version}/readme")]

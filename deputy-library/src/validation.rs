@@ -359,8 +359,13 @@ mod tests {
             [content]
             type = "condition"
             [condition]
-            command = "executable/path.sh"
+            action = "executable/path.sh"
             interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
@@ -415,8 +420,13 @@ mod tests {
             [content]
             type = "feature"
             [condition]
-            command = "executable/path.sh"
+            action = "executable/path.sh"
             interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 
@@ -445,8 +455,13 @@ mod tests {
             ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
             ]
             [condition]
-            command = "executable/path.sh"
+            action = "executable/path.sh"
             interval = 30
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 

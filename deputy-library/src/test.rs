@@ -9,6 +9,7 @@ use std::{fs::File, io::Write};
 use tempfile::{Builder, NamedTempFile, TempDir, TempPath};
 
 lazy_static! {
+    // TODO remove
     pub static ref TEST_INDEX_INFO: IndexInfo = IndexInfo {
         checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
         version: "0.1.0".to_string(),

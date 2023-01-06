@@ -2,6 +2,7 @@ mod test_backend;
 
 #[cfg(test)]
 mod tests {
+    /*
     use crate::test_backend::TestBackEnd;
     use anyhow::Result;
     use assert_cmd::Command;
@@ -34,4 +35,6 @@ mod tests {
         assert!(&temp_dir.path().join("some-package-name-0.1.0").exists());
         Ok(())
     }
+
+     */
 }

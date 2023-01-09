@@ -36,8 +36,6 @@ impl Validate for PackageMetadata {
         if self.version.parse::<Version>().is_err() {
             return Err(anyhow!("Package version is not valid"));
         }
-        // TODO validation for other fields, checksum
-        /*
         if self.checksum.is_empty() {
             return Err(anyhow!("Package checksum is empty"));
         }
@@ -46,7 +44,6 @@ impl Validate for PackageMetadata {
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
-         */
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     project::*,
 };
 use anyhow::{anyhow, Result};
-use semver::Version;
+use semver::{Version, VersionReq};
 use spdx;
 use crate::package::PackageMetadata;
 
@@ -70,7 +70,7 @@ pub fn validate_name(name: String) -> Result<()> {
 }
 
 pub fn validate_version_semantic(version: String) -> Result<()> {
-    match Version::parse(version.as_str()) {
+    match VersionReq::parse(version.as_str()) {
         Ok(_) => Ok(()),
         Err(_) => Err(anyhow!(
             "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",

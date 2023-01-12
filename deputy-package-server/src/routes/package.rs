@@ -180,7 +180,6 @@ pub async fn add_package(
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
-    // TODO Remove deputy repository usage
     package
         .save(&app_state.storage_folders)
         .map_err(|error| {

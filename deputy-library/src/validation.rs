@@ -39,7 +39,7 @@ impl Validate for PackageMetadata {
         if self.checksum.is_empty() {
             return Err(anyhow!("Package checksum is empty"));
         }
-        if !(self.checksum.len() == constants::SHA256_LENGTH as usize
+        if !(self.checksum.len() == constants::SHA256_LENGTH
             && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
         {
             return Err(anyhow!("Package checksum is not valid"));
@@ -147,7 +147,7 @@ mod tests {
         let mut contents = String::new();
         let mut read_file = File::open(file.path())?;
         read_file.read_to_string(&mut contents)?;
-        let deserialized_toml: Project = toml::from_str(&*contents)?;
+        let deserialized_toml: Project = toml::from_str(&contents)?;
         Ok(deserialized_toml)
     }
 
@@ -170,7 +170,7 @@ mod tests {
     fn positive_result_all_fields_correct() -> Result<()> {
         let (file, _deserialized_toml) =
             create_temp_file(TEST_VALID_PACKAGE_TOML_SCHEMA.as_bytes())?;
-        assert!(validate_package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(file.path()).is_ok());
         file.close()?;
         Ok(())
     }
@@ -256,7 +256,7 @@ mod tests {
             file_path = "some-path"
             "#;
         let (file, _) = create_temp_file(toml_content)?;
-        assert!(validate_package_toml(&file.path()).is_err());
+        assert!(validate_package_toml(file.path()).is_err());
         file.close()?;
         Ok(())
     }
@@ -278,7 +278,7 @@ mod tests {
             file_path = "some-path"
             "#;
         let (file, _) = create_temp_file(toml_content)?;
-        assert!(validate_package_toml(&file.path()).is_err());
+        assert!(validate_package_toml(file.path()).is_err());
         file.close()?;
         Ok(())
     }
@@ -305,7 +305,7 @@ mod tests {
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(file.path()).is_ok());
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -335,7 +335,7 @@ mod tests {
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(file.path()).is_ok());
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -366,7 +366,7 @@ mod tests {
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(file.path()).is_ok());
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -396,7 +396,7 @@ mod tests {
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_ok());
+        assert!(validate_package_toml(file.path()).is_ok());
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -427,7 +427,7 @@ mod tests {
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_err());
+        assert!(validate_package_toml(file.path()).is_err());
         file.close()?;
         Ok(())
     }
@@ -462,7 +462,7 @@ mod tests {
             "#;
         let (file, _) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(&file.path()).is_err());
+        assert!(validate_package_toml(file.path()).is_err());
         file.close()?;
         Ok(())
     }

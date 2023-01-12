@@ -1,4 +1,9 @@
-use crate::{configuration::Configuration, routes::package::{add_package, download_package}, AppState, Database};
+use crate::{
+    configuration::Configuration,
+    routes::package::{add_package, download_package},
+    AppState, Database,
+};
+use actix::Actor;
 use actix_web::{
     web::{scope, Data},
     App, HttpServer,
@@ -16,7 +21,6 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use actix::Actor;
 use tokio::{
     sync::oneshot::{channel, Sender},
     time::timeout,
@@ -148,8 +152,8 @@ pub fn get_predictable_temporary_folders(randomizer: String) -> Result<(String, 
 pub fn create_predictable_temporary_folders(randomizer: String) -> Result<(String, String)> {
     let (package_string, repository_string) = get_predictable_temporary_folders(randomizer)?;
 
-    create_dir_all(&PathBuf::from(package_string.clone()))?;
-    create_dir_all(&PathBuf::from(repository_string.clone()))?;
+    create_dir_all(PathBuf::from(package_string.clone()))?;
+    create_dir_all(PathBuf::from(repository_string.clone()))?;
     Ok((package_string, repository_string))
 }
 
@@ -160,7 +164,7 @@ pub fn create_test_app_state(randomizer: String) -> Result<Data<AppState>> {
     create_dir_all(&package_folder)?;
     let repository_folder: PathBuf =
         temporary_directory.join(format!("test-repository-folder-{}", randomizer));
-    create_dir_all(&repository_folder)?;
+    create_dir_all(repository_folder)?;
     let toml_folder: PathBuf = temporary_directory.join(format!("test-toml-folder-{}", randomizer));
     create_dir_all(&toml_folder)?;
     let readme_folder: PathBuf =

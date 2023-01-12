@@ -147,7 +147,7 @@ pub fn create_package(toml_path: &PathBuf, compression: u32) -> Result<PathBuf> 
     )?;
     let compressed_file_path = compress_archive(&archive_path, compression)?;
     remove_file(&archive_path)?;
-    rename(&compressed_file_path, &destination_file_path)?;
+    rename(compressed_file_path, &destination_file_path)?;
 
     Ok(destination_file_path)
 }
@@ -188,7 +188,7 @@ mod tests {
             .rand_bytes(0)
             .tempdir_in(&temp_project.target_dir)
             .unwrap();
-        let mut archive = Archive::new(File::open(&archive_path)?);
+        let mut archive = Archive::new(File::open(archive_path)?);
         archive.unpack(extraction_dir.path())?;
 
         let target_dir_exists = temp_project.target_dir.path().is_dir();

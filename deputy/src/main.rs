@@ -29,14 +29,14 @@ enum Commands {
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    let executor = Executor::try_new(Configuration::get_configuration()?)?;
+    let executor = Executor::new(Configuration::get_configuration()?);
 
     let result = match args.command {
         Commands::Publish(options) => executor.publish(options).await,
         Commands::Fetch(options) => executor.fetch(options).await,
-        Commands::Checksum(options) => executor.checksum(options),
+        Commands::Checksum(options) => executor.checksum(options).await,
         Commands::ParseTOML(options) => executor.parse_toml(options),
-        Commands::NormalizeVersion(options) => executor.normalize_version(options),
+        Commands::NormalizeVersion(options) => executor.normalize_version(options).await,
     };
     if let Err(error) = result {
         print_error_message(error);

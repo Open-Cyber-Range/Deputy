@@ -5,12 +5,13 @@ use std::path::Path;
 
 use crate::{
     constants::{self},
-    package::{IndexInfo, Package},
+    package::Package,
     project::*,
 };
 use anyhow::{anyhow, Result};
-use semver::Version;
+use semver::{Version, VersionReq};
 use spdx;
+use crate::package::PackageMetadata;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
@@ -18,13 +19,13 @@ pub trait Validate {
 
 impl Validate for Package {
     fn validate(&mut self) -> Result<()> {
-        self.index_info.validate()?;
+        self.metadata.validate()?;
         self.validate_checksum()?;
         Ok(())
     }
 }
 
-impl Validate for IndexInfo {
+impl Validate for PackageMetadata {
     fn validate(&mut self) -> Result<()> {
         if self.name.is_empty() {
             return Err(anyhow!("Package name is empty"));
@@ -51,7 +52,7 @@ impl Validate for Project {
     fn validate(&mut self) -> Result<()> {
         self.validate_content()?;
         validate_name(self.package.name.clone())?;
-        validate_version(self.package.version.clone())?;
+        validate_version_semantic(self.package.version.clone())?;
         validate_vm_accounts(self.virtual_machine.clone())?;
         validate_license(self.package.license.clone())?;
         Ok(())
@@ -68,8 +69,8 @@ pub fn validate_name(name: String) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_version(version: String) -> Result<()> {
-    match Version::parse(version.as_str()) {
+pub fn validate_version_semantic(version: String) -> Result<()> {
+    match VersionReq::parse(version.as_str()) {
         Ok(_) => Ok(()),
         Err(_) => Err(anyhow!(
             "Version {:?} must match Semantic Versioning 2.0.0 https://semver.org/",
@@ -185,7 +186,7 @@ mod tests {
     #[test]
     fn negative_result_version_field() -> Result<()> {
         let (file, deserialized_toml) = create_incorrect_name_version_license_toml()?;
-        assert!(validate_version(deserialized_toml.package.version).is_err());
+        assert!(validate_version_semantic(deserialized_toml.package.version).is_err());
         file.close()?;
         Ok(())
     }

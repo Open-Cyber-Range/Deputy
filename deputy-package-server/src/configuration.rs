@@ -1,5 +1,5 @@
 use anyhow::{Error, Result};
-use deputy_library::{repository::RepositoryConfiguration, StorageFolders};
+use deputy_library::StorageFolders;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 
@@ -7,7 +7,6 @@ use std::fs::read_to_string;
 pub struct Configuration {
     pub host: String,
     pub port: u16,
-    pub repository: RepositoryConfiguration,
     pub storage_folders: StorageFolders,
     pub database_url: String,
 }
@@ -40,10 +39,6 @@ mod tests {
             r#"
 host: localhost
 port: 8080
-repository:
-  folder: /tmp/test-repo
-  username: some-username
-  email: some@email.com
 storage_folders:
   toml_folder: /tmp/tomls
   readme_folder: /tmp/readmes

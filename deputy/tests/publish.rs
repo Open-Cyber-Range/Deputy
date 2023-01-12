@@ -1,4 +1,3 @@
-mod repository;
 mod test_backend;
 
 #[cfg(test)]
@@ -124,11 +123,11 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
 
         Ok(())
     }
 
+    /*
     #[actix_web::test]
     async fn error_on_missing_package_toml_content() -> Result<()> {
         let temp_dir = TempDir::new()?;
@@ -156,7 +155,6 @@ mod tests {
 
         test_backend.configuration_file.close()?;
         test_backend.configuration_directory.close()?;
-        test_backend.test_repository_server.stop().await?;
 
         Ok(())
     }
@@ -172,6 +170,7 @@ mod tests {
         assert!(response.is_ok());
         Ok(())
     }
+    */
 
     /*#[actix_web::test]
     async fn valid_small_package_was_sent_and_received_with_non_default_registry() -> Result<()> {

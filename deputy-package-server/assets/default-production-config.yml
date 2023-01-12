@@ -1,9 +1,5 @@
 host: 0.0.0.0
 port: 8080
-repository:
-  folder: /var/opt/deputy/deputy-package-server/repository
-  username: deputy
-  email: deputy@localhost
 storage_folders:
   package_folder: /var/opt/deputy/deputy-package-server/package
   toml_folder: /var/opt/deputy/deputy-package-server/toml

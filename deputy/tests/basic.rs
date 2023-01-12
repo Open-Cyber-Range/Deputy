@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-mod repository;
 mod test_backend;
 
 #[cfg(test)]
@@ -17,7 +16,6 @@ mod tests {
         let mut command = Command::cargo_bin("deputy")?;
         let (configuration_directory, configuration_file) =
             TestBackEndBuilder::create_temp_configuration_file(
-                "does-not-matter",
                 "does-not-matter",
                 "does-not-matter",
             )?;

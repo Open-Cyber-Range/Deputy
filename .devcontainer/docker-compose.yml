@@ -19,11 +19,6 @@ services:
     environment:
       - RUST_LOG=debug
 
-  index-repository:
-    image: nexus.ocr.cr14.net:8003/deputy-repository-server
-    volumes:
-      - ./deputy-repository/.git:/srv/git/index.git
-
   deputy-mariadb:
     image: nexus.ocr.cr14.net:8003/mariadb:10.7
     ports:

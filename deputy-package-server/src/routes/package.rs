@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackageByNameAndVersion, GetPackages};
+use crate::services::database::package::{CreatePackage, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -15,32 +15,15 @@ use actix_web::{
 use anyhow::Result;
 use deputy_library::{
     constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, IndexInfo, Package, PackageFile},
-    validation::{validate_name, validate_version, Validate},
+    package::{FromBytes, Package, PackageFile, PackageMetadata},
+    validation::{validate_name, validate_version_semantic, Validate},
 };
 use divrem::DivCeil;
 use futures::{Stream, StreamExt};
-use git2::Repository;
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
-use deputy_library::package::PackageMetadata;
-
-fn check_for_version_error(
-    package_metadata: &IndexInfo,
-    repository: &Repository,
-) -> Result<(), Error> {
-    if let Ok(is_valid) = package_metadata.is_latest_version(repository) {
-        if !is_valid {
-            error!("Package version on the server is either same or later");
-            return Err(ServerResponseError(PackageServerError::VersionConflict.into()).into());
-        }
-    } else {
-        error!("Failed to validate versioning");
-        return Err(ServerResponseError(PackageServerError::VersionParse.into()).into());
-    }
-    Ok(())
-}
+use crate::models::helpers::versioning::{get_latest_version, get_package_by_name_and_version, get_packages_by_name, validate_version};
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
@@ -57,10 +40,10 @@ pub async fn add_package(
     mut body: Payload,
     app_state: Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let index_info = if let Some(Ok(metadata_bytes)) = body.next().await {
+    let package_metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
-        let result = IndexInfo::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package index info: {error}");
+        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
             ServerResponseError(PackageServerError::MetadataParse.into())
         });
         if let Err(error) = result {
@@ -69,12 +52,12 @@ pub async fn add_package(
         }
         result?
     } else {
-        error!("Invalid stream chunk: No index info");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No index info"));
+        error!("Invalid stream chunk: No package metadata");
+        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No package metadata"));
     };
 
-    let repository = &app_state.repository.lock().await;
-    if let Err(error) = check_for_version_error(&index_info, repository) {
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
+    if let Err(error) = validate_version(package_metadata.version.as_str(), same_name_packages) {
         drain_stream(body).await?;
         return Err(error);
     }
@@ -162,15 +145,15 @@ pub async fn add_package(
     let (readme, readme_string) = PackageFile::content_to_string(readme);
     let readme_html: String = PackageFile::markdown_to_html(&readme_string);
 
-    // TODO - this data should be fetched from toml file
     let metadata = PackageMetadata {
-        name: index_info.clone().name,
-        version: index_info.clone().version,
-        license: "TODO".to_string(),
+        name: package_metadata.clone().name,
+        version: package_metadata.clone().version,
+        license: package_metadata.clone().license,
         readme: readme_string,
         readme_html,
+        checksum: package_metadata.clone().checksum,
     };
-    let mut package = Package::new(index_info, toml_file, readme, archive_file, metadata);
+    let mut package = Package::new(metadata, toml_file, readme, archive_file);
     package.validate().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
@@ -185,6 +168,7 @@ pub async fn add_package(
             license: package.metadata.clone().license,
             readme: package.metadata.clone().readme,
             readme_html: package.metadata.clone().readme_html,
+            checksum: package.metadata.clone().checksum,
         }))
         .await
         .map_err(|error| {
@@ -196,9 +180,8 @@ pub async fn add_package(
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
-    // TODO Remove deputy repository usage
     package
-        .save(&app_state.storage_folders, repository)
+        .save(&app_state.storage_folders)
         .map_err(|error| {
             error!("Failed to save the package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
@@ -219,7 +202,7 @@ pub async fn download_package(
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-    validate_version(package_version.to_string()).map_err(|error| {
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
@@ -288,7 +271,7 @@ pub async fn download_file(
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
 
-    validate_version(package_version.to_string()).map_err(|error| {
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
@@ -315,30 +298,56 @@ pub async fn download_file(
 pub async fn get_metadata(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState>,
-) -> Result<Json<IndexInfo>, Error> {
+) -> Result<Json<crate::models::Package>, Error> {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
     validate_name(package_name.to_string()).map_err(|error| {
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-    validate_version(package_version.to_string()).map_err(|error| {
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
-    let repository = &app_state.repository.lock().await;
-    let metadata =
-        IndexInfo::get_latest_index_info(package_name.as_str(), repository).map_err(|error| {
-            error!("Failed to get latest metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        })?;
-    match metadata {
-        Some(inner) => Ok(Json(inner)),
-        None => {
-            error!("Failed to get latest metadata");
-            Err(ServerResponseError(PackageServerError::MetadataParse.into()).into())
-        }
+    let package: crate::models::Package = get_package_by_name_and_version(
+        package_name.to_string(),
+        package_version.to_string(),
+        app_state,
+    ).await.map_err(|error| {
+        error!("Failed: {error}");
+        ServerResponseError(PackageServerError::PackageValidation.into())
+    })?;
+    Ok(Json(package))
+}
+
+#[get("package/{package_name}/{package_version}/try_get_latest")]
+pub async fn try_get_latest_version(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    /*
+    Check if wanted version is latest.
+    If yes, then return it
+    If no, query db and return latest
+     */
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
+    // TODO think about how to make it not print errors in server logs
+    if validate_version(package_version, same_name_packages.clone()).is_ok() {
+        return Ok(HttpResponse::Ok().body(package_version.to_string()));
     }
+
+    let latest_version = get_latest_version(same_name_packages)?;
+    Ok(HttpResponse::Ok().body(latest_version))
 }
 
 #[get("package/{package_name}/{package_version}/readme")]
@@ -353,25 +362,36 @@ pub async fn get_readme(
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-    validate_version(package_version.to_string()).map_err(|error| {
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
 
-    let package: crate::models::Package = app_state
-        .database_address
-        .send(GetPackageByNameAndVersion {
-            name: package_name.to_string(),
-            version: package_version.to_string(),
-        })
-        .await
-        .map_err(|error| {
-            error!("Failed to get package: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?
-        .map_err(|error| {
-            error!("Failed to get package: {error}");
-            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
-        })?;
+    let package: crate::models::Package = get_package_by_name_and_version(
+        package_name.to_string(),
+        package_version.to_string(),
+        app_state,
+    ).await?;
     Ok(package.readme)
+}
+
+#[get("package/{package_name}/{package_version}/exists")]
+pub async fn version_exists(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
+    validate_version(package_version, same_name_packages)?;
+    Ok(HttpResponse::Ok().body("OK"))
 }

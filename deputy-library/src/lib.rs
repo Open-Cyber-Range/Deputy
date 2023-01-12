@@ -9,7 +9,6 @@ pub mod constants;
 pub mod lockfile;
 pub mod package;
 pub mod project;
-pub mod repository;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod validation;

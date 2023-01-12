@@ -1,9 +1,5 @@
 host: localhost
 port: 8080
-repository:
-  folder: /tmp/test-repo
-  username: some-username
-  email: some@email.com
 storage_folders:
   package_folder: /tmp/packages
   toml_folder: /tmp/tomls

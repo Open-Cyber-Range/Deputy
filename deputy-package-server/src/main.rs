@@ -4,19 +4,15 @@ use actix_web::{
     App, HttpServer,
 };
 use anyhow::{Ok, Result};
-use deputy_library::repository::get_or_create_repository;
 use deputy_package_server::{
     configuration::read_configuration,
     routes::{
         basic::{status, version},
-        package::{add_package, download_package, get_all_packages},
+        package::{add_package, download_package, get_all_packages, get_metadata, get_readme,
+                  try_get_latest_version, version_exists},
     },
     AppState,
 };
-use futures::lock::Mutex;
-use log::error;
-use std::sync::Arc;
-use deputy_package_server::routes::package::get_readme;
 use deputy_package_server::services::database::Database;
 
 async fn real_main() -> Result<()> {
@@ -31,32 +27,30 @@ async fn real_main() -> Result<()> {
         })
         .start();
 
-    if let Result::Ok(repository) = get_or_create_repository(&configuration.repository) {
-        let app_state = AppState {
-            repository: Arc::new(Mutex::new(repository)),
-            storage_folders: configuration.storage_folders,
-            database_address: database,
-        };
+    let app_state = AppState {
+        storage_folders: configuration.storage_folders,
+        database_address: database,
+    };
 
-        HttpServer::new(move || {
-            let app_data = Data::new(app_state.clone());
-            App::new().app_data(app_data).service(
-                scope("/api").service(status).service(version).service(
-                    scope("/v1")
-                        .service(get_all_packages)
-                        .service(add_package)
-                        .service(download_package)
-                        .service(get_readme),
-                ),
-            )
-        })
-        .bind((configuration.host, configuration.port))?
-        .run()
-        .await?;
-        return Ok(());
-    }
-    error!("Failed to get the repository for keeping the index");
-    panic!("Failed to get the repository for keeping the index");
+    HttpServer::new(move || {
+        let app_data = Data::new(app_state.clone());
+        App::new().app_data(app_data).service(
+            scope("/api").service(status).service(version).service(
+                scope("/v1")
+                    .service(get_all_packages)
+                    .service(add_package)
+                    .service(download_package)
+                    .service(get_readme)
+                    .service(get_metadata)
+                    .service(try_get_latest_version)
+                    .service(version_exists),
+            ),
+        )
+    })
+    .bind((configuration.host, configuration.port))?
+    .run()
+    .await?;
+    Ok(())
 }
 
 #[actix_web::main]

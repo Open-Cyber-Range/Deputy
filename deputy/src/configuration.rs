@@ -6,13 +6,11 @@ use std::{collections::HashMap, env, fs::read_to_string, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Registry {
-    pub index: String,
     pub api: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct PackageDownload {
-    pub index_path: String,
     pub download_path: String,
 }
 
@@ -47,10 +45,9 @@ mod tests {
     fn create_temp_configuration_file() -> Result<(TempDir, NamedTempFile)> {
         let configuration_file_contents = br#"
                 [registries]
-                main-registry = { index = "registry-index", api = "apilink" }
+                main-registry = { api = "apilink" }
 
                 [package]
-                index_path = "./index"
                 download_path = "./download"
                 "#;
         let configuration_directory = tempdir()?;
@@ -80,15 +77,6 @@ mod tests {
                 .api,
             "apilink"
         );
-        assert_eq!(
-            configuration
-                .registries
-                .get(DEFAULT_REGISTRY_NAME)
-                .unwrap()
-                .index,
-            "registry-index"
-        );
-        assert_eq!(configuration.package.index_path, "./index");
         configuration_file.close()?;
         configuration_directory.close()?;
         Ok(())

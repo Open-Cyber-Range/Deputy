@@ -55,7 +55,7 @@ impl TestBackEndBuilder {
         api_address: &str,
     ) -> Result<(TempDir, NamedTempFile)> {
         let configuration_file_contents = format!(
-            "[registries]\n{registry_name} = {{ index = \"TODO useless field here\", api = \"{api_address}\" }}\n[package]\nindex_path = \"./index\"\ndownload_path = \"./download\"",
+            "[registries]\n{registry_name} = {{ api = \"{api_address}\" }}\n[package]\ndownload_path = \"./download\"",
         );
 
         let configuration_directory = tempdir()?;

@@ -23,13 +23,6 @@ use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct IndexInfo {
-    pub name: String,
-    pub version: String,
-    pub checksum: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
     pub version: String,
@@ -183,14 +176,14 @@ impl Package {
     fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
-        let readme_html = PackageFile::markdown_to_html(&package_body.readme);
+        let readme = PackageFile(File::open(package_body.readme)?, None);
+        let (_, readme_string) = PackageFile::content_to_string(readme);
+        let readme_html: String = PackageFile::markdown_to_html(&readme_string);
         Ok(PackageMetadata {
             name: package_body.name,
             version: package_body.version,
             license: package_body.license,
-            readme: package_body.readme,
-            // TODO this is just the path of readme, not the file content itself
-            // Upon removing index_repository, this will also be removed
+            readme: readme_string,
             readme_html,
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
         })
@@ -230,22 +223,6 @@ impl Deref for PackageFile {
 impl DerefMut for PackageFile {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
-    }
-}
-
-impl TryFrom<&IndexInfo> for Vec<u8> {
-    type Error = anyhow::Error;
-
-    fn try_from(index_info: &IndexInfo) -> Result<Self> {
-        let mut formatted_bytes = Vec::new();
-        let string = serde_json::to_string(&index_info)?;
-        let main_bytes = string.as_bytes();
-        let length: u32 = main_bytes.len().try_into()?;
-
-        formatted_bytes.extend_from_slice(&length.to_le_bytes());
-        formatted_bytes.extend_from_slice(main_bytes);
-
-        Ok(formatted_bytes)
     }
 }
 
@@ -429,16 +406,17 @@ impl TryFrom<&[u8]> for Package {
 
 #[cfg(test)]
 mod tests {
-    use super::{IndexInfo, PackageFile};
+    use super::PackageFile;
     use crate::{StorageFolders, test::{
         create_readable_temporary_file, create_test_package,
-        TEST_FILE_BYTES, TEST_INDEX_INFO, TEST_METADATA_BYTES,
+        TEST_FILE_BYTES, TEST_METADATA_BYTES,
     }};
     use anyhow::{Ok, Result};
     use futures::StreamExt;
     use std::{fs::File, io::Read, path::PathBuf};
     use tempfile::tempdir;
     use crate::package::PackageMetadata;
+    use crate::test::TEST_METADATA;
 
     #[test]
     fn package_file_can_be_saved() -> Result<()> {
@@ -491,8 +469,8 @@ mod tests {
 
     #[test]
     fn metadata_is_converted_to_bytes() -> Result<()> {
-        let index_metadata: &IndexInfo = &TEST_INDEX_INFO;
-        let metadata_bytes = Vec::try_from(index_metadata)?;
+        let metadata: &PackageMetadata = &TEST_METADATA;
+        let metadata_bytes = Vec::try_from(metadata)?;
         insta::assert_debug_snapshot!(metadata_bytes);
         Ok(())
     }

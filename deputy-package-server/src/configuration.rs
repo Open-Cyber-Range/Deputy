@@ -39,10 +39,6 @@ mod tests {
             r#"
 host: localhost
 port: 8080
-repository:
-  folder: /tmp/test-repo
-  username: some-username
-  email: some@email.com
 storage_folders:
   toml_folder: /tmp/tomls
   readme_folder: /tmp/readmes

@@ -45,17 +45,8 @@ impl Executor {
         if metadata.is_ok() {
             Ok(metadata?.version)
         } else {
-            Ok(self.get_latest_version(client, package_name, version_requirement).await?)
+            Ok(client.try_get_latest_version(package_name.to_string(), version_requirement.to_string()).await?)
         }
-    }
-
-    async fn get_latest_version(
-        &self,
-        client: Client,
-        package_name: &str,
-        version_requirement: &str,
-    ) -> Result<String> {
-        client.try_get_latest_version(package_name.to_string(), version_requirement.to_string()).await
     }
 
     pub fn new(configuration: Configuration) -> Self {

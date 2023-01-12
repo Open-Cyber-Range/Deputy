@@ -314,7 +314,10 @@ pub async fn get_metadata(
         package_name.to_string(),
         package_version.to_string(),
         app_state,
-    ).await?;
+    ).await.map_err(|error| {
+        error!("Failed: {error}");
+        ServerResponseError(PackageServerError::PackageValidation.into())
+    })?;
     Ok(Json(package))
 }
 
@@ -338,7 +341,7 @@ pub async fn try_get_latest_version(
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
-    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state.clone()).await?;
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
     // TODO think about how to make it not print errors in server logs
     if validate_version(package_version, same_name_packages.clone()).is_ok() {
         return Ok(HttpResponse::Ok().body(package_version.to_string()));
@@ -389,7 +392,7 @@ pub async fn version_exists(
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
-    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state.clone()).await?;
+    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
     validate_version(package_version, same_name_packages)?;
     Ok(HttpResponse::Ok().body("OK"))
 }

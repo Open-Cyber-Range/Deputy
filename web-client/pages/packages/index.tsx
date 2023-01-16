@@ -1,5 +1,5 @@
 import styles from '../../styles/Packages.module.css';
-import PackageListView from "../../components/PackageList";
+import PackageListView from '../../components/PackageList';
 
 const Packages = () => (
   <>

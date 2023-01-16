@@ -14,7 +14,7 @@
     "next-translate": "^1.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-markdown": "^8.0.4",
+    "react-html-parser": "^2.0.2",
     "react-router-dom": "^6.4.3",
     "swr": "^1.3.0"
   },
@@ -28,6 +28,7 @@
     "eslint-config-xo": "^0.42.0",
     "eslint-config-xo-typescript": "^0.53.0",
     "eslint-plugin-react": "^7.31.8",
+    "react-html-parser": "^2.0.2",
     "typescript": "4.8.2"
   },
   "description": "Front-end for Deputy",

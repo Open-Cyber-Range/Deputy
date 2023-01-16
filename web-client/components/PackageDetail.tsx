@@ -5,16 +5,17 @@ import type {Package} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
-import {useRouter} from "next/router";
-import ReactMarkdown from "react-markdown";
+import {useRouter} from 'next/router';
+// @ts-expect-error The library itself has an ambiguous type, not strict enough
+import ReactHtmlParser from 'react-html-parser';
 
 const fetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageDetailView = () => {
   const {t} = useTranslation('common');
-  const { asPath } = useRouter()
+  const {asPath} = useRouter();
 
-  const {data: packageDetail, error}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split("/packages/")[1] +'/metadata', fetcher);
+  const {data: packageDetail, error}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split('/packages/')[1] + '/metadata', fetcher);
   if (error) {
     return <div>{t('failedLoading')} </div>;
   }
@@ -30,10 +31,10 @@ const PackageDetailView = () => {
         <span className={styles.version}>{packageDetail.version}</span>
         <span className={styles.version}>{packageDetail.license}</span>
         <span className={styles.created_at}>Created at: {packageDetail.created_at}</span>
-        <ReactMarkdown className={styles.readme}>{packageDetail.readme}</ReactMarkdown>
+        <div className={styles.readme}>{ ReactHtmlParser(packageDetail.readme_html) }</div>
       </Card>
     </div>
   );
-}
+};
 
 export default PackageDetailView;

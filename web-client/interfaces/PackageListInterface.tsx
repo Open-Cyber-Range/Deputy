@@ -4,5 +4,7 @@ export type Package = {
 	version: string;
 	license: string;
 	readme: string;
+	readme_html: string;
+	created_at: string;
 };
 

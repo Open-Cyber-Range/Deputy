@@ -12,13 +12,16 @@ ul.noBullets {
     color: #0082be;
 }
 
-.description {
-    margin-top: 8px;
-    font-size: 90%;
+.version {
+    margin-left: 1rem;
 }
 
-.version {
-    margin-left: 10px;
+.readme {
+    margin-top: 1rem;
+}
+
+.created_at {
+    float: right;
 }
 
 .packageContainer {

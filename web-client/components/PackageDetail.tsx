@@ -6,6 +6,7 @@ import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from "next/router";
+import ReactMarkdown from "react-markdown";
 
 const fetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
 
@@ -27,7 +28,9 @@ const PackageDetailView = () => {
       <Card interactive={false} elevation={Elevation.ONE}>
         <span><a href='#' className={styles.name}>{packageDetail.name}</a></span>
         <span className={styles.version}>{packageDetail.version}</span>
-        <div className={styles.description}>{packageDetail.license}</div>
+        <span className={styles.version}>{packageDetail.license}</span>
+        <span className={styles.created_at}>Created at: {packageDetail.created_at}</span>
+        <ReactMarkdown className={styles.readme}>{packageDetail.readme}</ReactMarkdown>
       </Card>
     </div>
   );

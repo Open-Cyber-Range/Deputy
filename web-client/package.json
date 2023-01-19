@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@blueprintjs/core": "^4.9.4",
+    "html-react-parser": "^3.0.7",
     "next": "13.0.3",
     "next-translate": "^1.6.0",
     "react": "^18.2.0",
@@ -28,7 +29,7 @@
     "eslint-config-xo": "^0.42.0",
     "eslint-config-xo-typescript": "^0.53.0",
     "eslint-plugin-react": "^7.31.8",
-    "react-html-parser": "^2.0.2",
+    "html-react-parser": "^3.0.7",
     "typescript": "4.8.2"
   },
   "description": "Front-end for Deputy",

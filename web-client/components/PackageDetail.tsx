@@ -6,8 +6,7 @@ import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
-// @ts-expect-error The library itself has an ambiguous type, not strict enough
-import ReactHtmlParser from 'react-html-parser';
+import parse from 'html-react-parser';
 
 const fetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
 
@@ -24,6 +23,8 @@ const PackageDetailView = () => {
     return null;
   }
 
+  const readmeHtml = parse(packageDetail.readme_html);
+
   return (
     <div className={styles.packageContainer}>
       <Card interactive={false} elevation={Elevation.ONE}>
@@ -31,7 +32,7 @@ const PackageDetailView = () => {
         <span className={styles.version}>{packageDetail.version}</span>
         <span className={styles.version}>{packageDetail.license}</span>
         <span className={styles.created_at}>Created at: {packageDetail.created_at}</span>
-        <div className={styles.readme}>{ ReactHtmlParser(packageDetail.readme_html) }</div>
+        <div className={styles.readme}>{ readmeHtml }</div>
       </Card>
     </div>
   );

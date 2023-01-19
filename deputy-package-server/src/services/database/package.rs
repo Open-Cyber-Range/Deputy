@@ -65,6 +65,37 @@ impl Handler<GetPackages> for Database {
 }
 
 #[derive(Message)]
+#[rtype(result = "Result<Vec<Package>>")]
+pub struct GetLatestPackages {
+    pub page: i64,
+    pub per_page: i64,
+}
+
+impl Handler<GetLatestPackages> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+
+    fn handle(&mut self, get_latest_packages: GetLatestPackages, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    let packages = Package::all()
+                        .paginate(get_latest_packages.page)
+                        .per_page(get_latest_packages.per_page)
+                        .load_and_count_pages(&mut connection)?;
+                    Ok(packages.0)
+                })
+                    .await??;
+                Ok(package)
+            }
+                .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
 #[rtype(result = "Result<Package>")]
 pub struct GetPackageByNameAndVersion {
     pub name: String,

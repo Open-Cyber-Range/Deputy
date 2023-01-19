@@ -4,7 +4,7 @@ use crate::{
     services::database::{All, Create, FilterExisting, SelectById},
 };
 use chrono::NaiveDateTime;
-use diesel::helper_types::FindBy;
+use diesel::helper_types::{FindBy, GroupBy};
 use diesel::insert_into;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,10 @@ impl Package {
 
     pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
         Self::all_with_deleted().filter(packages::deleted_at.is_null())
+    }
+
+    pub fn all_latest() -> GroupBy<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::name> {
+        Self::all_with_deleted().filter(packages::deleted_at.is_null()).group_by(packages::name)
     }
 
     pub fn by_id(

@@ -247,6 +247,32 @@ pub async fn get_all_packages(
     Ok(Json(packages))
 }
 
+#[get("package/latest")]
+pub async fn get_all_latest_packages(
+    app_state: Data<AppState>,
+    query: Query<PackageQuery>,
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let packages: Vec<crate::models::Package> = app_state
+        .database_address
+        .send(GetPackages {
+            page: query.page as i64,
+            per_page: query.limit as i64,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    let latest_packages = packages
+        .into_iter()
+        .sorted_by(|package| package.name);
+    Ok(Json(packages))
+}
+
 #[derive(Debug, Deserialize)]
 pub enum FileType {
     #[serde(rename = "archive")]

@@ -4,7 +4,7 @@ use crate::{
     services::database::{All, Create, FilterExisting},
 };
 use chrono::NaiveDateTime;
-use diesel::helper_types::{FindBy, GroupBy, Order, Limit};
+use diesel::helper_types::{FindBy, Order};
 use diesel::{insert_into};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -31,13 +31,6 @@ impl Package {
 
     pub fn all() -> Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version> {
         Self::all_with_deleted().filter(packages::deleted_at.is_null()).order_by(packages::version)
-    }
-
-    #[allow(clippy::type_complexity)]
-    pub fn all_latest() -> GroupBy<Limit<Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>>, packages::name> {
-        (Self::all()
-            .limit(99999999))
-            .group_by(packages::name)
     }
 
     #[allow(clippy::type_complexity)]

@@ -12,7 +12,7 @@ const fetcher: Fetcher<Package[], string> = async (...url) => fetch(...url).then
 const PackageListView = () => {
   const {t} = useTranslation('common');
 
-  const {data: packageList, error}: SWRResponse<Package[], string> = useSWR('/api/v1/package', fetcher);
+  const {data: packageList, error}: SWRResponse<Package[], string> = useSWR('/api/v1/package/latest', fetcher);
   if (error) {
     return <div>{t('failedLoading')} </div>;
   }

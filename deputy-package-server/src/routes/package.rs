@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackages};
+use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -254,7 +254,7 @@ pub async fn get_all_latest_packages(
 ) -> Result<Json<Vec<crate::models::Package>>, Error> {
     let packages: Vec<crate::models::Package> = app_state
         .database_address
-        .send(GetPackages {
+        .send(GetLatestPackages {
             page: query.page as i64,
             per_page: query.limit as i64,
         })
@@ -267,9 +267,6 @@ pub async fn get_all_latest_packages(
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    let latest_packages = packages
-        .into_iter()
-        .sorted_by(|package| package.name);
     Ok(Json(packages))
 }
 

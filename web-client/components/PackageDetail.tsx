@@ -7,7 +7,7 @@ import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
 import parse from 'html-react-parser';
-import Link from "next/link";
+import Link from 'next/link';
 
 const detailFetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
 const versionFetcher: Fetcher<Package[], string> = async (...url) => fetch(...url).then(async res => res.json());
@@ -17,13 +17,13 @@ const PackageDetailView = () => {
   const {asPath} = useRouter();
 
   const {data: packageDetail, error: detailError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split('/packages/')[1] + '/metadata', detailFetcher);
-  // @ts-ignore
+  // @ts-expect-error packageDetail is possibly undefined
   const {data: packageVersions, error: versionError}: SWRResponse<Package[], string> = useSWR(() => '/api/v1/package/' + packageDetail.name + '/all_versions', versionFetcher);
-
   if (!packageDetail || !packageVersions) {
     return null;
   }
-  if (detailError || versionError) {
+
+  if (detailError ?? versionError) {
     return <div>{t('failedLoading')} </div>;
   }
 

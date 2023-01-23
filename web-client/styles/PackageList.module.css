@@ -22,9 +22,15 @@ ul.noBullets {
 
 .created_at {
     float: right;
+    margin: 0 1rem 0 auto;
 }
 
 .packageContainer {
-    padding: 30px;
-    width: 960px;
+    padding: 2rem;
+    width: 60rem;
+}
+
+.versionContainer {
+    margin: 2rem 1rem 1rem auto;
+    width: 30rem;
 }

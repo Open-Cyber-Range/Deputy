@@ -270,6 +270,20 @@ pub async fn get_all_latest_packages(
     Ok(Json(packages))
 }
 
+#[get("package/{package_name}/all_versions")]
+pub async fn get_all_versions(
+    path_variable: Path<String>,
+    app_state: Data<AppState>,
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let package_name = path_variable.into_inner();
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    let packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
+    Ok(Json(packages))
+}
+
 #[derive(Debug, Deserialize)]
 pub enum FileType {
     #[serde(rename = "archive")]

@@ -7,23 +7,25 @@ import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
 import parse from 'html-react-parser';
+import Link from "next/link";
 
-const fetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
+const detailFetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
+const versionFetcher: Fetcher<Package[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageDetailView = () => {
   const {t} = useTranslation('common');
   const {asPath} = useRouter();
 
-  const {data: packageDetail, error}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split('/packages/')[1] + '/metadata', fetcher);
-  if (error) {
-    return <div>{t('failedLoading')} </div>;
-  }
+  const {data: packageDetail, error: detailError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split('/packages/')[1] + '/metadata', detailFetcher);
+  // @ts-ignore
+  const {data: packageVersions, error: versionError}: SWRResponse<Package[], string> = useSWR(() => '/api/v1/package/' + packageDetail.name + '/all_versions', versionFetcher);
 
-  if (!packageDetail) {
+  if (!packageDetail || !packageVersions) {
     return null;
   }
-
-  const readmeHtml = parse(packageDetail.readme_html);
+  if (detailError || versionError) {
+    return <div>{t('failedLoading')} </div>;
+  }
 
   return (
     <div className={styles.packageContainer}>
@@ -32,7 +34,19 @@ const PackageDetailView = () => {
         <span className={styles.version}>{packageDetail.version}</span>
         <span className={styles.version}>{packageDetail.license}</span>
         <span className={styles.created_at}>Created at: {packageDetail.created_at}</span>
-        <div className={styles.readme}>{ readmeHtml }</div>
+        <div className={styles.readme}>{ parse(packageDetail.readme_html) }</div>
+        <div className={styles.versionContainer}>
+          <ul className={styles.noBullets}>
+            {packageVersions.map((deputyPackage: Package) =>
+              <li key={deputyPackage.version}>
+                <Card interactive={false} elevation={Elevation.ONE}>
+                  <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version} className={styles.name}>{deputyPackage.name}</Link></span>
+                  <span className={styles.version}>{deputyPackage.version}</span>
+                  <div className={styles.description}>{deputyPackage.description}</div>
+                </Card>
+              </li>)}
+          </ul>
+        </div>
       </Card>
     </div>
   );

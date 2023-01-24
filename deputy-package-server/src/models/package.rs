@@ -4,7 +4,7 @@ use crate::{
     services::database::{All, Create, FilterExisting},
 };
 use chrono::NaiveDateTime;
-use diesel::helper_types::{FindBy, Order};
+use diesel::helper_types::{Desc, FindBy, Order};
 use diesel::{insert_into};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -65,8 +65,8 @@ impl Package {
     #[allow(clippy::type_complexity)]
     pub fn by_name(
         name: String,
-    ) -> FindBy<Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>, packages::name, String> {
-        Self::all().filter(packages::name.eq(name))
+    ) -> Order<FindBy<Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>, packages::name, String>, Desc<packages::version>> {
+        Self::all().filter(packages::name.eq(name)).order(packages::version.desc())
     }
 
     pub fn create_insert(&self) -> Create<&Self, packages::table> {

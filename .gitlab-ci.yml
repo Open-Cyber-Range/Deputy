@@ -18,6 +18,10 @@ build-frontend:
   script:
     - yarn --cwd ./web-client/
     - yarn --cwd ./web-client/ lint
+    - yarn --cwd ./web-client/ build
+  artifacts:
+    paths:
+      - web-client/build
   only:
     - develop
     - master

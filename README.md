@@ -54,4 +54,12 @@ Deputy package server uses a MySQL database for saving metadata of packages. Def
 
 ##### Testing
 
-For local testing, change the URL of the database from `mariadb` to `127.0.0.1`, even if running on containers.
+For local testing, change the URL of the database in `deputy-package-server/example-config.yml` from `mariadb` to `127.0.0.1`, remove previous containers, if necessary.
+
+Get deputy-package-server running with 
+`cargo run -p deputy-package-server --  deputy-package-server/example-config.yml`
+
+For front end, run
+`yarn dev`
+
+If there are no test packages showing, you need to first upload them with `deputy publish` inside the test package folder.

@@ -1,4 +1,4 @@
-import {Navbar, NavbarGroup, NavbarHeading, NavbarDivider, Button, Classes} from '@blueprintjs/core';
+import {Navbar, NavbarGroup, NavbarHeading, NavbarDivider} from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import Link from 'next/link';
 import styles from '../styles/MainNavbar.module.css';

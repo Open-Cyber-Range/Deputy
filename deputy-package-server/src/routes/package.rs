@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetPackages};
+use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
@@ -244,6 +244,43 @@ pub async fn get_all_packages(
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
+    Ok(Json(packages))
+}
+
+#[get("package/latest")]
+pub async fn get_all_latest_packages(
+    app_state: Data<AppState>,
+    query: Query<PackageQuery>,
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let packages: Vec<crate::models::Package> = app_state
+        .database_address
+        .send(GetLatestPackages {
+            page: query.page as i64,
+            per_page: query.limit as i64,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    Ok(Json(packages))
+}
+
+#[get("package/{package_name}/all_versions")]
+pub async fn get_all_versions(
+    path_variable: Path<String>,
+    app_state: Data<AppState>,
+) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    let package_name = path_variable.into_inner();
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    let packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
     Ok(Json(packages))
 }
 

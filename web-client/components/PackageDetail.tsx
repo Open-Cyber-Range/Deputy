@@ -16,7 +16,8 @@ const PackageDetailView = () => {
   const {t} = useTranslation('common');
   const {asPath} = useRouter();
 
-  const {data: packageDetail, error: detailError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + asPath.split('/packages/')[1] + '/metadata', detailFetcher);
+  const nameAndVersion = asPath.split('/packages/')[1];
+  const {data: packageDetail, error: detailError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + nameAndVersion + '/metadata', detailFetcher);
   // @ts-expect-error packageDetail is possibly undefined
   const {data: packageVersions, error: versionError}: SWRResponse<Package[], string> = useSWR(() => '/api/v1/package/' + packageDetail.name + '/all_versions', versionFetcher);
   if (!packageDetail || !packageVersions) {

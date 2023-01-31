@@ -4,3 +4,4 @@ storage_folders:
   package_folder: /var/opt/deputy/deputy-package-server/package
   toml_folder: /var/opt/deputy/deputy-package-server/toml
   readme_folder: /var/opt/deputy/deputy-package-server/readme
+database_url: mysql://mysql_user:mysql_pass@deputy-mariadb:3306/deputy

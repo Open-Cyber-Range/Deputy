@@ -19,16 +19,33 @@ services:
       - '10.81.50.8'
       - '10.81.50.9'
 
-  deputy-package-server-repository-combo:
-    image: nexus.ocr.cr14.net:8003/deputy-package-server-repository-combo:latest
+  deputy-frontend:
+    image: nexus.ocr.cr14.net:8003/deputy-frontend:latest
+    container_name: deputy-frontend
+    networks:
+      - deputy
+    restart: unless-stopped
+
+  deputy-package-server:
+    image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
     volumes:
       - ./config.yml:/etc/opt/deputy/deputy-package-server/config.yml
-    container_name: deputy-package-server-repository-combo
+    container_name: deputy-package-server
     environment:
       - RUST_LOG=debug
     networks:
       - deputy
     restart: unless-stopped
+
+  deputy-mariadb:
+    image: nexus.ocr.cr14.net:8003/mariadb:10.7
+    volumes:
+      - ~/deputy-mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql_root
+      MYSQL_USER: mysql_user
+      MYSQL_PASSWORD: mysql_pass
+      MYSQL_DATABASE: deputy
 
 networks:
   deputy: {}

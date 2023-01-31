@@ -1,4 +1,4 @@
-version: "3"
+version: "3.7"
 
 services:
   nginx-proxy:
@@ -29,8 +29,14 @@ services:
   deputy-package-server:
     image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
     volumes:
-      - ./config.yml:/etc/opt/deputy/deputy-package-server/config.yml
+      - ./config.yml:/var/opt/deputy/deputy-package-server/config.yml
+      - ./deputy-package-toml:/var/opt/deputy/deputy-package-server/toml
+      - ./deputy-package-readme:/var/opt/deputy/deputy-package-server/readme
+      - ./deputy-packages:/var/opt/deputy/deputy-package-server/package
+      - ./deputy-repository:/var/opt/deputy/deputy-package-server/repository
     container_name: deputy-package-server
+    depends_on:
+      - "deputy-mariadb"
     environment:
       - RUST_LOG=debug
     networks:
@@ -39,8 +45,13 @@ services:
 
   deputy-mariadb:
     image: nexus.ocr.cr14.net:8003/mariadb:10.7
+    container_name: deputy-mariadb
+    ports:
+      - "3306:3306"
     volumes:
       - ~/deputy-mariadb:/var/lib/mysql
+    networks:
+      - deputy
     environment:
       MYSQL_ROOT_PASSWORD: mysql_root
       MYSQL_USER: mysql_user

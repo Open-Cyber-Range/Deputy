@@ -331,6 +331,34 @@ pub async fn download_file(
     })
 }
 
+#[get("package/{package_name}/{package_version}/{file_path}")]
+pub async fn download_file_by_path(
+    path_variables: Path<(String, String, String)>,
+    app_state: Data<AppState>,
+) -> Result<NamedFile, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    let file_name = &path_variables.2;
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let file_path = PathBuf::from(&app_state.storage_folders.package_folder)
+        .join(package_name)
+        .join(package_version)
+        .join(file_name);
+
+    NamedFile::open(file_path).map_err(|error| {
+        error!("Failed to open the file: {error}");
+        Error::from(error)
+    })
+}
+
 #[get("package/{package_name}/{package_version}/metadata")]
 pub async fn get_metadata(
     path_variables: Path<(String, String)>,

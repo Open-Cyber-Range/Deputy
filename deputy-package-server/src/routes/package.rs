@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::Read;
 use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
 use crate::{
@@ -23,6 +25,8 @@ use futures::{Stream, StreamExt};
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
+use flate2::read::MultiGzDecoder;
+use tar::Archive;
 use crate::models::helpers::versioning::{get_latest_version, get_package_by_name_and_version, get_packages_by_name, validate_version};
 
 async fn drain_stream(
@@ -295,7 +299,7 @@ pub enum FileType {
 }
 
 #[get("package/{package_name}/{package_version}/{file_type}")]
-pub async fn download_file(
+pub async fn download_file_by_type(
     path_variables: Path<(String, String, FileType)>,
     app_state: Data<AppState>,
 ) -> Result<NamedFile, Error> {
@@ -331,6 +335,23 @@ pub async fn download_file(
     })
 }
 
+fn get_file_from_archive(package_path: String, file_name: String) -> Result<Vec<String>, Error> {
+    let package_tar = File::open(package_path.clone()).map_err(|error| {
+        error!("Failed to open the file: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let tarfile = MultiGzDecoder::new(package_tar);
+    let mut archive = Archive::new(tarfile);
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        if entry.path()?.to_str() == Some(file_name.as_str()) {
+            let mut buffer = String::new();
+            entry.read_to_string(&mut buffer)?;
+        }
+    }
+    Ok(result_vec)
+}
+
 #[get("package/{package_name}/{package_version}/{file_path}")]
 pub async fn download_file_by_path(
     path_variables: Path<(String, String, String)>,
@@ -348,15 +369,18 @@ pub async fn download_file_by_path(
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
-    let file_path = PathBuf::from(&app_state.storage_folders.package_folder)
+    let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
         .join(package_name)
-        .join(package_version)
-        .join(file_name);
+        .join(package_version);
 
-    NamedFile::open(file_path).map_err(|error| {
+    println!("Path: {:?}", package_path.clone());
+
+
+    let package = NamedFile::open(package_path).map_err(|error| {
         error!("Failed to open the file: {error}");
         Error::from(error)
-    })
+    });
+    package
 }
 
 #[get("package/{package_name}/{package_version}/metadata")]

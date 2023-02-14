@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Read;
 use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
 use crate::{
@@ -335,36 +334,35 @@ pub async fn download_file_by_type(
     })
 }
 
-fn get_file_from_archive(package_path: String, file_name: String) -> Result<Vec<String>, Error> {
-    let package_tar = File::open(package_path.clone()).map_err(|error| {
-        error!("Failed to open the file: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
+fn get_file_from_archive(temp_path: PathBuf, package_path: PathBuf, file_name: String) -> Result<NamedFile, Error> {
+    let package_tar = File::open(package_path)?;
     let tarfile = MultiGzDecoder::new(package_tar);
     let mut archive = Archive::new(tarfile);
-    for entry in archive.entries()? {
-        let mut entry = entry?;
-        if entry.path()?.to_str() == Some(file_name.as_str()) {
-            let mut buffer = String::new();
-            entry.read_to_string(&mut buffer)?;
+    for file in archive.entries()? {
+        let mut file = file?;
+        if file.path()?.to_str() == Some(file_name.as_str()) {
+            file.unpack(temp_path.clone())?;
+            return NamedFile::open(temp_path).map_err(|error| {
+                error!("Failed to open unpacked file: {error}");
+                Error::from(error)
+            });
         }
     }
-    Ok(result_vec)
+    Err(Error::from(ServerResponseError(PackageServerError::FileNotFound.into())))
 }
 
-#[get("package/{package_name}/{package_version}/{file_path}")]
+#[get("package/{package_name}/{package_version}/path/{file_name}")]
 pub async fn download_file_by_path(
     path_variables: Path<(String, String, String)>,
     app_state: Data<AppState>,
 ) -> Result<NamedFile, Error> {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
-    let file_name = &path_variables.2;
+    let file_name = &path_variables.2.to_string();
     validate_name(package_name.to_string()).map_err(|error| {
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-
     validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
@@ -372,15 +370,8 @@ pub async fn download_file_by_path(
     let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
         .join(package_name)
         .join(package_version);
-
-    println!("Path: {:?}", package_path.clone());
-
-
-    let package = NamedFile::open(package_path).map_err(|error| {
-        error!("Failed to open the file: {error}");
-        Error::from(error)
-    });
-    package
+    let temp_path = PathBuf::from(&app_state.storage_folders.package_folder).join("temp");
+    get_file_from_archive(temp_path, package_path, file_name.to_string())
 }
 
 #[get("package/{package_name}/{package_version}/metadata")]

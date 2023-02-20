@@ -13,11 +13,18 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
       <Image
         className={styles.nextImage}
         src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.picture.file_path}
-        alt={'package image'}
+        alt={'Package contents can\'t be displayed'}
         width={10000}
         height={10000}
       />
     );
+  } else if (packageData.content.type === ContentType.Video && packageData.video) {
+    return (
+      <video controls
+             className={styles.nextImage}
+             title={'Package contents can\'t be displayed'}
+             src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.video.file_path}/>
+    )
   }
 
   return null;

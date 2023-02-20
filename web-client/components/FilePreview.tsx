@@ -13,15 +13,13 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
 
   if (packageData.content.type === ContentType.Picture && packageData.picture) {
     return (
-      <div className={styles.imageContainer}>
-        <Image
-          className={styles.nextImage}
-          src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.picture.file_path}
-          alt={'package image'}
-          width={10000}
-          height={10000}
-        />
-      </div>
+      <Image
+        className={styles.nextImage}
+        src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.picture.file_path}
+        alt={'package image'}
+        width={10000}
+        height={10000}
+      />
     );
   }
 

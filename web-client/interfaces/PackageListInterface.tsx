@@ -80,6 +80,6 @@ export interface Package {
 	condition: Condition | null;
 	event: Event | null;
 	inject: Inject | null;
-	picture: Picture;
+	picture: Picture | null;
 }
 

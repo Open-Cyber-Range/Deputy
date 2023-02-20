@@ -9,8 +9,8 @@ use deputy_package_server::{
     routes::{
         basic::{status, version},
         package::{add_package, download_package, download_file_by_path, get_all_packages,
-                  get_all_latest_packages, get_all_versions, get_metadata, get_readme,
-                  try_get_latest_version, version_exists},
+                  get_all_latest_packages, get_all_versions, get_metadata,
+                  get_package_toml, try_get_latest_version, version_exists},
     },
     AppState,
 };
@@ -44,8 +44,8 @@ async fn real_main() -> Result<()> {
                     .service(add_package)
                     .service(download_package)
                     .service(download_file_by_path)
-                    .service(get_readme)
                     .service(get_metadata)
+                    .service(get_package_toml)
                     .service(try_get_latest_version)
                     .service(version_exists),
             ),

@@ -34,3 +34,13 @@ ul.noBullets {
     margin: 2rem 1rem 1rem auto;
     width: 30rem;
 }
+
+.imageContainer {
+    width: 20rem;
+    height: auto;
+}
+
+.nextImage {
+    width: 100%;
+    height: auto;
+}

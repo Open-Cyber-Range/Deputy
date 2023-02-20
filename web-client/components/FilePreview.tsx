@@ -19,6 +19,7 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
       />
     );
   }
+
   return null;
 };
 

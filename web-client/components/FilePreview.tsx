@@ -7,9 +7,6 @@ import styles from '../styles/PackageList.module.css';
 const FilePreview = ({packageData}: {packageData: Package}) => {
   const {asPath} = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
-  if (!packageData) {
-    return null;
-  }
 
   if (packageData.content.type === ContentType.Picture && packageData.picture) {
     return (
@@ -22,7 +19,6 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
       />
     );
   }
-
   return null;
 };
 

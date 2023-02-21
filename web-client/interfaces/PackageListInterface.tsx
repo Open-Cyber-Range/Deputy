@@ -37,14 +37,19 @@ export interface Content {
 	type: ContentType;
 }
 
+export interface Account {
+	name: string;
+	password: string;
+}
+
 export interface VM {
-	accounts?: any;
-	default_account?: any;
+	accounts?: Account[];
+	default_account?: string;
 	operating_system: string;
 	architecture: string;
 	type: string;
 	file_path: string;
-	readme_path?: any;
+	readme_path?: string;
 }
 
 export interface Feature {
@@ -80,12 +85,12 @@ export interface Video {
 export interface Package {
 	package: PackageBody;
 	content: Content;
-	virtual_machine: VM | null;
-	feature: Feature | null;
-	condition: Condition | null;
-	event: Event | null;
-	inject: Inject | null;
-	picture: Picture | null;
-	video: Video | null;
+	virtual_machine?: VM;
+	feature?: Feature;
+	condition?: Condition;
+	event?: Event;
+	inject?: Inject;
+	picture?: Picture;
+	video?: Video;
 }
 

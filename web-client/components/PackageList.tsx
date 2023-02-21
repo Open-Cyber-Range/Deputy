@@ -25,7 +25,7 @@ const PackageListView = () => {
     <div className={styles.packageContainer}>
       <ul className={styles.noBullets}>
         {packageList.map((deputyPackage: PackageMetadata) =>
-          <li key={deputyPackage.version}>
+          <li key={deputyPackage.name}>
             <Card interactive={false} elevation={Elevation.ONE}>
               <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version} className={styles.name}>{deputyPackage.name}</Link></span>
               <span className={styles.version}>{deputyPackage.version}</span>

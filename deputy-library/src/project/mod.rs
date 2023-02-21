@@ -193,13 +193,13 @@ pub struct Inject {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Picture {
-    #[serde(alias = "file_path", alias = "FILE_PATH")]
+    #[serde(alias = "File_Path", alias = "FILE_PATH")]
     pub file_path: String,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Video {
-    #[serde(alias = "file_path", alias = "FILE_PATH")]
+    #[serde(alias = "File_Path", alias = "FILE_PATH")]
     pub file_path: String,
 }
 

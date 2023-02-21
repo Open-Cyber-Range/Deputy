@@ -18,13 +18,16 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
         height={10000}
       />
     );
-  } else if (packageData.content.type === ContentType.Video && packageData.video) {
+  }
+
+  if (packageData.content.type === ContentType.Video && packageData.video) {
     return (
-      <video controls
-             className={styles.nextImage}
-             title={'Package contents can\'t be displayed'}
-             src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.video.file_path}/>
-    )
+      <video
+        controls
+        className={styles.nextImage}
+        title={'Package contents can\'t be displayed'}
+        src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.video.file_path}/>
+    );
   }
 
   return null;

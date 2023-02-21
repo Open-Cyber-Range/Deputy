@@ -116,7 +116,7 @@ impl Project {
                     || self.virtual_machine.is_some()
                 {
                     return Err(anyhow!(
-                        "Content type (Virtual Machine) does not match package"
+                        "Content type (Video) does not match package"
                     ));
                 }
             }

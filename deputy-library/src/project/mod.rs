@@ -17,6 +17,8 @@ pub struct Project {
     pub condition: Option<Condition>,
     pub event: Option<Event>,
     pub inject: Option<Inject>,
+    pub picture: Option<Picture>,
+    pub video: Option<Video>,
 }
 
 impl Project {
@@ -29,6 +31,8 @@ impl Project {
                     || self.feature.is_some()
                     || self.inject.is_some()
                     || self.event.is_some()
+                    || self.picture.is_some()
+                    || self.video.is_some()
                 {
                     return Err(anyhow!(
                         "Content type (Virtual Machine) does not match package"
@@ -42,6 +46,8 @@ impl Project {
                     || self.virtual_machine.is_some()
                     || self.inject.is_some()
                     || self.event.is_some()
+                    || self.picture.is_some()
+                    || self.video.is_some()
                 {
                     return Err(anyhow!("Content type (Feature) does not match package",));
                 }
@@ -53,6 +59,8 @@ impl Project {
                     || self.feature.is_some()
                     || self.inject.is_some()
                     || self.event.is_some()
+                    || self.picture.is_some()
+                    || self.video.is_some()
                 {
                     return Err(anyhow!("Content type (Condition) does not match package",));
                 }
@@ -64,6 +72,8 @@ impl Project {
                     || self.feature.is_some()
                     || self.condition.is_some()
                     || self.event.is_some()
+                    || self.picture.is_some()
+                    || self.video.is_some()
                 {
                     return Err(anyhow!("Content type (Inject) does not match package",));
                 }
@@ -75,8 +85,39 @@ impl Project {
                     || self.feature.is_some()
                     || self.condition.is_some()
                     || self.inject.is_some()
+                    || self.picture.is_some()
+                    || self.video.is_some()
                 {
                     return Err(anyhow!("Content type (Event) does not match package",));
+                }
+            }
+            ContentType::Picture => {
+                if self.picture.is_none() {
+                    return Err(anyhow!("Picture package info not found"));
+                } else if self.virtual_machine.is_some()
+                    || self.feature.is_some()
+                    || self.condition.is_some()
+                    || self.inject.is_some()
+                    || self.event.is_some()
+                    || self.video.is_some()
+                {
+                    return Err(anyhow!("Content type (Picture) does not match package",));
+                }
+            }
+            ContentType::Video => {
+                if self.video.is_none() {
+                    return Err(anyhow!("Video package info not found"));
+                }
+                else if self.condition.is_some()
+                    || self.feature.is_some()
+                    || self.inject.is_some()
+                    || self.event.is_some()
+                    || self.picture.is_some()
+                    || self.virtual_machine.is_some()
+                {
+                    return Err(anyhow!(
+                        "Content type (Video) does not match package"
+                    ));
                 }
             }
         }
@@ -148,6 +189,18 @@ pub struct Inject {
     pub action: String,
     #[serde(alias = "Assets", alias = "ASSETS")]
     pub assets: Vec<Vec<String>>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Picture {
+    #[serde(alias = "File_Path", alias = "FILE_PATH")]
+    pub file_path: String,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Video {
+    #[serde(alias = "File_Path", alias = "FILE_PATH")]
+    pub file_path: String,
 }
 
 pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
@@ -222,6 +275,10 @@ pub enum ContentType {
     Inject,
     #[serde(alias = "event", alias = "EVENT")]
     Event,
+    #[serde(alias = "picture", alias = "PICTURE")]
+    Picture,
+    #[serde(alias = "video", alias = "VIDEO")]
+    Video,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

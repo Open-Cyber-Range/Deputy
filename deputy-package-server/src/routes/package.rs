@@ -1,3 +1,4 @@
+use std::fs::File;
 use crate::models::helpers::uuid::Uuid;
 use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
 use crate::{
@@ -23,6 +24,9 @@ use futures::{Stream, StreamExt};
 use log::error;
 use serde::Deserialize;
 use std::path::PathBuf;
+use flate2::read::MultiGzDecoder;
+use tar::Archive;
+use deputy_library::project::{create_project_from_toml_path, Project};
 use crate::models::helpers::versioning::{get_latest_version, get_package_by_name_and_version, get_packages_by_name, validate_version};
 
 async fn drain_stream(
@@ -284,51 +288,72 @@ pub async fn get_all_versions(
     Ok(Json(packages))
 }
 
-#[derive(Debug, Deserialize)]
-pub enum FileType {
-    #[serde(rename = "archive")]
-    Archive,
-    #[serde(rename = "readme")]
-    Readme,
-    #[serde(rename = "toml")]
-    Toml,
+fn get_file_from_archive(temp_path: PathBuf, package_path: PathBuf, file_name: String) -> Result<NamedFile, Error> {
+    let package_tar = File::open(package_path)?;
+    let tarfile = MultiGzDecoder::new(package_tar);
+    let mut archive = Archive::new(tarfile);
+    for file in archive.entries()? {
+        let mut file = file?;
+        if file.path()?.to_str() == Some(file_name.as_str()) {
+            file.unpack(temp_path.clone())?;
+            return NamedFile::open(temp_path).map_err(|error| {
+                error!("Failed to open unpacked file: {error}");
+                Error::from(error)
+            });
+        }
+    }
+    Err(Error::from(ServerResponseError(PackageServerError::FileNotFound.into())))
 }
 
-#[get("package/{package_name}/{package_version}/{file_type}")]
-pub async fn download_file(
-    path_variables: Path<(String, String, FileType)>,
+#[get("package/{package_name}/{package_version}/path/{file_name}")]
+pub async fn download_file_by_path(
+    path_variables: Path<(String, String, String)>,
     app_state: Data<AppState>,
 ) -> Result<NamedFile, Error> {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
-    let file_type = &path_variables.2;
-
+    let file_name = &path_variables.2.to_string();
     validate_name(package_name.to_string()).map_err(|error| {
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-
     validate_version_semantic(package_version.to_string()).map_err(|error| {
         error!("Failed to validate the package version: {error}");
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
+    let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
+        .join(package_name)
+        .join(package_version);
+    let temp_path = PathBuf::from(&app_state.storage_folders.package_folder).join("temp");
+    get_file_from_archive(temp_path, package_path, file_name.to_string())
+}
 
-    let file_path = match file_type {
-        FileType::Archive => PathBuf::from(&app_state.storage_folders.package_folder)
-            .join(package_name)
-            .join(package_version),
-        FileType::Readme => PathBuf::from(&app_state.storage_folders.readme_folder)
-            .join(package_name)
-            .join(package_version),
-        FileType::Toml => PathBuf::from(&app_state.storage_folders.toml_folder)
-            .join(package_name)
-            .join(package_version),
-    };
-
-    NamedFile::open(file_path).map_err(|error| {
-        error!("Failed to open the file: {error}");
-        Error::from(error)
-    })
+#[get("package/{package_name}/{package_version}/toml")]
+pub async fn get_package_toml(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState>,
+) -> Result<Json<Project>, Error> {
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+    let file_name = "package.toml".to_string();
+    validate_name(package_name.to_string()).map_err(|error| {
+        error!("Failed to validate the package name: {error}");
+        ServerResponseError(PackageServerError::PackageNameValidation.into())
+    })?;
+    validate_version_semantic(package_version.to_string()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::PackageVersionValidation.into())
+    })?;
+    let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
+        .join(package_name)
+        .join(package_version);
+    let temp_path = PathBuf::from(&app_state.storage_folders.package_folder).join("temp");
+    let _ = get_file_from_archive(temp_path.clone(), package_path, file_name);
+    let project = create_project_from_toml_path(temp_path.as_path()).map_err(|error| {
+        error!("Failed to validate the package version: {error}");
+        ServerResponseError(PackageServerError::MetadataParse.into())
+    })?;
+    Ok(Json(project))
 }
 
 #[get("package/{package_name}/{package_version}/metadata")]
@@ -385,31 +410,6 @@ pub async fn try_get_latest_version(
 
     let latest_version = get_latest_version(same_name_packages)?;
     Ok(HttpResponse::Ok().body(latest_version))
-}
-
-#[get("package/{package_name}/{package_version}/readme")]
-pub async fn get_readme(
-    path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> Result<String, Error> {
-    let package_name = &path_variables.0;
-    let package_version = &path_variables.1;
-
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-
-    let package: crate::models::Package = get_package_by_name_and_version(
-        package_name.to_string(),
-        package_version.to_string(),
-        app_state,
-    ).await?;
-    Ok(package.readme)
 }
 
 #[get("package/{package_name}/{package_version}/exists")]

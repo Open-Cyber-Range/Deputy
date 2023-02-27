@@ -25,14 +25,14 @@ ul.noBullets {
     margin: 0 1rem 0 auto;
 }
 
+.nameContainer {
+    padding-bottom: 1rem;
+}
+
 .packageContainer {
     padding: 2rem;
     width: 60rem;
-}
-
-.versionContainer {
-    margin: 2rem 1rem 1rem auto;
-    width: 30rem;
+    max-width: 100%;
 }
 
 .nextImage {

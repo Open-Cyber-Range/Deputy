@@ -37,20 +37,25 @@ const PackageDetailView = () => {
   return (
     <div className={styles.packageContainer}>
       <Card interactive={false} elevation={Elevation.ONE}>
+        <div className={styles.nameContainer}>
+          <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
+          <span className={styles.version}>{packageData.package.version}</span>
+          <span className={styles.version}>{packageData.package.license}</span>
+          <span className={styles.created_at}>Created at: {packageMetadata.created_at}</span>
+          <p>{packageData.package.description}</p>
+        </div>
         <Tabs>
           <TabList>
-            <Tab>Overview</Tab>
-            <Tab>File preview</Tab>
+            <Tab>Readme</Tab>
+            <Tab>Versions</Tab>
+            <Tab>Preview</Tab>
           </TabList>
 
           <TabPanel>
-            <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
-            <span className={styles.version}>{packageData.package.version}</span>
-            <span className={styles.version}>{packageData.package.license}</span>
-            <span className={styles.created_at}>Created at: {packageMetadata.created_at}</span>
-            <div>{packageData.package.description}</div>
             <div className={styles.readme}>{ parse(packageMetadata.readme_html) }</div>
-            <div className={styles.versionContainer}>
+          </TabPanel>
+          <TabPanel>
+            <div>
               <ul className={styles.noBullets}>
                 {packageVersions.map((deputyPackage: PackageMetadata) =>
                   <li key={deputyPackage.version}>

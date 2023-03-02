@@ -2,11 +2,12 @@ import type {Fetcher} from 'swr';
 import useSWR from 'swr';
 import styles from '../styles/PackageList.module.css';
 import type {Package, PackageMetadata} from '../interfaces/PackageListInterface';
+import {ContentType} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
-import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
+import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import parse from 'html-react-parser';
 import Link from 'next/link';
@@ -48,7 +49,7 @@ const PackageDetailView = () => {
           <TabList>
             <Tab>Readme</Tab>
             <Tab>Versions</Tab>
-            <Tab>Preview</Tab>
+            <Tab disabled={![ContentType.Picture, ContentType.Video].includes(packageData.content.type)}>Preview</Tab>
           </TabList>
 
           <TabPanel>

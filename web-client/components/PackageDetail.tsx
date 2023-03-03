@@ -42,7 +42,7 @@ const PackageDetailView = () => {
           <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
           <span className={styles.version}>{packageData.package.version}</span>
           <span className={styles.version}>{packageData.package.license}</span>
-          <span className={styles.created_at}>Created at: {packageMetadata.created_at}</span>
+          <span className={styles.created_at}>{t('created_at')}: {packageMetadata.created_at}</span>
           <p>{packageData.package.description}</p>
         </div>
         <Tabs>

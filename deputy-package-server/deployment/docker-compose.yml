@@ -30,9 +30,9 @@ services:
     image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
     volumes:
       - ./config.yml:/etc/opt/deputy/deputy-package-server/config.yml
-      - ./deputy-package-toml:/etc/opt/deputy/deputy-package-server/toml
-      - ./deputy-package-readme:/etc/opt/deputy/deputy-package-server/readme
-      - ./deputy-packages:/etc/opt/deputy/deputy-package-server/package
+      - /opt/disk2/deployment-deputymachine/deputy-package-toml:/etc/opt/deputy/deputy-package-server/toml
+      - /opt/disk2/deployment-deputymachine/deputy-package-readme:/etc/opt/deputy/deputy-package-server/readme
+      - /opt/disk2/deployment-deputymachine/deputy-packages:/etc/opt/deputy/deputy-package-server/package
     container_name: deputy-package-server
     depends_on:
       - "deputy-mariadb"
@@ -46,7 +46,7 @@ services:
     image: nexus.ocr.cr14.net:8003/mariadb:10.7
     container_name: deputy-mariadb
     volumes:
-      - ~/deputy-mariadb:/var/lib/mysql
+      - /opt/disk2/deployment-deputymachine/deputy-mariadb:/var/lib/mysql
     networks:
       - deputy
     environment:

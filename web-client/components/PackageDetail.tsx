@@ -48,8 +48,8 @@ const PackageDetailView = () => {
         <Tabs>
           <TabList>
             <Tab>Readme</Tab>
-            <Tab>Versions</Tab>
-            <Tab disabled={![ContentType.Picture, ContentType.Video].includes(packageData.content.type)}>Preview</Tab>
+            <Tab>{t('versions')}</Tab>
+            <Tab disabled={![ContentType.Picture, ContentType.Video].includes(packageData.content.type)}>{t('preview')}</Tab>
           </TabList>
 
           <TabPanel>

@@ -8,5 +8,8 @@
   "documentationButton": "Documentation",
   "welcome": "Welcome to Deputy Digital Library",
   "browseAllPackages": "Browse All Packages",
-  "logIn": "Log In"
+  "logIn": "Log In",
+  "versions": "Versions",
+  "preview": "Preview"
+
 }

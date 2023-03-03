@@ -28,7 +28,7 @@ assets = [
 
 [dependencies]
 actix = "0.13"
-actix-web = "4"
+actix-web = {version = "4", features = ["openssl"] }
 actix-rt = "2"
 anyhow = "1"
 awc = "3"

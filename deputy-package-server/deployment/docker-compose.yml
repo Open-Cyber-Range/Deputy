@@ -34,6 +34,8 @@ services:
       - /opt/disk2/deployment-deputymachine/deputy-package-readme:/etc/opt/deputy/deputy-package-server/readme
       - /opt/disk2/deployment-deputymachine/deputy-packages:/etc/opt/deputy/deputy-package-server/package
     container_name: deputy-package-server
+    ports:
+      - "8080:8080"
     depends_on:
       - "deputy-mariadb"
     environment:

@@ -2,10 +2,13 @@ import type {Fetcher} from 'swr';
 import useSWR from 'swr';
 import styles from '../styles/PackageList.module.css';
 import type {Package, PackageMetadata} from '../interfaces/PackageListInterface';
+import {ContentType} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
+import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 import parse from 'html-react-parser';
 import Link from 'next/link';
 import FilePreview from './FilePreview';
@@ -35,25 +38,42 @@ const PackageDetailView = () => {
   return (
     <div className={styles.packageContainer}>
       <Card interactive={false} elevation={Elevation.ONE}>
-        <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
-        <span className={styles.version}>{packageData.package.version}</span>
-        <span className={styles.version}>{packageData.package.license}</span>
-        <span className={styles.created_at}>Created at: {packageMetadata.created_at}</span>
-        <div>{packageData.package.description}</div>
-        <div className={styles.readme}>{ parse(packageMetadata.readme_html) }</div>
-        <FilePreview packageData={packageData} />
-        <div className={styles.versionContainer}>
-          <ul className={styles.noBullets}>
-            {packageVersions.map((deputyPackage: PackageMetadata) =>
-              <li key={deputyPackage.version}>
-                <Card interactive={false} elevation={Elevation.ONE}>
-                  <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version} className={styles.name}>{deputyPackage.name}</Link></span>
-                  <span className={styles.version}>{deputyPackage.version}</span>
-                  <div className={styles.description}>{deputyPackage.description}</div>
-                </Card>
-              </li>)}
-          </ul>
+        <div className={styles.nameContainer}>
+          <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
+          <span className={styles.version}>{packageData.package.version}</span>
+          <span className={styles.version}>{packageData.package.license}</span>
+          <span className={styles.created_at}>{t('created_at')}: {packageMetadata.created_at}</span>
+          <p>{packageData.package.description}</p>
         </div>
+        <Tabs>
+          <TabList>
+            <Tab>Readme</Tab>
+            <Tab>{t('versions')}</Tab>
+            <Tab disabled={![ContentType.Picture, ContentType.Video].includes(packageData.content.type)}>{t('preview')}</Tab>
+          </TabList>
+
+          <TabPanel>
+            <div className={styles.readme}>{ parse(packageMetadata.readme_html) }</div>
+          </TabPanel>
+          <TabPanel>
+            <div>
+              <ul className={styles.noBullets}>
+                {packageVersions.map((deputyPackage: PackageMetadata) =>
+                  <li key={deputyPackage.version}>
+                    <Card interactive={false} elevation={Elevation.ONE}>
+                      <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version} className={styles.name}>{deputyPackage.name}</Link></span>
+                      <span className={styles.version}>{deputyPackage.version}</span>
+                      <div className={styles.description}>{deputyPackage.description}</div>
+                    </Card>
+                  </li>)}
+              </ul>
+            </div>
+          </TabPanel>
+          <TabPanel>
+            <FilePreview packageData={packageData} />
+          </TabPanel>
+        </Tabs>
+
       </Card>
     </div>
   );

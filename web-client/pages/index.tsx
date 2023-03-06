@@ -3,7 +3,6 @@ import {Button} from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import {useRouter} from 'next/router';
 import styles from '../styles/Index.module.css';
-import Head from 'next/head';
 
 const Home: NextPage = () => {
   const {t} = useTranslation('common');
@@ -18,11 +17,6 @@ const Home: NextPage = () => {
 
   return (
     <div>
-      <Head>
-        <title>{t('title')}</title>
-        <meta name={t('metaName')} content={t('metaContent')} />
-      </Head>
-
       <main className={styles.main}>
         <div className = {styles.dashboard}>
           <h1>{t('welcome')}</h1>

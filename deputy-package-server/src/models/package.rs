@@ -1,15 +1,15 @@
 use crate::models::helpers::uuid::Uuid;
 use crate::{
     schema::packages,
-    services::database::{All, Create, FilterExisting, SelectById},
+    services::database::{All, Create, FilterExisting},
 };
 use chrono::NaiveDateTime;
-use diesel::helper_types::FindBy;
-use diesel::insert_into;
+use diesel::helper_types::{Desc, FindBy, Order};
+use diesel::{insert_into};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Queryable, QueryableByName, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[diesel(table_name = packages)]
 pub struct Package {
     pub id: Uuid,
@@ -29,13 +29,18 @@ impl Package {
         packages::table.select(Self::as_select())
     }
 
-    pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
-        Self::all_with_deleted().filter(packages::deleted_at.is_null())
+    pub fn all() -> Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version> {
+        Self::all_with_deleted().filter(packages::deleted_at.is_null()).order_by(packages::version)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn by_id(
         id: Uuid,
-    ) -> SelectById<packages::table, packages::id, packages::deleted_at, Self> {
+    ) -> FindBy<
+            Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>,
+            packages::id,
+            Uuid,
+    > {
         Self::all().filter(packages::id.eq(id))
     }
 
@@ -45,7 +50,7 @@ impl Package {
         version: String,
     ) -> FindBy<
         FindBy<
-            FilterExisting<All<packages::table, Self>, packages::deleted_at>,
+            Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>,
             packages::name,
             String,
         >,
@@ -57,10 +62,11 @@ impl Package {
             .filter(packages::version.eq(version))
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn by_name(
         name: String,
-    ) -> FindBy<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::name, String> {
-        Self::all().filter(packages::name.eq(name))
+    ) -> Order<FindBy<Order<FilterExisting<All<packages::table, Self>, packages::deleted_at>, packages::version>, packages::name, String>, Desc<packages::version>> {
+        Self::all().filter(packages::name.eq(name)).order(packages::version.desc())
     }
 
     pub fn create_insert(&self) -> Create<&Self, packages::table> {

@@ -14,8 +14,6 @@ export enum ContentType {
 	Condition = "Condition",
 	Inject = "Inject",
 	Event = "Event",
-	Picture = "Picture",
-	Video = "Video",
 }
 
 export enum FeatureType {
@@ -74,14 +72,6 @@ export interface Inject {
 	assets: string[][];
 }
 
-export interface Picture {
-	file_path: string;
-}
-
-export interface Video {
-	file_path: string;
-}
-
 export interface Package {
 	package: PackageBody;
 	content: Content;
@@ -90,7 +80,5 @@ export interface Package {
 	condition?: Condition;
 	event?: Event;
 	inject?: Inject;
-	picture?: Picture;
-	video?: Video;
 }
 

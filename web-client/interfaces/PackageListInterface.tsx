@@ -31,8 +31,20 @@ export interface PackageBody {
 	readme: string;
 }
 
+export enum PreviewType {
+	Picture = "Picture",
+	Video = "Video",
+	Code = "Code",
+}
+
+export interface Preview {
+	type: PreviewType;
+	value: string[];
+}
+
 export interface Content {
 	type: ContentType;
+	preview?: Preview[];
 }
 
 export interface Account {

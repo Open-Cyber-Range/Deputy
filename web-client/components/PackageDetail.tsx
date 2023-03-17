@@ -2,7 +2,6 @@ import type {Fetcher} from 'swr';
 import useSWR from 'swr';
 import styles from '../styles/PackageList.module.css';
 import type {Package, PackageMetadata} from '../interfaces/PackageListInterface';
-import {ContentType} from '../interfaces/PackageListInterface';
 import {Card, Elevation} from '@blueprintjs/core';
 import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
@@ -49,7 +48,7 @@ const PackageDetailView = () => {
           <TabList>
             <Tab>Readme</Tab>
             <Tab>{t('versions')}</Tab>
-            <Tab disabled={![ContentType.Picture, ContentType.Video].includes(packageData.content.type)}>{t('preview')}</Tab>
+            <Tab disabled={!packageData.content.preview}>{t('preview')}</Tab>
           </TabList>
 
           <TabPanel>

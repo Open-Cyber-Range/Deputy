@@ -1,36 +1,55 @@
 import {useRouter} from 'next/router';
 import type {Package} from '../interfaces/PackageListInterface';
-import {ContentType} from '../interfaces/PackageListInterface';
-import Image from 'next/image';
-import styles from '../styles/PackageList.module.css';
+import {PreviewType} from '../interfaces/PackageListInterface';
+import type {Slide} from 'yet-another-react-lightbox';
+import Lightbox from 'yet-another-react-lightbox';
+import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
+import Fullscreen from 'yet-another-react-lightbox/plugins/fullscreen';
+import Inline from 'yet-another-react-lightbox/plugins/inline';
+import 'yet-another-react-lightbox/styles.css';
+import 'yet-another-react-lightbox/plugins/thumbnails.css';
+import Video from 'yet-another-react-lightbox/plugins/video';
 
 const FilePreview = ({packageData}: {packageData: Package}) => {
   const {asPath} = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
+  const slides: Slide[] = [];
 
-  if (packageData.content.type === ContentType.Picture && packageData.picture) {
-    return (
-      <Image
-        className={styles.nextImage}
-        src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.picture.file_path}
-        alt={'Package contents can\'t be displayed'}
-        width={10000}
-        height={10000}
-      />
-    );
+  if (!packageData.content.preview) {
+    return null;
   }
 
-  if (packageData.content.type === ContentType.Video && packageData.video) {
-    return (
-      <video
-        controls
-        className={styles.nextImage}
-        title={'Package contents can\'t be displayed'}
-        src={'/api/v1/package/' + nameAndVersion + '/path/' + packageData.video.file_path}/>
-    );
-  }
+  packageData.content.preview.forEach(preview => {
+    if (preview.type) {
+      if (preview.type === PreviewType.Picture) {
+        preview.value.forEach(filepath => {
+          slides.push({
+            height: 3300, width: 3300,
+            src: '/api/v1/package/' + nameAndVersion + '/path/' + filepath,
+          });
+        });
+      }
 
-  return null;
+      if (preview.type === PreviewType.Video) {
+        preview.value.forEach(filepath => {
+          slides.push({height: 3300, width: 3300, type: 'video', sources: [{
+            src: '/api/v1/package/' + nameAndVersion + '/path/' + filepath,
+            type: 'video/mp4',
+          }],
+          },
+          );
+        });
+      }
+    }
+  });
+
+  return (
+    <Lightbox
+      slides={slides}
+      inline={{style: {width: '100%', maxWidth: '900px', aspectRatio: '3 / 2'}}}
+      plugins={[Video, Thumbnails, Inline, Fullscreen]}
+    />
+  );
 };
 
 export default FilePreview;

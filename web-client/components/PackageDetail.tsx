@@ -10,7 +10,7 @@ import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import parse from 'html-react-parser';
 import FilePreview from './FilePreview';
-import PackageVersions from "./PackageVersions";
+import PackageVersions from './PackageVersions';
 
 const metadataFetcher: Fetcher<PackageMetadata, string> = async (...url) => fetch(...url).then(async res => res.json());
 const packageFetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());

@@ -1,10 +1,11 @@
-import styles from "../styles/PackageList.module.css";
-import {PackageMetadata} from "../interfaces/PackageListInterface";
-import {Card, Elevation} from "@blueprintjs/core";
-import Link from "next/link";
-import useSWR, {Fetcher} from "swr";
-import {SWRResponse} from "swr/dist/types";
-import useTranslation from "next-translate/useTranslation";
+import styles from '../styles/PackageList.module.css';
+import type {PackageMetadata} from '../interfaces/PackageListInterface';
+import {Card, Elevation} from '@blueprintjs/core';
+import Link from 'next/link';
+import type {Fetcher} from 'swr';
+import useSWR from 'swr';
+import type {SWRResponse} from 'swr/dist/types';
+import useTranslation from 'next-translate/useTranslation';
 
 const versionFetcher: Fetcher<PackageMetadata[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
@@ -27,7 +28,7 @@ const PackageVersions = ({packageName}: {packageName: string}) => {
           <li key={deputyPackage.version}>
             <Card interactive={false} elevation={Elevation.ONE}>
               <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version}
-                          className={styles.name}>{deputyPackage.name}</Link></span>
+                className={styles.name}>{deputyPackage.name}</Link></span>
               <span className={styles.version}>{deputyPackage.version}</span>
               <div className={styles.description}>{deputyPackage.description}</div>
             </Card>
@@ -35,6 +36,6 @@ const PackageVersions = ({packageName}: {packageName: string}) => {
       </ul>
     </div>
   );
-}
+};
 
 export default PackageVersions;

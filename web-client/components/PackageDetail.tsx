@@ -9,12 +9,11 @@ import {useRouter} from 'next/router';
 import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import parse from 'html-react-parser';
-import Link from 'next/link';
 import FilePreview from './FilePreview';
+import PackageVersions from "./PackageVersions";
 
 const metadataFetcher: Fetcher<PackageMetadata, string> = async (...url) => fetch(...url).then(async res => res.json());
 const packageFetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
-const versionFetcher: Fetcher<PackageMetadata[], string> = async (...url) => fetch(...url).then(async res => res.json());
 
 const PackageDetailView = () => {
   const {t} = useTranslation('common');
@@ -23,14 +22,11 @@ const PackageDetailView = () => {
   const nameAndVersion = asPath.split('/packages/')[1];
   const {data: packageMetadata, error: detailError}: SWRResponse<PackageMetadata, string> = useSWR('/api/v1/package/' + nameAndVersion + '/metadata', metadataFetcher);
   const {data: packageData, error: packageError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + nameAndVersion + '/toml', packageFetcher);
-
-  // @ts-expect-error packageDetail is possibly undefined
-  const {data: packageVersions, error: versionError}: SWRResponse<PackageMetadata[], string> = useSWR(() => '/api/v1/package/' + packageMetadata.name + '/all_versions', versionFetcher);
-  if (!packageMetadata || !packageData || !packageVersions) {
+  if (!packageMetadata || !packageData) {
     return null;
   }
 
-  if (detailError ?? packageError ?? versionError) {
+  if (detailError ?? packageError) {
     return <div>{t('failedLoading')} </div>;
   }
 
@@ -55,18 +51,7 @@ const PackageDetailView = () => {
             <div className={styles.readme}>{ parse(packageMetadata.readme_html) }</div>
           </TabPanel>
           <TabPanel>
-            <div>
-              <ul className={styles.noBullets}>
-                {packageVersions.map((deputyPackage: PackageMetadata) =>
-                  <li key={deputyPackage.version}>
-                    <Card interactive={false} elevation={Elevation.ONE}>
-                      <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version} className={styles.name}>{deputyPackage.name}</Link></span>
-                      <span className={styles.version}>{deputyPackage.version}</span>
-                      <div className={styles.description}>{deputyPackage.description}</div>
-                    </Card>
-                  </li>)}
-              </ul>
-            </div>
+            <PackageVersions packageName={packageMetadata.name}/>
           </TabPanel>
           <TabPanel>
             <FilePreview packageData={packageData} />

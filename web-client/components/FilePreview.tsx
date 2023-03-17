@@ -47,6 +47,7 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
     <Lightbox
       slides={slides}
       inline={{style: {aspectRatio: '3 / 2'}}}
+      video={{preload: 'none'}}
       plugins={[Video, Thumbnails, Inline, Fullscreen]}
     />
   );

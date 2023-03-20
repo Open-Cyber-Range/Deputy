@@ -15,8 +15,7 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
   const {asPath} = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
   const slides: Slide[] = [];
-  // @ts-ignore
-  const codeBlocks: CodePreview[] = [];
+  const codeBlocks: any[] = [];
 
   if (!packageData.content.preview) {
     return null;

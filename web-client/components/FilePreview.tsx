@@ -9,11 +9,14 @@ import Inline from 'yet-another-react-lightbox/plugins/inline';
 import Video from 'yet-another-react-lightbox/plugins/video';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
+import CodePreview from './CodePreview';
 
 const FilePreview = ({packageData}: {packageData: Package}) => {
   const {asPath} = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
   const slides: Slide[] = [];
+  // @ts-ignore
+  const codeBlocks: CodePreview[] = [];
 
   if (!packageData.content.preview) {
     return null;
@@ -40,16 +43,29 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
           );
         });
       }
+
+      if (preview.type === PreviewType.Code) {
+        preview.value.forEach(filepath => {
+          codeBlocks.push(
+            <CodePreview key={filepath} packageData={packageData} filepath={filepath}/>,
+          );
+        });
+      }
     }
   });
 
   return (
-    <Lightbox
-      slides={slides}
-      inline={{style: {aspectRatio: '3 / 2'}}}
-      video={{preload: 'none'}}
-      plugins={[Video, Thumbnails, Inline, Fullscreen]}
-    />
+    <div>
+      <Lightbox
+        slides={slides}
+        inline={{style: {aspectRatio: '3 / 2'}}}
+        video={{preload: 'none'}}
+        plugins={[Video, Thumbnails, Inline, Fullscreen]}
+      />
+      <div>
+        {codeBlocks}
+      </div>
+    </div>
   );
 };
 

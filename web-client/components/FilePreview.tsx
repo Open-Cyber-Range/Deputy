@@ -15,7 +15,7 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
   const {asPath} = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
   const slides: Slide[] = [];
-  const codeBlocks: any[] = [];
+  const codeBlocks: JSX.Element[] = [];
 
   if (!packageData.content.preview) {
     return null;
@@ -46,7 +46,7 @@ const FilePreview = ({packageData}: {packageData: Package}) => {
       if (preview.type === PreviewType.Code) {
         preview.value.forEach(filepath => {
           codeBlocks.push(
-            <CodePreview key={filepath} packageData={packageData} filepath={filepath}/>,
+            <CodePreview key={filepath} filepath={filepath}/>,
           );
         });
       }

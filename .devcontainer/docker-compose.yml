@@ -18,6 +18,18 @@ services:
     environment:
       - RUST_LOG=debug
 
+  development-keycloak:
+    image: quay.io/keycloak/keycloak:21.0.1
+    volumes:
+      - ./configs/keycloak-realm.json:/opt/keycloak/data/import/testrealm.json
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    command: [ "start-dev", "--import-realm" ]
+
   deputy-mariadb:
     image: nexus.ocr.cr14.net:8003/mariadb:10.7
     ports:

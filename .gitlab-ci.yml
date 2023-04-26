@@ -41,23 +41,6 @@ lint-and-test-rust:
     - merge_requests
     - tags
 
-build-frontend:
-  stage: build
-  needs: ["lint-frontend"]
-  image: $DOCKER_REGISTRY_PULL/frontend-builder
-  script:
-    - yarn --cwd ./web-client/
-    - yarn --cwd ./web-client/ build
-  artifacts:
-    paths:
-      - web-client/.next
-      - web-client/node_modules
-      - web-client/package.json
-  only:
-    - /^deputy-frontend-.*$/
-  except:
-    - branches
-
 build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   stage: build
   needs: ["lint-and-test-rust"]
@@ -88,7 +71,6 @@ publish-deputy-frontend-to-docker-images:
   stage: publish
   services:
     - docker:20.10.17-dind
-  needs: ["build-frontend"]
   image: $DOCKER_REGISTRY_PULL/docker:20.10.17
   script:
     - docker info

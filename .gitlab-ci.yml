@@ -28,7 +28,6 @@ lint-and-test-rust:
   script:
     - cargo clippy -- -Dwarnings
     - cargo fmt -- --check
-    - cargo test
     - cargo tarpaulin --skip-clean --out Xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:

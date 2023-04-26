@@ -7,6 +7,14 @@ use std::{fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
+pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
+    let mut toml_file = File::open(toml_path)?;
+    let mut contents = String::new();
+    toml_file.read_to_string(&mut contents)?;
+    let deserialized_toml: Project = toml::from_str(&contents)?;
+    Ok(deserialized_toml)
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Project {
     pub package: Body,
@@ -148,14 +156,6 @@ pub struct Inject {
     pub action: String,
     #[serde(alias = "Assets", alias = "ASSETS")]
     pub assets: Vec<Vec<String>>,
-}
-
-pub fn create_project_from_toml_path(toml_path: &Path) -> Result<Project, anyhow::Error> {
-    let mut toml_file = File::open(toml_path)?;
-    let mut contents = String::new();
-    toml_file.read_to_string(&mut contents)?;
-    let deserialized_toml: Project = toml::from_str(&contents)?;
-    Ok(deserialized_toml)
 }
 
 #[derive(Debug)]

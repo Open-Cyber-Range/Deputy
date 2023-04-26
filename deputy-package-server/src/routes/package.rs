@@ -1,33 +1,33 @@
-use std::fs::File;
-use crate::models::helpers::uuid::Uuid;
-use crate::services::database::package::{CreatePackage, GetLatestPackages, GetPackages};
+use crate::models::helpers::versioning::{
+    get_package_by_name_and_version, get_packages_by_name, validate_version,
+};
+use crate::services::database::package::{
+    CreatePackage, GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName,
+};
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
     AppState,
 };
+use actix::Actor;
 use actix_files::NamedFile;
 use actix_http::error::PayloadError;
 use actix_web::{
-    get, put,
     web::{Bytes, Data, Json, Path, Payload, Query},
-    Error, HttpResponse, Responder,
+    Error, HttpResponse,
 };
 use anyhow::Result;
+use deputy_library::archiver::ArchiveStreamer;
+use deputy_library::rest::VersionRest;
 use deputy_library::{
-    constants::PAYLOAD_CHUNK_SIZE,
-    package::{FromBytes, Package, PackageFile, PackageMetadata},
-    validation::{validate_name, validate_version_semantic, Validate},
+    package::{Package, PackageFile, PackageMetadata},
+    validation::{validate_name, validate_version_semantic},
 };
-use divrem::DivCeil;
 use futures::{Stream, StreamExt};
 use log::error;
+use semver::{Version, VersionReq};
 use serde::Deserialize;
 use std::path::PathBuf;
-use flate2::read::MultiGzDecoder;
-use tar::Archive;
-use deputy_library::project::{create_project_from_toml_path, Project};
-use crate::models::helpers::versioning::{get_latest_version, get_package_by_name_and_version, get_packages_by_name, validate_version};
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
@@ -39,11 +39,21 @@ async fn drain_stream(
     Ok(())
 }
 
-#[put("package")]
-pub async fn add_package(
+pub async fn add_package<T>(
     mut body: Payload,
-    app_state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
+    app_state: Data<AppState<T>>,
+) -> Result<HttpResponse, Error>
+where
+    T: Actor
+        + actix::Handler<CreatePackage>
+        + actix::Handler<GetVersionsByPackageName>
+        + actix::Handler<GetPackageByNameAndVersion>
+        + actix::Handler<GetPackages>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, CreatePackage>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+{
     let package_metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
         let metadata_vector = metadata_bytes.to_vec();
         let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
@@ -57,123 +67,49 @@ pub async fn add_package(
         result?
     } else {
         error!("Invalid stream chunk: No package metadata");
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No package metadata"));
+        return Ok(
+            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No package metadata")
+        );
     };
 
-    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
-    if let Err(error) = validate_version(package_metadata.version.as_str(), same_name_packages) {
+    let versions: Vec<crate::models::Version> =
+        get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
+    if let Err(error) = validate_version(package_metadata.version.as_str(), versions) {
         drain_stream(body).await?;
         return Err(error);
     }
 
-    let toml_size = if let Some(Ok(bytes)) = body.next().await {
-        u64::from_bytes(bytes).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        })?
-    } else {
-        error!("Invalid stream chunk: invalid toml length");
-        return Ok(
-            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid toml length")
-        );
-    };
-
-    if toml_size > PAYLOAD_CHUNK_SIZE {
-        error!("Invalid package.toml: abnormally large package.toml");
-        drain_stream(body).await?;
-        return Ok(HttpResponse::UnprocessableEntity()
-            .body("Invalid package.toml: abnormally large package.toml"));
-    }
-    let toml_file = if let Some(Ok(toml_bytes)) = body.next().await {
-        let toml_bytes_vector = toml_bytes.to_vec();
-        let result = PackageFile::try_from(toml_bytes_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package toml: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        });
-        if let Err(error) = result {
-            drain_stream(body).await?;
-            return Err(error.into());
-        }
-        result?
-    } else {
-        error!("Invalid stream chunk: No metadata");
-        drain_stream(body).await?;
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No metadata"));
-    };
-
-    let readme_size = if let Some(Ok(bytes)) = body.next().await {
-        u64::from_bytes(bytes).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        })?
-    } else {
-        error!("Invalid stream chunk: invalid readme length");
-        drain_stream(body).await?;
-        return Ok(
-            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: invalid readme length")
-        );
-    };
-
-    let readme: PackageFile = if readme_size > 0 {
-        let mut vector_bytes: Vec<u8> = Vec::new();
-        let readme_chunk = DivCeil::div_ceil(readme_size, PAYLOAD_CHUNK_SIZE);
-
-        for _ in 0..readme_chunk {
-            if let Some(Ok(readme_bytes)) = body.next().await {
-                vector_bytes.extend(readme_bytes.to_vec());
-            }
-        }
-        let result = PackageFile::try_from(vector_bytes.as_slice()).map_err(|error| {
-            error!("Failed to parse package readme: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        });
-        if let Err(error) = result {
-            drain_stream(body).await?;
-            return Err(error.into());
-        }
-        result?
-    } else {
-        error!("Invalid stream chunk: No readme");
-        drain_stream(body).await?;
-        return Ok(HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No readme"));
-    };
-
     let archive_file: PackageFile =
-        PackageFile::from_stream(body.skip(1), true)
+        PackageFile::from_stream(body.skip(1))
             .await
             .map_err(|error| {
                 error!("Failed to save the file: {error}");
                 ServerResponseError(PackageServerError::FileSave.into())
             })?;
 
-    let (readme, readme_string) = PackageFile::content_to_string(readme);
-    let readme_html: String = PackageFile::markdown_to_html(&readme_string);
-
-    let metadata = PackageMetadata {
-        name: package_metadata.clone().name,
-        version: package_metadata.clone().version,
-        license: package_metadata.clone().license,
-        readme: readme_string,
-        readme_html,
-        checksum: package_metadata.clone().checksum,
-    };
-    let mut package = Package::new(metadata, toml_file, readme, archive_file);
-    package.validate().map_err(|error| {
+    let mut package = Package::new(package_metadata.clone(), archive_file);
+    package.validate_checksum().map_err(|error| {
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
+    package.save(&app_state.package_folder).map_err(|error| {
+        error!("Failed to save the package: {error}");
+        ServerResponseError(PackageServerError::PackageSave.into())
+    })?;
 
+    let package_metadata = package.metadata.clone();
+    let readme_html = package_metadata
+        .readme_html(app_state.package_folder.clone().into())
+        .await
+        .map_err(|error| {
+            error!("Failed to generate the readme html: {error}");
+            println!("{:?}", error);
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?
+        .unwrap_or_default();
     app_state
         .database_address
-        .send(CreatePackage(crate::models::NewPackage {
-            id: Uuid::random(),
-            name: package.metadata.clone().name,
-            version: package.metadata.clone().version,
-            license: package.metadata.clone().license,
-            readme: package.metadata.clone().readme,
-            readme_html: package.metadata.clone().readme_html,
-            checksum: package.metadata.clone().checksum,
-        }))
+        .send(CreatePackage((package_metadata, readme_html).into()))
         .await
         .map_err(|error| {
             error!("Failed to add package: {error}");
@@ -184,21 +120,16 @@ pub async fn add_package(
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
-    package
-        .save(&app_state.storage_folders)
-        .map_err(|error| {
-            error!("Failed to save the package: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
     Ok(HttpResponse::Ok().body("OK"))
 }
 
-#[get("package/{package_name}/{package_version}/download")]
-pub async fn download_package(
+pub async fn download_package<T>(
     path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> impl Responder {
-    let package_folder = &app_state.storage_folders.package_folder;
+    app_state: Data<AppState<T>>,
+) -> Result<NamedFile, Error>
+where
+    T: Actor,
+{
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
 
@@ -211,7 +142,7 @@ pub async fn download_package(
         ServerResponseError(PackageServerError::PackageVersionValidation.into())
     })?;
 
-    let package_path = PathBuf::from(package_folder)
+    let package_path = PathBuf::from(app_state.package_folder.clone())
         .join(package_name)
         .join(package_version);
     NamedFile::open(package_path).map_err(|error| {
@@ -220,7 +151,7 @@ pub async fn download_package(
     })
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct PackageQuery {
     #[serde(default = "default_page")]
     page: u32,
@@ -228,11 +159,14 @@ pub struct PackageQuery {
     limit: u32,
 }
 
-#[get("package")]
-pub async fn get_all_packages(
-    app_state: Data<AppState>,
+pub async fn get_all_packages<T>(
+    app_state: Data<AppState<T>>,
     query: Query<PackageQuery>,
-) -> Result<Json<Vec<crate::models::Package>>, Error> {
+) -> Result<Json<Vec<crate::models::Package>>, Error>
+where
+    T: Actor + actix::Handler<GetPackages>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+{
     let packages = app_state
         .database_address
         .send(GetPackages {
@@ -251,184 +185,103 @@ pub async fn get_all_packages(
     Ok(Json(packages))
 }
 
-#[get("package/latest")]
-pub async fn get_all_latest_packages(
-    app_state: Data<AppState>,
-    query: Query<PackageQuery>,
-) -> Result<Json<Vec<crate::models::Package>>, Error> {
-    let packages: Vec<crate::models::Package> = app_state
-        .database_address
-        .send(GetLatestPackages {
-            page: query.page as i64,
-            per_page: query.limit as i64,
-        })
-        .await
-        .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?
-        .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?;
-    Ok(Json(packages))
+#[derive(Deserialize, Debug)]
+pub struct VersionQuery {
+    pub version_requirement: Option<String>,
 }
 
-#[get("package/{package_name}/all_versions")]
-pub async fn get_all_versions(
+pub async fn get_all_versions<T>(
     path_variable: Path<String>,
-    app_state: Data<AppState>,
-) -> Result<Json<Vec<crate::models::Package>>, Error> {
+    app_state: Data<AppState<T>>,
+    query: Query<VersionQuery>,
+) -> Result<Json<Vec<VersionRest>>, Error>
+where
+    T: Actor + actix::Handler<GetVersionsByPackageName>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+{
     let package_name = path_variable.into_inner();
     validate_name(package_name.to_string()).map_err(|error| {
         error!("Failed to validate the package name: {error}");
         ServerResponseError(PackageServerError::PackageNameValidation.into())
     })?;
-    let packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
+    let version_requirement = match &query.version_requirement {
+        Some(version_requirement) => match VersionReq::parse(version_requirement) {
+            Ok(version_requirement) => Some(version_requirement),
+            Err(error) => {
+                error!("Failed to validate the version requirement: {error}");
+                return Err(ServerResponseError(
+                    PackageServerError::PackageVersionRequirementValidation.into(),
+                )
+                .into());
+            }
+        },
+        None => None,
+    };
+
+    let packages: Vec<VersionRest> = get_packages_by_name(package_name.to_string(), app_state)
+        .await?
+        .into_iter()
+        .filter_map(|package| match &version_requirement {
+            Some(version_requirement) => {
+                if let Ok(version) = Version::parse(&package.version) {
+                    if version_requirement.matches(&version) {
+                        return Some(package);
+                    }
+                }
+                None
+            }
+            None => Some(package),
+        })
+        .map(|package| package.into())
+        .collect();
     Ok(Json(packages))
 }
 
-fn get_file_from_archive(temp_path: PathBuf, package_path: PathBuf, file_name: String) -> Result<NamedFile, Error> {
-    let package_tar = File::open(package_path)?;
-    let tarfile = MultiGzDecoder::new(package_tar);
-    let mut archive = Archive::new(tarfile);
-    for file in archive.entries()? {
-        let mut file = file?;
-        if file.path()?.to_str() == Some(file_name.as_str()) {
-            file.unpack(temp_path.clone())?;
-            return NamedFile::open(temp_path).map_err(|error| {
-                error!("Failed to open unpacked file: {error}");
-                Error::from(error)
-            });
-        }
-    }
-    Err(Error::from(ServerResponseError(PackageServerError::FileNotFound.into())))
-}
-
-#[get("package/{package_name}/{package_version}/path/{file_name}")]
-pub async fn download_file_by_path(
+pub async fn download_file<T>(
     path_variables: Path<(String, String, String)>,
-    app_state: Data<AppState>,
-) -> Result<NamedFile, Error> {
+    app_state: Data<AppState<T>>,
+) -> Result<HttpResponse, Error>
+where
+    T: Actor,
+{
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
-    let file_name = &path_variables.2.to_string();
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-    let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
+    let file_path_in_package = &path_variables.2;
+
+    let package_path = PathBuf::from(&app_state.package_folder)
         .join(package_name)
         .join(package_version);
-    let temp_path = PathBuf::from(&app_state.storage_folders.package_folder).join("temp");
-    get_file_from_archive(temp_path, package_path, file_name.to_string())
+
+    let archive_stream = ArchiveStreamer::try_new(package_path, file_path_in_package.into())
+        .map_err(|error| {
+            error!("Failed to open the package: {error}");
+            ServerResponseError(PackageServerError::FileNotFound.into())
+        })?
+        .ok_or_else(|| {
+            error!("File not found from the archive");
+            ServerResponseError(PackageServerError::FileNotFound.into())
+        })?;
+
+    Ok(HttpResponse::Ok().streaming(archive_stream))
 }
 
-#[get("package/{package_name}/{package_version}/toml")]
-pub async fn get_package_toml(
+pub async fn get_package_version<T>(
     path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> Result<Json<Project>, Error> {
+    app_state: Data<AppState<T>>,
+) -> Result<Json<VersionRest>, Error>
+where
+    T: Actor + actix::Handler<GetPackageByNameAndVersion>,
+    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+{
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
-    let file_name = "package.toml".to_string();
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-    let package_path = PathBuf::from(&app_state.storage_folders.package_folder)
-        .join(package_name)
-        .join(package_version);
-    let temp_path = PathBuf::from(&app_state.storage_folders.package_folder).join("temp");
-    let _ = get_file_from_archive(temp_path.clone(), package_path, file_name);
-    let project = create_project_from_toml_path(temp_path.as_path()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::MetadataParse.into())
-    })?;
-    Ok(Json(project))
-}
 
-#[get("package/{package_name}/{package_version}/metadata")]
-pub async fn get_metadata(
-    path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> Result<Json<crate::models::Package>, Error> {
-    let package_name = &path_variables.0;
-    let package_version = &path_variables.1;
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-    let package: crate::models::Package = get_package_by_name_and_version(
+    let package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
         app_state,
-    ).await.map_err(|error| {
-        error!("Failed: {error}");
-        ServerResponseError(PackageServerError::PackageValidation.into())
-    })?;
-    Ok(Json(package))
-}
+    )
+    .await?;
 
-#[get("package/{package_name}/{package_version}/try_get_latest")]
-pub async fn try_get_latest_version(
-    path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    /*
-    Check if wanted version is latest.
-    If yes, then return it
-    If no, query db and return latest
-     */
-    let package_name = &path_variables.0;
-    let package_version = &path_variables.1;
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
-    // TODO think about how to make it not print errors in server logs
-    if validate_version(package_version, same_name_packages.clone()).is_ok() {
-        return Ok(HttpResponse::Ok().body(package_version.to_string()));
-    }
-
-    let latest_version = get_latest_version(same_name_packages)?;
-    Ok(HttpResponse::Ok().body(latest_version))
-}
-
-#[get("package/{package_name}/{package_version}/exists")]
-pub async fn version_exists(
-    path_variables: Path<(String, String)>,
-    app_state: Data<AppState>,
-) -> Result<HttpResponse, Error> {
-    let package_name = &path_variables.0;
-    let package_version = &path_variables.1;
-
-    validate_name(package_name.to_string()).map_err(|error| {
-        error!("Failed to validate the package name: {error}");
-        ServerResponseError(PackageServerError::PackageNameValidation.into())
-    })?;
-    validate_version_semantic(package_version.to_string()).map_err(|error| {
-        error!("Failed to validate the package version: {error}");
-        ServerResponseError(PackageServerError::PackageVersionValidation.into())
-    })?;
-    let same_name_packages: Vec<crate::models::Package> = get_packages_by_name(package_name.to_string(), app_state).await?;
-    validate_version(package_version, same_name_packages)?;
-    Ok(HttpResponse::Ok().body("OK"))
+    Ok(Json(package_version.into()))
 }

@@ -29,6 +29,7 @@ lint-and-test:
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
+    - cargo fmt -- --check
     - cargo test
     # - cargo tarpaulin --skip-clean --out Xml
   # coverage: '/^\d+.\d+% coverage/'

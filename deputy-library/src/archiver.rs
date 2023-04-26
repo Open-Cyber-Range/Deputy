@@ -1,5 +1,15 @@
-use crate::{constants::COMPRESSION_CHUNK_SIZE, project::Project, validation};
+use crate::{
+    constants::{COMPRESSION_CHUNK_SIZE, PAYLOAD_CHUNK_SIZE},
+    project::Project,
+    validation,
+};
+use actix_web::{
+    error::{Error as ActixWebError, Result as ActixWebResult},
+    web::Bytes,
+};
 use anyhow::{anyhow, Result};
+use flate2::read::MultiGzDecoder;
+use futures::Stream;
 use gzp::{
     deflate::Mgzip,
     par::{
@@ -9,11 +19,16 @@ use gzp::{
     Compression, ZWriter,
 };
 use ignore::{DirEntry, WalkBuilder};
-use std::fs::{create_dir_all, remove_file, rename, File};
-use std::io::{prelude::*, Write};
-use std::iter::Iterator;
-use std::path::{Path, PathBuf};
-use tar::{Archive, Builder};
+use std::{
+    fs::{create_dir_all, remove_file, rename, File},
+    io::{Read, Write},
+    iter::Iterator,
+    path::{Path, PathBuf},
+    pin::Pin,
+    ptr::NonNull,
+    task::{Context, Poll},
+};
+use tar::{Archive, Builder, Entry};
 
 fn get_destination_file_path(toml_path: &Path) -> Result<PathBuf> {
     let mut file = File::open(toml_path)?;
@@ -97,6 +112,64 @@ fn create_archive(
 
     archiver.finish()?;
     Ok(archive_path)
+}
+
+pub struct ArchiveStreamer<'a> {
+    pub file: Entry<'a, MultiGzDecoder<File>>,
+    _archiver: Archive<MultiGzDecoder<File>>,
+    _search_path: PathBuf,
+}
+
+impl<'a> ArchiveStreamer<'a> {
+    pub fn populate_file(
+        mut archiver: NonNull<Archive<MultiGzDecoder<File>>>,
+        search_path: &Path,
+    ) -> Result<Option<Entry<'a, MultiGzDecoder<File>>>> {
+        let archiver = unsafe { archiver.as_mut() };
+        for file in archiver.entries()? {
+            let file = file?;
+            if file.path()?.to_str() == search_path.as_os_str().to_str() {
+                return Ok(Some(file));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn try_new(
+        package_path: PathBuf,
+        search_path: PathBuf,
+    ) -> Result<Option<Pin<Box<ArchiveStreamer<'a>>>>> {
+        let archive_file = File::open(package_path)?;
+
+        let parallel_decompressor = MultiGzDecoder::new(archive_file);
+        let archiver = Archive::new(parallel_decompressor);
+
+        if let Some(file) = ArchiveStreamer::populate_file(NonNull::from(&archiver), &search_path)?
+        {
+            let streamer = Self {
+                file,
+                // SAFETY Cannot be dropped until the stream is dropped
+                _archiver: archiver,
+                _search_path: search_path,
+            };
+            return Ok(Some(Box::pin(streamer)));
+        }
+        Ok(None)
+    }
+}
+
+impl<'a> Stream for ArchiveStreamer<'a> {
+    type Item = ActixWebResult<Bytes, ActixWebError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut buffer = vec![0; PAYLOAD_CHUNK_SIZE as usize];
+        let mut file = Pin::new(&mut self.file);
+        match file.as_mut().read(&mut buffer) {
+            Ok(0) => Poll::Ready(None),
+            Ok(n) => Poll::Ready(Some(Ok(Bytes::copy_from_slice(&buffer[..n])))),
+            Err(e) => Poll::Ready(Some(Err(e.into()))),
+        }
+    }
 }
 
 pub fn unpack_archive(archive_path: &Path, destination: &Path) -> Result<()> {

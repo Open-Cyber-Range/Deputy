@@ -1,21 +1,20 @@
 use super::Database;
 use crate::models::helpers::pagination::*;
-use crate::models::{NewPackage, Package};
+use crate::models::{NewPackageVersion, Package, PackageVersion, Version};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
-use diesel::dsl::sql_query;
-use diesel::RunQueryDsl;
+use diesel::{OptionalExtension, RunQueryDsl};
 
 #[derive(Message)]
-#[rtype(result = "Result<Package>")]
-pub struct CreatePackage(pub NewPackage);
+#[rtype(result = "Result<PackageVersion>")]
+pub struct CreatePackage(pub NewPackageVersion);
 
 impl Handler<CreatePackage> for Database {
-    type Result = ResponseActFuture<Self, Result<Package>>;
+    type Result = ResponseActFuture<Self, Result<PackageVersion>>;
 
     fn handle(&mut self, msg: CreatePackage, _ctx: &mut Self::Context) -> Self::Result {
-        let new_package = msg.0;
+        let NewPackageVersion(new_package, new_version) = msg.0;
         let connection_result = self.get_connection();
 
         Box::pin(
@@ -24,7 +23,9 @@ impl Handler<CreatePackage> for Database {
                 let package = block(move || {
                     new_package.create_insert().execute(&mut connection)?;
                     let package = Package::by_id(new_package.id).first(&mut connection)?;
-                    Ok(package)
+                    new_version.create_insert().execute(&mut connection)?;
+                    let version = Version::by_id(new_version.id).first(&mut connection)?;
+                    Ok(PackageVersion(package, version))
                 })
                 .await??;
                 Ok(package)
@@ -66,53 +67,14 @@ impl Handler<GetPackages> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<Package>>")]
-pub struct GetLatestPackages {
-    pub page: i64,
-    pub per_page: i64,
-}
-
-impl Handler<GetLatestPackages> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
-
-    fn handle(
-        &mut self,
-        _: GetLatestPackages,
-        _ctx: &mut Self::Context,
-    ) -> Self::Result {
-        let connection_result = self.get_connection();
-
-        Box::pin(
-            async move {
-                let mut connection = connection_result?;
-                let results: Vec<Package> = sql_query(
-                    "SELECT *
-                FROM (
-                    SELECT *
-                    FROM packages
-                    ORDER BY version DESC
-                    LIMIT 999999999
-                     ) v
-                GROUP BY name;
-                ",
-                )
-                .load(&mut connection)?;
-                Ok(results)
-            }
-            .into_actor(self),
-        )
-    }
-}
-
-#[derive(Message)]
-#[rtype(result = "Result<Package>")]
+#[rtype(result = "Result<Version>")]
 pub struct GetPackageByNameAndVersion {
     pub name: String,
     pub version: String,
 }
 
 impl Handler<GetPackageByNameAndVersion> for Database {
-    type Result = ResponseActFuture<Self, Result<Package>>;
+    type Result = ResponseActFuture<Self, Result<Version>>;
 
     fn handle(
         &mut self,
@@ -125,10 +87,12 @@ impl Handler<GetPackageByNameAndVersion> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let package =
-                        Package::by_name_and_version(query_params.name, query_params.version)
-                            .first(&mut connection)?;
-                    Ok(package)
+                    let package: Package =
+                        Package::by_name(query_params.name).first(&mut connection)?;
+                    let package_version = package
+                        .exact_version(query_params.version)
+                        .first(&mut connection)?;
+                    Ok(package_version)
                 })
                 .await??;
                 Ok(package)
@@ -139,17 +103,15 @@ impl Handler<GetPackageByNameAndVersion> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<Package>>")]
-pub struct GetPackagesByName {
-    pub name: String,
-}
+#[rtype(result = "Result<Vec<Version>>")]
+pub struct GetVersionsByPackageName(pub String);
 
-impl Handler<GetPackagesByName> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+impl Handler<GetVersionsByPackageName> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
 
     fn handle(
         &mut self,
-        query_params: GetPackagesByName,
+        query_params: GetVersionsByPackageName,
         _ctx: &mut Self::Context,
     ) -> Self::Result {
         let connection_result = self.get_connection();
@@ -158,8 +120,14 @@ impl Handler<GetPackagesByName> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let packages = Package::by_name(query_params.name).load(&mut connection)?;
-                    Ok(packages)
+                    let package = Package::by_name(query_params.0)
+                        .first(&mut connection)
+                        .optional()?;
+                    if let Some(package) = package {
+                        let package_versions = package.versions().load(&mut connection)?;
+                        return Ok(package_versions);
+                    }
+                    Ok(Vec::new())
                 })
                 .await??;
                 Ok(package)

@@ -42,8 +42,8 @@ impl TryFrom<&str> for Uuid {
 
 impl Serialize for Uuid {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
+    where
+        S: serde::Serializer,
     {
         serializer.serialize_str(&self.0.to_string())
     }
@@ -51,15 +51,14 @@ impl Serialize for Uuid {
 
 impl<'de> Deserialize<'de> for Uuid {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
+    where
+        D: serde::Deserializer<'de>,
     {
         let uuid_string = String::deserialize(deserializer)?;
         match uuid::Uuid::parse_str(&uuid_string) {
             Ok(uuid) => Ok(Uuid(uuid)),
             Err(_) => Err(serde::de::Error::custom(format!(
-                "Invalid UUID string: {}",
-                uuid_string
+                "Invalid UUID string: {uuid_string}",
             ))),
         }
     }

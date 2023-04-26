@@ -17,14 +17,18 @@ pub enum PackageServerError {
     PackageValidation,
     #[error("Failed to validate the package version")]
     PackageVersionValidation,
+    #[error("Failed to validate the package version requirement")]
+    PackageVersionRequirementValidation,
     #[error("Failed to validate the package name")]
     PackageNameValidation,
     #[error("Failed to parse version value")]
     VersionParse,
-    #[error("Package version on the server is either same or later")]
-    VersionConflict,
+    #[error("Package version on the server is either same or later: {0}")]
+    VersionConflict(String),
     #[error("Failed to paginate packages")]
     Pagination,
+    #[error("Actix mailbox full")]
+    MailboxError,
     #[error("File not found")]
     FileNotFound,
     #[error("Not found")]
@@ -49,8 +53,9 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::VersionParse => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageVersionValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageVersionRequirementValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageNameValidation => StatusCode::BAD_REQUEST,
-                PackageServerError::VersionConflict => StatusCode::CONFLICT,
+                PackageServerError::VersionConflict(_) => StatusCode::CONFLICT,
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,

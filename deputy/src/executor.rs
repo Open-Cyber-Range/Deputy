@@ -10,15 +10,11 @@ use crate::helpers::{
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
 use anyhow::Result;
-use deputy_library::{
-    package::Package,
-    project::create_project_from_toml_path,
-};
+use deputy_library::{package::Package, project::create_project_from_toml_path};
 use path_absolutize::Absolutize;
-use std::path::Path;
 use std::env::current_dir;
+use std::path::Path;
 use tokio::fs::rename;
-use crate::constants::DEFAULT_REGISTRY_NAME;
 
 pub struct Executor {
     configuration: Configuration,
@@ -35,22 +31,8 @@ impl Executor {
         Client::try_new(api_url)
     }
 
-    async fn get_version(
-        &self,
-        package_name: &str,
-        version_requirement: &str,
-    ) -> Result<String> {
-        let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
-        let metadata = client.get_package_metadata(package_name.to_string(), version_requirement.to_string()).await;
-        if metadata.is_ok() {
-            Ok(metadata?.version)
-        } else {
-            Ok(client.try_get_latest_version(package_name.to_string(), version_requirement.to_string()).await?)
-        }
-    }
-
     pub fn new(configuration: Configuration) -> Self {
-        Self {configuration}
+        Self { configuration }
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
@@ -67,8 +49,12 @@ impl Executor {
                 "Creating package".to_string(),
             )))
             .await??;
-        let project = create_project_from_toml_path(&toml_path)?;
-        let package = Package::from_file(project.package.readme, toml_path, options.compression)?;
+        let package = Package::from_file(toml_path, options.compression).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to create package based on TOML file: {}",
+                e.to_string()
+            )
+        })?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -82,7 +68,12 @@ impl Executor {
                 "Validating version".to_string(),
             )))
             .await??;
-        client.validate_version(package.metadata.clone().name, package.metadata.clone().version).await?;
+        client
+            .validate_version(
+                package.metadata.clone().name,
+                package.metadata.clone().version,
+            )
+            .await?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),
@@ -109,12 +100,13 @@ impl Executor {
                 "Registering the repository".to_string(),
             )))
             .await??;
-        let version = self.get_version(
-            &options.package_name,
-            &options.version_requirement,
-        ).await?;
-
         let client = self.try_create_client(options.registry_name.clone())?;
+
+        let version = client
+            .get_latest_matching_package(&options.package_name, &options.version_requirement)
+            .await?
+            .version;
+
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Downloading the package".to_string(),
@@ -132,13 +124,14 @@ impl Executor {
             .await??;
         let unpacked_file_path =
             unpack_package_file(&temporary_package_path, &options.unpack_level)?;
-        let target_path = get_download_target_name(&options.unpack_level, &options.save_path, &options.package_name, &version);
+        let target_path = get_download_target_name(
+            &options.unpack_level,
+            &options.save_path,
+            &options.package_name,
+            &version,
+        );
 
-        rename(
-            unpacked_file_path,
-            target_path,
-        )
-        .await?;
+        rename(unpacked_file_path, target_path).await?;
         temporary_directory.close()?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::Done))
@@ -148,15 +141,15 @@ impl Executor {
     }
 
     pub async fn checksum(&self, options: ChecksumOptions) -> Result<()> {
-        let client = self.try_create_client(DEFAULT_REGISTRY_NAME.to_string())?;
-        let version = self.get_version(
-            &options.package_name,
-            &options.version_requirement,
-        ).await?;
-        let checksum = client.get_package_metadata(
-            options.package_name.to_string(),
-            version,
-        ).await?.checksum;
+        let client = self.try_create_client(options.registry_name.clone())?;
+        let version = client
+            .get_latest_matching_package(&options.package_name, &options.version_requirement)
+            .await?
+            .version;
+        let checksum = client
+            .get_package_version(options.package_name.to_string(), version)
+            .await?
+            .checksum;
         println!("{checksum}");
         Ok(())
     }
@@ -173,10 +166,11 @@ impl Executor {
     }
 
     pub async fn normalize_version(&self, options: NormalizeVersionOptions) -> Result<()> {
-        let version = self.get_version(
-            &options.package_name,
-            &options.version_requirement,
-        ).await?;
+        let client = self.try_create_client(options.registry_name.clone())?;
+        let version = client
+            .get_latest_matching_package(&options.package_name, &options.version_requirement)
+            .await?
+            .version;
         println!("{}", version);
         Ok(())
     }

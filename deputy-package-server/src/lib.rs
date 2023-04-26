@@ -1,21 +1,22 @@
-use actix::Addr;
-use deputy_library::StorageFolders;
-use crate::services::database::Database;
+use actix::{Actor, Addr};
 
 pub mod configuration;
 pub mod constants;
 mod errors;
+pub mod models;
 pub mod routes;
-#[cfg(feature = "test")]
-pub mod test;
 pub mod schema;
 pub mod services;
-pub mod models;
+#[cfg(feature = "test")]
+pub mod test;
 pub mod utilities;
 pub mod utils;
 
 #[derive(Clone, Debug)]
-pub struct AppState {
-    pub database_address: Addr<Database>,
-    pub storage_folders: StorageFolders,
+pub struct AppState<T>
+where
+    T: Actor,
+{
+    pub database_address: Addr<T>,
+    pub package_folder: String,
 }

@@ -1,19 +1,10 @@
 stages:
+  - lint-and-test
   - build
-  - deploy
-  - release
+  - publish
 
-services:
-  - mariadb:10.7
-
-variables:
-  MYSQL_ROOT_PASSWORD: mysql_root
-  MYSQL_USER: mysql_user
-  MYSQL_PASSWORD: mysql_pass
-  MYSQL_DATABASE: deputy
-
-build-frontend:
-  stage: build
+lint-frontend:
+  stage: lint-and-test
   image: $DOCKER_REGISTRY_PULL/frontend-builder
   script:
     - yarn --cwd ./web-client/
@@ -28,21 +19,51 @@ build-frontend:
     - merge_requests
     - tags
 
-lint-and-test:
-  stage: build
+lint-and-test-rust:
+  services:
+    - mariadb:10.7
+  variables:
+    MYSQL_ROOT_PASSWORD: mysql_root
+    MYSQL_USER: mysql_user
+    MYSQL_PASSWORD: mysql_pass
+    MYSQL_DATABASE: deputy
+  stage: lint-and-test
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo clippy -- -Dwarnings
+    - cargo fmt -- --check
     - cargo test
+    - cargo tarpaulin --skip-clean --out Xml
+  coverage: '/^\d+.\d+% coverage/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
   only:
     - develop
     - master
     - merge_requests
     - tags
 
+build-frontend:
+  stage: build
+  needs: ["lint-frontend"]
+  image: $DOCKER_REGISTRY_PULL/frontend-builder
+  script:
+    - yarn --cwd ./web-client/
+    - yarn --cwd ./web-client/ build
+  artifacts:
+    paths:
+      - web-client/.next
+  only:
+    - /^deputy-frontend-.*$/
+  except:
+    - branches
+
 build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   stage: build
-  needs: ["lint-and-test"]
+  needs: ["lint-and-test-rust"]
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo deb --target x86_64-unknown-linux-gnu -p deputy-package-server
@@ -55,7 +76,7 @@ build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
 
 build-and-upload-x86-64bit-linux-release-for-deputy-cli:
   stage: build
-  needs: ["lint-and-test"]
+  needs: ["lint-and-test-rust"]
   image: $DOCKER_REGISTRY_PULL/rust-builder
   script:
     - cargo deb --target x86_64-unknown-linux-gnu -p deputy
@@ -66,41 +87,51 @@ build-and-upload-x86-64bit-linux-release-for-deputy-cli:
   except:
     - branches
 
-staging:
+publish-deputy-frontend-to-docker-images:
+  stage: publish
+  services:
+    - docker:20.10.17-dind
+  needs: ["build-frontend"]
+  image: $DOCKER_REGISTRY_PULL/docker:20.10.17
+  script:
+    - docker info
+    - echo "$OCR_DEPLOYMENT_PASSWORD" | docker login $DOCKER_REGISTRY --username $OCR_DEPLOYMENT_USER --password-stdin
+    - docker pull $DOCKER_REGISTRY/deputy-frontend:latest
+    - docker build -t deputy-frontend -f ./docker/deputy-frontend/Dockerfile .
+    - docker tag deputy-frontend:latest $DOCKER_REGISTRY/deputy-frontend:latest
+    - docker push $DOCKER_REGISTRY/deputy-frontend:latest
+  only:
+    - /^deputy-frontend-.*$/
+  except:
+    - branches
+
+publish-deputy-package-server-to-docker-images:
+  stage: publish
+  services:
+    - docker:20.10.17-dind
+  needs: ["build-and-upload-x86-64bit-linux-release-for-deputy-package-server"]
+  image: $DOCKER_REGISTRY_PULL/docker:20.10.17
+  script:
+    - docker info
+    - echo "$OCR_DEPLOYMENT_PASSWORD" | docker login $DOCKER_REGISTRY --username $OCR_DEPLOYMENT_USER --password-stdin
+    - docker pull $DOCKER_REGISTRY/deputy-repository-server:latest
+    - docker build -t deputy-repository-server ./docker/deputy-package-server
+    - docker tag deputy-repository-server:latest $DOCKER_REGISTRY/deputy-repository-server:latest
+    - docker push $DOCKER_REGISTRY/deputy-repository-server:latest
+  only:
+    - /^deputy-package-server-.*$/
+  except:
+    - branches
+
+publish-deputy-cli-to-docker-images:
+  stage: publish
   variables:
-    DEPUTY_PACKAGE_SERVER: "1"
     DEPUTY: "1"
-  stage: deploy
-  needs:
-    - job: build-and-upload-x86-64bit-linux-release-for-deputy-cli
-      optional: true
-    - job: build-and-upload-x86-64bit-linux-release-for-deputy-package-server
-      optional: true
+  needs: ["build-and-upload-x86-64bit-linux-release-for-deputy-cli"]
   trigger:
     project: open-cyber-range/internal/support-docker-images
     strategy: depend
   only:
-    - master
-    - tags
-
-release-to-internal-network:
-  stage: release
-  needs: ["staging"]
-  script:
-    - apt-get update -y && apt-get install openssh-client -y
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$OCR_SERVICE_PRIVATE_KEY")
-    - mkdir -p ~/.ssh
-    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-    - ssh -t service@deputy.ocr.cr14.net "docker kill $(docker ps -q) || echo 'No containers to kill'"
-    - ssh -t service@deputy.ocr.cr14.net "sudo rm -rf deployment"
-    - ssh -t service@deputy.ocr.cr14.net "mkdir -p deployment"
-    - scp -r ./deputy-package-server/deployment/* service@deputy.ocr.cr14.net:~/deployment
-    - ssh -t service@deputy.ocr.cr14.net "cd deployment && docker compose pull && docker compose up -d --pull always --force-recreate --remove-orphans"
-    - ssh -t service@deputy.ocr.cr14.net "docker image prune -f"
-
-    - echo "Deputy Package Server deployed, howdy!"
-  only:
-    - master
-    - tags
+    - /^deputy-cli-.*$/
+  except:
+    - branches

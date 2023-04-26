@@ -1,7 +1,7 @@
 [package]
 name = "deputy-package-server"
 description = "Deputy package server is a digital library server meant for storing deputy packages"
-version = "2.1.3"
+version = "3.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -34,34 +34,50 @@ systemd-units = { unit-name = "deputy-package-server", unit-scripts = "assets/un
 
 [dependencies]
 actix = "0.13"
-actix-web = {version = "4", features = ["openssl"] }
+actix-rt = "2"
+actix-web = "4"
 actix-files = "0.6"
 actix-http = { version = "3", features = ["http2", "ws"] }
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 diesel = { version = "2", features = ["mysql", "r2d2", "chrono"] }
 diesel_migrations = "2"
-divrem = "1.0.0"
+divrem = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
-env_logger = "0.9"
-flate2 = "1.0"
+env_logger = "0.10"
+flate2 = "1"
 futures = "0.3"
-git2 = "0.14"
+get-port = { version = "4", optional = true }
 insta = "1"
 lazy_static = "1"
 log = "0.4"
 rand = "0.8"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1.0"
-serde_yaml = "0.8"
-tar = "0.4"
+serde_json = "1"
+serde_yaml = "0.9"
+tar = { git = "https://github.com/npajkovsky/tar-rs", branch = "master" }
 tempfile = "3"
 thiserror = "1"
-toml = "0.5"
-tokio = { version = "1", features = ["sync", "macros", "time"] }
-uuid = { version = "1.1", features = ["v4", "serde"] }
+toml = "0.7"
+tokio = { version = "1", features = [
+  "sync",
+  "macros",
+  "time",
+  "rt-multi-thread",
+] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+deputy-package-server = { path = ".", features = ["test"] }
 
 [features]
-default = ["test"]
-test = ["deputy-library/test", "tokio/sync", "tokio/macros", "tokio/time"]
+default = []
+test = [
+  "deputy-library/test",
+  "tokio/sync",
+  "tokio/macros",
+  "tokio/time",
+  "tokio/rt-multi-thread",
+  "dep:get-port",
+]

@@ -6,6 +6,17 @@ RUN echo 'deb [arch=amd64] https://nexus.ocr.cr14.net/repository/ocr-apt-hosted/
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install deputy -y
 
+ENV NODE_VERSION=18.15.0
+RUN apt-get install -y curl libmariadb-dev-compat libmariadb-dev
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+ENV NVM_DIR=/root/.nvm
+RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
+RUN cp /root/.nvm/versions/node/v${NODE_VERSION}/bin/node /usr/bin/
+RUN cp /root/.nvm/versions/node/v${NODE_VERSION}/bin/npm /usr/bin/
+RUN /root/.nvm/versions/node/v${NODE_VERSION}/bin/npm install -g yarn
+ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
 
 RUN mkdir -p /home/vscode/.deputy/download
 RUN mkdir /home/vscode/.deputy/index

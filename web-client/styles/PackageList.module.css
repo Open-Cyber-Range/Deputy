@@ -1,42 +1,40 @@
 ul.noBullets {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
 }
 
 .name {
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 120%;
-    overflow-wrap: break-word;
-    color: #0082be;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 120%;
+  overflow-wrap: break-word;
+  color: #0082be;
 }
 
 .version {
-    margin-left: 1rem;
+  margin-left: 1rem;
 }
 
 .readme {
-    margin-top: 1rem;
+  margin-top: 1rem;
 }
 
 .created_at {
-    float: right;
-    margin: 0 1rem 0 auto;
+  float: right;
+  margin: 0 1rem 0 auto;
 }
 
 .nameContainer {
-    padding-bottom: 1rem;
+  padding-bottom: 1rem;
 }
 
 .packageContainer {
-    padding: 2rem;
-    width: 60rem;
-    max-width: 100%;
+  padding: 2rem;
+  width: 60rem;
 }
 
-.nextImage {
-    max-width: 100%;
-    width: auto;
-    height: auto;
+.versionContainer {
+  margin: 2rem 1rem 1rem auto;
+  width: 30rem;
 }

@@ -1,13 +1,11 @@
 use anyhow::{Error, Result};
-use deputy_library::StorageFolders;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Configuration {
-    pub host: String,
-    pub port: u16,
-    pub storage_folders: StorageFolders,
+    pub hostname: String,
+    pub package_folder: String,
     pub database_url: String,
 }
 
@@ -37,13 +35,9 @@ mod tests {
         writeln!(
             file,
             r#"
-host: localhost
-port: 8080
-storage_folders:
-  toml_folder: /tmp/tomls
-  readme_folder: /tmp/readmes
-  package_folder: /tmp/packages
-database_url: mysql://deputy:deputy@127.0.0.1:3307/deputy
+hostname: localhost:8080
+package_folder: /tmp/packages
+database_url: mysql://mysql_user:mysql_pass@deputy-mariadb:3307/deputy
     "#
         )?;
         let arguments = vec![String::from("program-name"), path_string];

@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use crate::package::PackageMetadata;
 use crate::{
     constants::{self},
     package::Package,
@@ -11,7 +12,6 @@ use crate::{
 use anyhow::{anyhow, Result};
 use semver::{Version, VersionReq};
 use spdx;
-use crate::package::PackageMetadata;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;

@@ -2,7 +2,7 @@ mod common;
 
 #[cfg(test)]
 mod tests {
-    use super::common::BodyTest;
+    use crate::common::BodyTest;
     use actix_web::{body::to_bytes, test, App};
     use deputy_package_server::routes::basic::{status, version};
     use semver::Version;

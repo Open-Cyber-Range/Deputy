@@ -4,7 +4,7 @@ pub const DEFAULT_REGISTRY_NAME: &str = "main-registry";
 
 pub mod fetching {
     pub const DEFAULT_SAVE_PATH: &str = ".";
-    pub const DEFAULT_PACKAGE_VERSION_REQUIREMENT: &str = "0.0.1";
+    pub const DEFAULT_PACKAGE_VERSION_REQUIREMENT: &str = "*";
 }
 
 pub mod endpoints {

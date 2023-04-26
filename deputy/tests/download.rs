@@ -1,40 +1,44 @@
-mod test_backend;
+mod helpers;
 
 #[cfg(test)]
 mod tests {
-    /*
-    use crate::test_backend::TestBackEnd;
+    use crate::helpers::{publish_package, DeployerCLIConfigurationBuilder};
     use anyhow::Result;
     use assert_cmd::Command;
-    use deputy::client::Client;
-    use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::create_test_package};
+    use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::TempArchive};
+    use deputy_package_server::test::TestPackageServerBuilder;
     use tempfile::TempDir;
 
     #[actix_web::test]
     async fn downloads_package() -> Result<()> {
-        let temp_dir = TempDir::new()?;
-        let package = create_test_package()?;
-        let test_backend = TestBackEnd::builder().build().await?;
+        let temp_dir = TempDir::new()?.into_path();
+        let temp_project = TempArchive::builder()
+            .set_package_name("some-package-name")
+            .set_package_version("0.1.0")
+            .build()?;
+        let root_dir = temp_project.root_dir.as_ref();
+        let test_backend = TestPackageServerBuilder::try_new()?;
 
-        let client = Client::try_new(test_backend.server_address.to_string())?;
-        let response = client.upload_package(package.to_stream().await?, 60).await;
-        assert!(response.is_ok());
+        let host = test_backend.get_host();
+        let test_backend = test_backend.build();
+        test_backend.start().await?;
+
+        let cli_configuration = DeployerCLIConfigurationBuilder::builder()
+            .host(host)
+            .build()?;
+        publish_package(root_dir, cli_configuration.configuration_folder.path())?;
 
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("fetch").arg("some-package-name");
         command.current_dir(&temp_dir);
         command.env(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
-            &test_backend.configuration_directory.path(),
+            cli_configuration.configuration_folder.path(),
         );
         command.assert().success();
+        println!("temp_dir: {:?}", temp_dir);
 
-        test_backend.configuration_file.close()?;
-        test_backend.configuration_directory.close()?;
-
-        assert!(&temp_dir.path().join("some-package-name-0.1.0").exists());
+        assert!(&temp_dir.as_path().join("some-package-name-0.1.0").exists());
         Ok(())
     }
-
-     */
 }

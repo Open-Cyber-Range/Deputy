@@ -1,4 +1,4 @@
-use crate::constants::{CONFIGURATION_FILE_RELATIVE_PATH};
+use crate::constants::CONFIGURATION_FILE_RELATIVE_PATH;
 use anyhow::Result;
 use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,7 @@ mod tests {
         let (configuration_directory, configuration_file) = create_temp_configuration_file()?;
         env::set_var(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
-            &configuration_directory.path(),
+            configuration_directory.path(),
         );
         let configuration = Configuration::get_configuration()?;
         env::remove_var(CONFIGURATION_FOLDER_PATH_ENV_KEY);

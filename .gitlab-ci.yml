@@ -51,7 +51,7 @@ build-frontend:
     - yarn --cwd ./web-client/ build
   artifacts:
     paths:
-      - web-client/.next
+      - web-client
   only:
     - /^deputy-frontend-.*$/
   except:

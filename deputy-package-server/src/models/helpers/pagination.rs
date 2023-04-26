@@ -1,10 +1,10 @@
 use crate::constants::default_limit;
-use diesel::{MysqlConnection, QueryResult, RunQueryDsl,
-             query_dsl::LoadQuery, QueryId,
-             query_builder::Query,
-             sql_types::BigInt};
 use diesel::mysql::Mysql;
 use diesel::query_builder::{AstPass, QueryFragment};
+use diesel::{
+    query_builder::Query, query_dsl::LoadQuery, sql_types::BigInt, MysqlConnection, QueryId,
+    QueryResult, RunQueryDsl,
+};
 
 pub trait Paginate: Sized {
     fn paginate(self, page: i64) -> Paginated<Self>;
@@ -38,9 +38,12 @@ impl<T> Paginated<T> {
         }
     }
 
-    pub fn load_and_count_pages<'a, U>(self, conn: &mut MysqlConnection) -> QueryResult<(Vec<U>, i64)>
-        where
-            Self: LoadQuery<'a, MysqlConnection, (U, i64)>,
+    pub fn load_and_count_pages<'a, U>(
+        self,
+        conn: &mut MysqlConnection,
+    ) -> QueryResult<(Vec<U>, i64)>
+    where
+        Self: LoadQuery<'a, MysqlConnection, (U, i64)>,
     {
         let per_page = self.per_page;
         let results = self.load::<(U, i64)>(conn)?;
@@ -58,8 +61,8 @@ impl<T: Query> Query for Paginated<T> {
 impl<T> RunQueryDsl<MysqlConnection> for Paginated<T> {}
 
 impl<T> QueryFragment<Mysql> for Paginated<T>
-    where
-        T: QueryFragment<Mysql>,
+where
+    T: QueryFragment<Mysql>,
 {
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Mysql>) -> QueryResult<()> {
         out.push_sql("SELECT *, COUNT(*) OVER () FROM (");

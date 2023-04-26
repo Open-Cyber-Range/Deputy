@@ -19,6 +19,7 @@ pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
 
+#[derive(Clone)]
 pub struct Database {
     connection_pool: Pool<ConnectionManager<MysqlConnection>>,
 }

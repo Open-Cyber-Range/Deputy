@@ -1,63 +1,73 @@
-import type {Fetcher} from 'swr';
 import useSWR from 'swr';
-import styles from '../styles/PackageList.module.css';
-import type {Package, PackageMetadata} from '../interfaces/PackageListInterface';
-import {Card, Elevation} from '@blueprintjs/core';
-import type {SWRResponse} from 'swr/dist/types';
+import { Card, Elevation } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
-import {useRouter} from 'next/router';
-import {Tab, TabList, TabPanel, Tabs} from 'react-tabs';
-import 'react-tabs/style/react-tabs.css';
+import { useRouter } from 'next/router';
 import parse from 'html-react-parser';
-import FilePreview from './FilePreview';
+import { TabList, TabPanel, Tab, Tabs } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
+import { ParsedUrlQuery } from 'querystring';
+import styles from '../styles/PackageList.module.css';
+import { packageTOMLFetcher, packageVersionFethcer } from '../utils/api';
 import PackageVersions from './PackageVersions';
+import FilePreview from './FilePreview';
+import { displayLocalTime } from '../utils';
 
-const metadataFetcher: Fetcher<PackageMetadata, string> = async (...url) => fetch(...url).then(async res => res.json());
-const packageFetcher: Fetcher<Package, string> = async (...url) => fetch(...url).then(async res => res.json());
+interface DetailParams extends ParsedUrlQuery {
+  name: string;
+  version: string;
+}
 
 const PackageDetailView = () => {
-  const {t} = useTranslation('common');
-  const {asPath} = useRouter();
+  const { t } = useTranslation('common');
+  const { query } = useRouter();
+  const { name, version } = query as DetailParams;
 
-  const nameAndVersion = asPath.split('/packages/')[1];
-  const {data: packageMetadata, error: detailError}: SWRResponse<PackageMetadata, string> = useSWR('/api/v1/package/' + nameAndVersion + '/metadata', metadataFetcher);
-  const {data: packageData, error: packageError}: SWRResponse<Package, string> = useSWR('/api/v1/package/' + nameAndVersion + '/toml', packageFetcher);
-  if (!packageMetadata || !packageData) {
+  const { data: latestVersion, error: latestVersionError } = useSWR(
+    `/api/v1/package/${name}/${version}`,
+    packageVersionFethcer
+  );
+
+  const { data: packageToml, error: packageTOMLError } = useSWR(
+    `/api/v1/package/${name}/${version}/path/package.toml`,
+    packageTOMLFetcher
+  );
+
+  if (!latestVersion || !packageToml) {
     return null;
   }
 
-  if (detailError ?? packageError) {
+  if (latestVersionError || packageTOMLError) {
     return <div>{t('failedLoading')} </div>;
   }
 
   return (
     <div className={styles.packageContainer}>
       <Card interactive={false} elevation={Elevation.ONE}>
-        <div className={styles.nameContainer}>
-          <span><a href='#' className={styles.name}>{packageData.package.name}</a></span>
-          <span className={styles.version}>{packageData.package.version}</span>
-          <span className={styles.version}>{packageData.package.license}</span>
-          <span className={styles.created_at}>{t('created_at')}: {packageMetadata.created_at}</span>
-          <p>{packageData.package.description}</p>
-        </div>
-        <Tabs>
+        <span className={styles.name}>{name}</span>
+        <span className={styles.version}>{latestVersion.version}</span>
+        <span className={styles.version}>{latestVersion.license}</span>
+        <span className={styles.created_at}>
+          Created at: {displayLocalTime(latestVersion.created_at)}
+        </span>
+        <Tabs className="pt-[2rem] pb-[2rem]">
           <TabList>
             <Tab>Readme</Tab>
             <Tab>{t('versions')}</Tab>
-            <Tab disabled={!packageData.content.preview}>{t('preview')}</Tab>
+            <Tab disabled={!packageToml.content.preview}>{t('preview')}</Tab>
           </TabList>
 
           <TabPanel>
-            <div className={styles.readme}>{ parse(packageMetadata.readme_html) }</div>
+            <div className={styles.readme}>
+              {parse(latestVersion.readme_html)}
+            </div>
           </TabPanel>
           <TabPanel>
-            <PackageVersions packageName={packageMetadata.name}/>
+            <PackageVersions packageName={name} />
           </TabPanel>
           <TabPanel>
-            <FilePreview packageData={packageData} />
+            <FilePreview packageData={packageToml} />
           </TabPanel>
         </Tabs>
-
       </Card>
     </div>
   );

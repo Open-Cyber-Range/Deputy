@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const nextTranslate = require("next-translate");
+const nextTranslate = require('next-translate');
 
 module.exports = nextTranslate({
   reactStrictMode: true,
@@ -10,8 +10,8 @@ module.exports = nextTranslate({
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
-        destination: "http://localhost:8080/api/:path*",
+        source: '/api/:path*',
+        destination: 'http://localhost:8080/api/:path*',
       },
     ];
   },

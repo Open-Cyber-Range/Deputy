@@ -3,12 +3,7 @@ source: deputy-package-server/src/configuration.rs
 expression: configuration
 ---
 Configuration {
-    host: "localhost",
-    port: 8080,
-    storage_folders: StorageFolders {
-        package_folder: "/tmp/packages",
-        toml_folder: "/tmp/tomls",
-        readme_folder: "/tmp/readmes",
-    },
-    database_url: "mysql://deputy:deputy@127.0.0.1:3307/deputy",
+    hostname: "localhost:8080",
+    package_folder: "/tmp/packages",
+    database_url: "mysql://mysql_user:mysql_pass@deputy-mariadb:3307/deputy",
 }

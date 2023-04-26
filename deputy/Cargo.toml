@@ -28,7 +28,7 @@ assets = [
 
 [dependencies]
 actix = "0.13"
-actix-web = "4"
+actix-web = { version = "4", features = ["rustls"] }
 actix-rt = "2"
 anyhow = "1"
 awc = "3"
@@ -36,14 +36,14 @@ bytes = "1"
 byte-unit = "4"
 clap = { version = "3", features = ["derive"] }
 colored = "2"
-deputy-library = { path = "../deputy-library" }
-deputy-package-server = { path = "../deputy-package-server" }
+deputy-library = { path = "../deputy-library", default-features = false }
 git2 = "0.14"
 futures = "0.3"
 indicatif = "0.16"
 lazy_static = "1"
 log = "0.4"
 path-absolutize = "3"
+qstring = "0.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
@@ -53,12 +53,14 @@ url = "2"
 
 [dev-dependencies]
 actix-test = "0.0"
-assert_cmd = "2.0"
-bollard = "0.12"
+assert_cmd = "2"
 deputy-library = { path = "../deputy-library", features = ["test"] }
+deputy-package-server = { path = "../deputy-package-server", features = [
+  "test",
+] }
 futures = "0.3"
 insta = "1"
-predicates = "2.1"
+predicates = "2"
 rand = "0.8"
 tempfile = "3"
 tokio = { version = "1", features = ["fs", "time"], default-features = false }

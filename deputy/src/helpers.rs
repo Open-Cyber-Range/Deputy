@@ -5,8 +5,8 @@ use bytes::Bytes;
 use colored::Colorize;
 use deputy_library::archiver::{decompress_archive, unpack_archive};
 use futures::{Stream, StreamExt};
-use std::{io::Write, path::PathBuf};
 use std::path::Path;
+use std::{io::Write, path::PathBuf};
 use tempfile::TempDir;
 
 pub fn find_toml(current_path: PathBuf) -> Result<PathBuf> {
@@ -48,7 +48,12 @@ pub fn create_temporary_package_download_path(
     ))
 }
 
-pub fn get_download_target_name(unpack_level: &UnpackLevel, save_path: &str, name: &str, version: &str) -> PathBuf {
+pub fn get_download_target_name(
+    unpack_level: &UnpackLevel,
+    save_path: &str,
+    name: &str,
+    version: &str,
+) -> PathBuf {
     match unpack_level {
         UnpackLevel::Raw => Path::new(save_path).join(format!("{}-{}.tar.gz", name, version)),
         UnpackLevel::Uncompressed => Path::new(save_path).join(format!("{}-{}.tar", name, version)),

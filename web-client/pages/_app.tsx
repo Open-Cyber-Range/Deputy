@@ -1,12 +1,12 @@
-import type {AppProps} from 'next/app';
+import type { AppProps } from 'next/app';
 import '@blueprintjs/core/lib/css/blueprint.css';
 import '../styles/global.css';
-import MainNavbar from '../components/MainNavbar';
 import Head from 'next/head';
 import useTranslation from 'next-translate/useTranslation';
+import MainNavbar from '../components/MainNavbar';
 
-function MyApp({Component, pageProps}: AppProps) {
-  const {t} = useTranslation('common');
+const Deputy = ({ Component, pageProps }: AppProps) => {
+  const { t } = useTranslation('common');
 
   return (
     <>
@@ -14,10 +14,15 @@ function MyApp({Component, pageProps}: AppProps) {
         <title>{t('title')}</title>
         <meta name={t('metaName')} content={t('metaContent')} />
       </Head>
-      <MainNavbar/>
-      <Component {...pageProps} />
+      <div className="flex flex-col min-h-screen">
+        <MainNavbar />
+        <main className="grow">
+          {/* eslint-disable-next-line react/jsx-props-no-spreading */}
+          <Component {...pageProps} />
+        </main>
+      </div>
     </>
   );
-}
+};
 
-export default MyApp;
+export default Deputy;

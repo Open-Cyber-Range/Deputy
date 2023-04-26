@@ -7,10 +7,10 @@
   flex-direction: column;
 }
 
-.main {
+/* .main {
   min-height: 100vh;
   background-color: #eff0f2;
-}
+} */
 
 .header,
 .footer {

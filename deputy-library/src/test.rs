@@ -1,22 +1,17 @@
-use crate::package::{Package, PackageFile, PackageMetadata};
+use crate::package::Package;
 use anyhow::{anyhow, Ok, Result};
 use byte_unit::Byte;
-use git2::{Repository, RepositoryInitOptions};
-use port_check::free_local_port;
+use filetime::{set_file_times, FileTime};
 use rand::Rng;
 use rayon::current_num_threads;
-use std::{fs::File, io::Write};
-use tempfile::{Builder, NamedTempFile, TempDir, TempPath};
+use std::{
+    fs::{set_permissions, Permissions},
+    io::Write,
+    os::unix::prelude::PermissionsExt,
+};
+use tempfile::{Builder, NamedTempFile, TempDir};
 
 lazy_static! {
-    pub static ref TEST_METADATA: PackageMetadata = PackageMetadata {
-        name: "some-package-name".to_string(),
-        version: "0.1.0".to_string(),
-        license: "Apache-2.0".to_string(),
-        readme: "readme".to_string(),
-        readme_html: "<html><body><h1>Hello, world!</h1></body></html>".to_string(),
-        checksum: "aa30b1cc05c10ac8a1f309e3de09de484c6de1dc7c226e2cf8e1a518369b1d73".to_string(),
-    };
     pub static ref TEST_INVALID_PACKAGE_TOML_SCHEMA: &'static str = r#"
         [package]
         name = "test_package_1"
@@ -50,33 +45,6 @@ lazy_static! {
         type = "OVA"
         file_path = "src/some-image.ova"
         "#;
-    pub static ref TEST_METADATA_BYTES: Vec<u8> = vec![
-        123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99, 107, 97, 103,
-        101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110, 34, 58, 34, 48,
-        46, 49, 46, 48, 34, 44, 34, 99, 104, 101, 99, 107, 115, 117, 109, 34, 58, 34, 97, 97, 51,
-        48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102, 51, 48, 57, 101, 51, 100,
-        101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99, 50, 50, 54, 101,
-        50, 99, 102, 56, 101, 49, 97, 53, 49, 56, 51, 54, 57, 98, 49, 100, 55, 51, 34, 44, 34, 118,
-        105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110, 101, 34, 58, 123, 34, 111,
-        112, 101, 114, 97, 116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34, 58, 34, 85,
-        98, 117, 110, 116, 117, 34, 44, 34, 97, 114, 99, 104, 105, 116, 101, 99, 116, 117, 114,
-        101, 34, 58, 34, 65, 114, 109, 54, 52, 34, 125, 125
-    ];
-    pub static ref TEST_FILE_BYTES: Vec<u8> =
-        vec![13, 0, 0, 0, 83, 111, 109, 101, 32, 99, 111, 110, 116, 101, 110, 116, 10,];
-    pub static ref TEST_PACKAGE_BYTES: Vec<u8> = vec![
-        195, 0, 0, 0, 123, 34, 110, 97, 109, 101, 34, 58, 34, 115, 111, 109, 101, 45, 112, 97, 99,
-        107, 97, 103, 101, 45, 110, 97, 109, 101, 34, 44, 34, 118, 101, 114, 115, 105, 111, 110,
-        34, 58, 34, 48, 46, 49, 46, 48, 34, 44, 34, 99, 104, 101, 99, 107, 115, 117, 109, 34, 58,
-        34, 97, 97, 51, 48, 98, 49, 99, 99, 48, 53, 99, 49, 48, 97, 99, 56, 97, 49, 102, 51, 48,
-        57, 101, 51, 100, 101, 48, 57, 100, 101, 52, 56, 52, 99, 54, 100, 101, 49, 100, 99, 55, 99,
-        50, 50, 54, 101, 50, 99, 102, 56, 101, 49, 97, 53, 49, 56, 51, 54, 57, 98, 49, 100, 55, 51,
-        34, 44, 34, 118, 105, 114, 116, 117, 97, 108, 95, 109, 97, 99, 104, 105, 110, 101, 34, 58,
-        123, 34, 111, 112, 101, 114, 97, 116, 105, 110, 103, 95, 115, 121, 115, 116, 101, 109, 34,
-        58, 34, 85, 98, 117, 110, 116, 117, 34, 44, 34, 97, 114, 99, 104, 105, 116, 101, 99, 116,
-        117, 114, 101, 34, 58, 34, 65, 114, 109, 54, 52, 34, 125, 125, 14, 0, 0, 0, 115, 111, 109,
-        101, 32, 99, 111, 110, 116, 101, 110, 116, 32, 10
-    ];
 }
 
 pub struct TempArchive {
@@ -94,18 +62,64 @@ impl TempArchive {
     }
 }
 
+impl TryInto<Package> for &TempArchive {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<Package> {
+        let toml_path = self.toml_file.path().to_path_buf();
+        Package::from_file(toml_path, 0)
+    }
+}
+
 #[derive(Default)]
 pub struct TempArchiveBuilder {
     is_large: bool,
+    zero_filetimes: bool,
+    zero_fileowner: bool,
+    all_allowed_permission: bool,
+    package_name: String,
+    package_version: String,
 }
 
 impl TempArchiveBuilder {
     pub fn new() -> TempArchiveBuilder {
-        TempArchiveBuilder { is_large: false }
+        TempArchiveBuilder {
+            is_large: false,
+            zero_filetimes: true,
+            zero_fileowner: true,
+            all_allowed_permission: true,
+            package_name: String::from("test_package_1"),
+            package_version: String::from("1.0.4"),
+        }
     }
 
     pub fn is_large(mut self, value: bool) -> Self {
         self.is_large = value;
+        self
+    }
+
+    pub fn zero_filetimes(mut self, value: bool) -> Self {
+        self.zero_filetimes = value;
+        self
+    }
+
+    pub fn zero_fileowner(mut self, value: bool) -> Self {
+        self.zero_fileowner = value;
+        self
+    }
+
+    pub fn all_allowed_permission(mut self, value: bool) -> Self {
+        self.all_allowed_permission = value;
+        self
+    }
+
+    pub fn set_package_name(mut self, value: &str) -> Self {
+        self.package_name = value.to_string();
+        self
+    }
+
+    pub fn set_package_version(mut self, value: &str) -> Self {
+        self.package_version = value.to_string();
         self
     }
 
@@ -135,11 +149,12 @@ impl TempArchiveBuilder {
     }
 
     pub fn build(self) -> Result<TempArchive> {
-        let toml_content = r#"
+        let toml_content = format!(
+            r#"
                 [package]
-                name = "test_package_1"
+                name = "{}"
                 description = "This package does nothing at all, and we spent 300 manhours on it..."
-                version = "1.0.4"
+                version = "{}"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
                 license = "Apache-2.0"
                 readme = "readme"
@@ -150,7 +165,9 @@ impl TempArchiveBuilder {
                 architecture = "arm64"
                 type = "OVA"
                 file_path = "/src/test_file.txt"
-            "#;
+            "#,
+            self.package_name, self.package_version
+        );
         let target_file_ipsum =
             br#"
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean consectetur nisl at aliquet pharetra. Cras fringilla
@@ -171,6 +188,7 @@ impl TempArchiveBuilder {
             ex massa eget felis.
             "#;
         let dir = TempDir::new()?;
+
         let target_dir = Builder::new()
             .prefix("target")
             .rand_bytes(0)
@@ -181,6 +199,17 @@ impl TempArchiveBuilder {
             .rand_bytes(0)
             .tempfile_in(&target_dir)?;
         target_file.write_all(target_file_ipsum)?;
+        if self.zero_filetimes {
+            set_file_times(target_file.path(), FileTime::zero(), FileTime::zero())?;
+        }
+        if cfg!(unix) && self.zero_fileowner {
+            use file_owner::PathExt;
+            target_file
+                .path()
+                .set_owner(1000)
+                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
+        }
+
         let src_dir = Builder::new()
             .prefix("src")
             .rand_bytes(0)
@@ -191,12 +220,41 @@ impl TempArchiveBuilder {
             .rand_bytes(0)
             .tempfile_in(&src_dir)?;
         src_file.write_all(src_file_ipsum)?;
+        if self.zero_filetimes {
+            set_file_times(src_file.path(), FileTime::zero(), FileTime::zero())?;
+        }
+        if cfg!(unix) && self.zero_fileowner {
+            use file_owner::PathExt;
+            src_file
+                .path()
+                .set_owner(1000)
+                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
+        }
+
         let mut toml_file = Builder::new()
             .prefix("package")
             .suffix(".toml")
             .rand_bytes(0)
             .tempfile_in(&dir)?;
         toml_file.write_all(toml_content.as_bytes())?;
+        if self.zero_filetimes {
+            set_file_times(toml_file.path(), FileTime::zero(), FileTime::zero())?;
+        }
+        if cfg!(unix) && self.zero_fileowner {
+            use file_owner::PathExt;
+            toml_file
+                .path()
+                .set_owner(1000)
+                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
+        }
+
+        if self.all_allowed_permission {
+            let permissions = Permissions::from_mode(0o777);
+            set_permissions(toml_file.path(), permissions.clone())?;
+            set_permissions(src_file.path(), permissions.clone())?;
+            set_permissions(target_file.path(), permissions)?;
+        }
+
         if self.is_large {
             let mut large_file = Builder::new()
                 .prefix("large")
@@ -206,6 +264,21 @@ impl TempArchiveBuilder {
             let random_bytes: Vec<u8> =
                 TempArchiveBuilder::generate_vec(Byte::from_str("20MB")?.get_bytes() as usize)?;
             large_file.write_all(&random_bytes)?;
+
+            if self.zero_filetimes {
+                set_file_times(large_file.path(), FileTime::zero(), FileTime::zero())?;
+            }
+            if self.all_allowed_permission {
+                let permissions = Permissions::from_mode(0o777);
+                set_permissions(large_file.path(), permissions)?;
+            }
+            if cfg!(unix) && self.zero_fileowner {
+                use file_owner::PathExt;
+                large_file
+                    .path()
+                    .set_owner(1000)
+                    .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
+            }
         }
 
         let temp_project = TempArchive {
@@ -221,61 +294,10 @@ impl TempArchiveBuilder {
     }
 }
 
-pub fn create_readable_temporary_file(content: &str) -> Result<(File, TempPath)> {
-    let file = NamedTempFile::new()?;
-    let mut other_handler = file.reopen()?;
-    write!(&mut other_handler, "{}", content)?;
-    Ok(file.into_parts())
-}
-
-pub fn create_test_package() -> Result<Package> {
-    let (temporary_file, path) = create_readable_temporary_file("some content \n")?;
-    let (package_toml, toml_path) = create_readable_temporary_file("some toml \n")?;
-    let (readme_file, readme_path) = create_readable_temporary_file("some readme \n")?;
-    let file = PackageFile(temporary_file, Some(path));
-    let package_toml = PackageFile(package_toml, Some(toml_path));
-    let readme = PackageFile(readme_file, Some(readme_path));
-    Ok(Package {
-        metadata: TEST_METADATA.clone(),
-        file,
-        package_toml,
-        readme,
-    })
-}
-
-pub fn initialize_test_repository() -> (TempDir, Repository) {
-    let td = TempDir::new().unwrap();
-    let mut opts = RepositoryInitOptions::new();
-    opts.initial_head("master");
-    let repo = Repository::init_opts(td.path(), &opts).unwrap();
-    {
-        let mut config = repo.config().unwrap();
-        config.set_str("user.name", "name").unwrap();
-        config.set_str("user.email", "email").unwrap();
-        let mut index = repo.index().unwrap();
-        let id = index.write_tree().unwrap();
-
-        let tree = repo.find_tree(id).unwrap();
-        let sig = repo.signature().unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
-            .unwrap();
-    }
-    (td, repo)
-}
-
-pub fn get_last_commit_message(repo: &Repository) -> String {
-    let head = repo.head().unwrap().peel_to_commit().unwrap();
-    head.message().unwrap().to_string()
-}
-
 pub fn generate_random_string(length: usize) -> Result<String> {
     let random_bytes = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(length)
         .collect::<Vec<u8>>();
     Ok(String::from_utf8(random_bytes)?)
-}
-
-pub fn get_free_port() -> Result<u16> {
-    free_local_port().ok_or_else(|| anyhow!("Failed to assign free local port"))
 }

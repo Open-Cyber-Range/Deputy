@@ -1,38 +1,46 @@
-import styles from '../styles/PackageList.module.css';
-import type {PackageMetadata} from '../interfaces/PackageListInterface';
-import {Card, Elevation} from '@blueprintjs/core';
+import { Card, Elevation } from '@blueprintjs/core';
 import Link from 'next/link';
-import type {Fetcher} from 'swr';
 import useSWR from 'swr';
-import type {SWRResponse} from 'swr/dist/types';
 import useTranslation from 'next-translate/useTranslation';
+import styles from '../styles/PackageList.module.css';
+import { packageVersionsFethcer } from '../utils/api';
 
-const versionFetcher: Fetcher<PackageMetadata[], string> = async (...url) => fetch(...url).then(async res => res.json());
-
-const PackageVersions = ({packageName}: {packageName: string}) => {
-  const {t} = useTranslation('common');
-  const {data: packageVersions, error: versionError}: SWRResponse<PackageMetadata[], string> = useSWR(() => '/api/v1/package/' + packageName + '/all_versions', versionFetcher);
+const PackageVersions = ({ packageName }: { packageName: string }) => {
+  const { t } = useTranslation('common');
+  const { data: packageVersions, error: allPackageVersions } = useSWR(
+    () => `/api/v1/package/${packageName}`,
+    packageVersionsFethcer
+  );
 
   if (!packageVersions) {
     return null;
   }
 
-  if (versionError) {
+  if (allPackageVersions) {
     return <div>{t('failedLoading')} </div>;
   }
 
   return (
     <div>
       <ul className={styles.noBullets}>
-        {packageVersions.map((deputyPackage: PackageMetadata) =>
+        {packageVersions.map((deputyPackage) => (
           <li key={deputyPackage.version}>
             <Card interactive={false} elevation={Elevation.ONE}>
-              <span><Link href={'/packages/' + deputyPackage.name + '/' + deputyPackage.version}
-                className={styles.name}>{deputyPackage.name}</Link></span>
+              <span>
+                <Link
+                  href={`/packages/${packageName}/${deputyPackage.version}`}
+                  className={styles.name}
+                >
+                  {packageName}
+                </Link>
+              </span>
               <span className={styles.version}>{deputyPackage.version}</span>
-              <div className={styles.description}>{deputyPackage.description}</div>
+              {/* <div className={styles.description}>
+                {deputyPackage.description}
+              </div> */}
             </Card>
-          </li>)}
+          </li>
+        ))}
       </ul>
     </div>
   );

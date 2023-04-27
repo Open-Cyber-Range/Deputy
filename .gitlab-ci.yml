@@ -99,10 +99,10 @@ publish-deputy-package-server-to-docker-images:
   script:
     - docker info
     - echo "$OCR_DEPLOYMENT_PASSWORD" | docker login $DOCKER_REGISTRY --username $OCR_DEPLOYMENT_USER --password-stdin
-    - docker pull $DOCKER_REGISTRY/deputy-repository-server:latest
-    - docker build -t deputy-repository-server ./docker/deputy-package-server
-    - docker tag deputy-repository-server:latest $DOCKER_REGISTRY/deputy-repository-server:latest
-    - docker push $DOCKER_REGISTRY/deputy-repository-server:latest
+    - docker pull $DOCKER_REGISTRY/deputy-package-server:latest
+    - docker build -t deputy-package-server ./docker/deputy-package-server
+    - docker tag deputy-package-server:latest $DOCKER_REGISTRY/deputy-package-server:latest
+    - docker push $DOCKER_REGISTRY/deputy-package-server:latest
   only:
     - /^deputy-package-server-.*$/
   except:

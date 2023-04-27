@@ -32,7 +32,6 @@ lint-and-test-rust:
   script:
     - cargo clippy -- -Dwarnings
     - cargo fmt -- --check
-    - cargo test
     - cargo tarpaulin --skip-clean --out Xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
@@ -45,21 +44,8 @@ lint-and-test-rust:
     - master
     - merge_requests
     - tags
-
-build-frontend:
-  stage: build
-  needs: ["lint-frontend"]
-  image: $DOCKER_REGISTRY_PULL/frontend-builder
-  script:
-    - yarn --cwd ./web-client/
-    - yarn --cwd ./web-client/ build
-  artifacts:
-    paths:
-      - web-client/.next
-  only:
-    - /^deputy-frontend-.*$/
   except:
-    - branches
+    - /^deputy-frontend-.*$/
 
 build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   stage: build
@@ -91,7 +77,6 @@ publish-deputy-frontend-to-docker-images:
   stage: publish
   services:
     - docker:20.10.17-dind
-  needs: ["build-frontend"]
   image: $DOCKER_REGISTRY_PULL/docker:20.10.17
   script:
     - docker info

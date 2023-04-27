@@ -1,7 +1,0 @@
-host: 0.0.0.0
-port: 8080
-storage_folders:
-  package_folder: /opt/disk2/deployment-deputymachine/deputy-packages
-  toml_folder: /opt/disk2/deployment-deputymachine/deputy-package-toml
-  readme_folder: /opt/disk2/deployment-deputymachine/deputy-package-readme
-database_url: mysql://mysql_user:mysql_pass@deputy-mariadb:3306/deputy

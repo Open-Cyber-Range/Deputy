@@ -1,14 +1,7 @@
-FROM nexus.ocr.cr14.net:8003/node:18-alpine AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-COPY web-client/package.json web-client/yarn.lock ./
-RUN  yarn install --production
-
 FROM nexus.ocr.cr14.net:8003/node:18-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules web-client/node_modules
-COPY web-client .
+COPY web-client ./
+RUN  yarn install
 
 ENV NEXT_TELEMETRY_DISABLED 1
 

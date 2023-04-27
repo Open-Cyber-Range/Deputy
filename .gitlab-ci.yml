@@ -40,6 +40,8 @@ lint-and-test-rust:
     - master
     - merge_requests
     - tags
+  except:
+    - /^deputy-frontend-.*$/
 
 build-and-upload-x86-64bit-linux-release-for-deputy-package-server:
   stage: build

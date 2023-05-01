@@ -138,6 +138,8 @@ impl PackageFile {
             if file_size.is_none() {
                 if chunk.len() <= 8 {
                     intermediate_buffer.append(&mut chunk.to_vec());
+                } else {
+                    intermediate_buffer = chunk.to_vec();
                 }
                 if intermediate_buffer.len() > 7 {
                     let mut u64_bytes = [0u8; 8];

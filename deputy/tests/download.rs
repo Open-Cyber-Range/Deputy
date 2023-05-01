@@ -36,7 +36,6 @@ mod tests {
             cli_configuration.configuration_folder.path(),
         );
         command.assert().success();
-        println!("temp_dir: {:?}", temp_dir);
 
         assert!(&temp_dir.as_path().join("some-package-name-0.1.0").exists());
         Ok(())

@@ -73,7 +73,6 @@ where
 
     let mut package = Package::new(package_metadata.clone(), archive_file);
     package.validate_checksum().map_err(|error| {
-        println!("Failed to validate the package: {error}");
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;
@@ -88,7 +87,6 @@ where
         .await
         .map_err(|error| {
             error!("Failed to generate the readme html: {error}");
-            println!("{:?}", error);
             ServerResponseError(PackageServerError::PackageSave.into())
         })?
         .unwrap_or_default();

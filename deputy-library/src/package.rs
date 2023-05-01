@@ -2,7 +2,6 @@ use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
 };
-
 use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
@@ -52,6 +51,47 @@ impl PackageMetadata {
         }
         Ok(None)
     }
+
+    pub async fn from_stream(
+        mut stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
+    ) -> Result<(Self, PackageStream)> {
+        let mut bytes = Vec::new();
+        let mut metadata_length: Option<u32> = None;
+        let mut reminder = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            let mut chunk = chunk?;
+            if metadata_length.is_none() {
+                if chunk.len() < 4 {
+                    return Err(anyhow!(
+                        "Chunk length is less than 4 bytes. Length: {:?}",
+                        chunk.len()
+                    ));
+                }
+                let mut u32_as_bytes = [0u8; 4];
+                u32_as_bytes.copy_from_slice(&chunk[0..4]);
+                metadata_length = Some(u32::from_le_bytes(u32_as_bytes));
+                chunk = chunk.slice(4..);
+            }
+            if let Some(metadata_lenght) = metadata_length {
+                if bytes.len() + chunk.len() < metadata_lenght as usize {
+                    bytes.extend_from_slice(&chunk);
+                } else if bytes.len() < metadata_lenght as usize {
+                    let (last_metadata_bytes, first_file_bytes) =
+                        chunk.split_at(metadata_lenght as usize - bytes.len());
+                    bytes.extend_from_slice(last_metadata_bytes);
+                    reminder.extend_from_slice(first_file_bytes);
+                    break;
+                } else {
+                    break;
+                }
+            }
+        }
+        let metadata: PackageMetadata = serde_json::from_slice(&bytes)?;
+        let reminder = vec![Ok(Bytes::from(reminder))];
+        let new_body = Box::pin(futures::stream::iter(reminder));
+        let stream = new_body.chain(stream).boxed_local();
+        Ok((metadata, stream))
+    }
 }
 
 #[derive(Debug)]
@@ -88,12 +128,31 @@ impl PackageFile {
         Ok(format!("{hash_bytes:x}",))
     }
 
-    pub async fn from_stream(
-        mut stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
-    ) -> Result<Self> {
+    pub async fn from_stream(mut stream: PackageStream) -> Result<Self> {
         let mut file = tempfile::NamedTempFile::new()?;
+        let mut file_size: Option<u64> = None;
+        let mut intermediate_buffer: Vec<u8> = Vec::new();
         while let Some(chunk) = stream.next().await {
-            file.write_all(&chunk?)?;
+            let chunk = chunk?;
+            let mut first = false;
+            if file_size.is_none() {
+                if chunk.len() <= 8 {
+                    intermediate_buffer.append(&mut chunk.to_vec());
+                }
+                if intermediate_buffer.len() > 7 {
+                    let mut u64_bytes = [0u8; 8];
+                    u64_bytes.copy_from_slice(&intermediate_buffer[0..8]);
+                    file_size = Some(u64::from_le_bytes(u64_bytes));
+                    first = true;
+                }
+            }
+            if file_size.is_some() {
+                if first {
+                    file.write_all(&intermediate_buffer[8..])?;
+                } else {
+                    file.write_all(&chunk)?;
+                }
+            }
         }
         file.flush()?;
 
@@ -171,11 +230,11 @@ impl Package {
     }
 
     pub async fn to_stream(self) -> Result<PackageStream> {
-        let mut metadata_bytes_with_length = Vec::try_from(&self.metadata)?;
-        if metadata_bytes_with_length.len() < 4 {
+        let metadata_bytes = Vec::try_from(&self.metadata)?;
+        if metadata_bytes.len() < 4 {
             return Err(anyhow!("Metadata is too short"));
         }
-        let metadata_bytes = metadata_bytes_with_length.drain(4..).collect::<Vec<_>>();
+
         let stream: PackageStream =
             Box::pin(futures::stream::iter(vec![Ok(Bytes::from(metadata_bytes))]));
 
@@ -217,14 +276,6 @@ impl TryFrom<&PackageMetadata> for Vec<u8> {
         formatted_bytes.extend_from_slice(main_bytes);
 
         Ok(formatted_bytes)
-    }
-}
-
-impl TryFrom<&[u8]> for PackageMetadata {
-    type Error = anyhow::Error;
-
-    fn try_from(metadata_bytes: &[u8]) -> Result<Self> {
-        Ok(serde_json::from_slice(metadata_bytes)?)
     }
 }
 
@@ -274,7 +325,7 @@ impl Streamer for TokioFile {
 
 #[cfg(test)]
 mod tests {
-    use crate::package::{Package, PackageMetadata};
+    use crate::package::Package;
     use crate::test::TempArchive;
     use anyhow::{Ok, Result};
     use futures::StreamExt;
@@ -338,20 +389,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn metadata_is_parsed_from_bytes() -> Result<()> {
-        let archive = TempArchive::builder().build()?;
-        let package: Package = (&archive).try_into()?;
-        let metadata = package.metadata;
-        let metadata_bytes = Vec::try_from(&metadata)?;
-
-        let metadata = PackageMetadata::try_from(&metadata_bytes[4..] as &[u8])?;
-        insta::assert_toml_snapshot!(&metadata, {
-            ".checksum" => "[checksum]",
-        });
-        Ok(())
-    }
-
     #[actix_web::test]
     async fn package_is_converted_to_stream() -> Result<()> {
         let archive = TempArchive::builder().build()?;
@@ -363,9 +400,6 @@ mod tests {
             let chunk = chunk.unwrap();
             bytes.append(&mut chunk.to_vec());
             counter += 1;
-            if counter == 1 {
-                PackageMetadata::try_from(bytes.as_slice())?;
-            }
         }
         assert_eq!(counter, 3);
         Ok(())

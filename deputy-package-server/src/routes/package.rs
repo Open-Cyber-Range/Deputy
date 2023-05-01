@@ -40,7 +40,7 @@ async fn drain_stream(
 }
 
 pub async fn add_package<T>(
-    mut body: Payload,
+    body: Payload,
     app_state: Data<AppState<T>>,
 ) -> Result<HttpResponse, Error>
 where
@@ -54,23 +54,10 @@ where
     <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
     <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
 {
-    let package_metadata = if let Some(Ok(metadata_bytes)) = body.next().await {
-        let metadata_vector = metadata_bytes.to_vec();
-        let result = PackageMetadata::try_from(metadata_vector.as_slice()).map_err(|error| {
-            error!("Failed to parse package metadata: {error}");
-            ServerResponseError(PackageServerError::MetadataParse.into())
-        });
-        if let Err(error) = result {
-            drain_stream(body).await?;
-            return Err(error.into());
-        }
-        result?
-    } else {
-        error!("Invalid stream chunk: No package metadata");
-        return Ok(
-            HttpResponse::UnprocessableEntity().body("Invalid stream chunk: No package metadata")
-        );
-    };
+    let (package_metadata, body) = PackageMetadata::from_stream(body).await.map_err(|error| {
+        error!("Failed to parse package metadata: {error}");
+        ServerResponseError(PackageServerError::MetadataParse.into())
+    })?;
 
     let versions: Vec<crate::models::Version> =
         get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
@@ -79,16 +66,14 @@ where
         return Err(error);
     }
 
-    let archive_file: PackageFile =
-        PackageFile::from_stream(body.skip(1))
-            .await
-            .map_err(|error| {
-                error!("Failed to save the file: {error}");
-                ServerResponseError(PackageServerError::FileSave.into())
-            })?;
+    let archive_file: PackageFile = PackageFile::from_stream(body).await.map_err(|error| {
+        error!("Failed to save the file: {error}");
+        ServerResponseError(PackageServerError::FileSave.into())
+    })?;
 
     let mut package = Package::new(package_metadata.clone(), archive_file);
     package.validate_checksum().map_err(|error| {
+        println!("Failed to validate the package: {error}");
         error!("Failed to validate the package: {error}");
         ServerResponseError(PackageServerError::PackageValidation.into())
     })?;

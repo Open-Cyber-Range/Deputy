@@ -1,4 +1,3 @@
--- Your SQL goes here
 ALTER TABLE versions ADD COLUMN description LONGTEXT AFTER version;
 UPDATE versions
 INNER JOIN packages ON versions.package_id = packages.id

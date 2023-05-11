@@ -9,7 +9,7 @@ use crate::{
     errors::{PackageServerError, ServerResponseError},
     AppState,
 };
-use actix::Actor;
+use actix::{Actor, Handler};
 use actix_files::NamedFile;
 use actix_http::error::PayloadError;
 use actix_web::{
@@ -45,14 +45,14 @@ pub async fn add_package<T>(
 ) -> Result<HttpResponse, Error>
 where
     T: Actor
-        + actix::Handler<CreatePackage>
-        + actix::Handler<GetVersionsByPackageName>
-        + actix::Handler<GetPackageByNameAndVersion>
-        + actix::Handler<GetPackages>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, CreatePackage>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+        + Handler<CreatePackage>
+        + Handler<GetVersionsByPackageName>
+        + Handler<GetPackageByNameAndVersion>
+        + Handler<GetPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, CreatePackage>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
 {
     let (package_metadata, body) = PackageMetadata::from_stream(body).await.map_err(|error| {
         error!("Failed to parse package metadata: {error}");
@@ -147,8 +147,8 @@ pub async fn get_all_packages<T>(
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error>
 where
-    T: Actor + actix::Handler<GetPackages>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+    T: Actor + Handler<GetPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
 {
     let packages = app_state
         .database_address
@@ -179,8 +179,8 @@ pub async fn get_all_versions<T>(
     query: Query<VersionQuery>,
 ) -> Result<Json<Vec<VersionRest>>, Error>
 where
-    T: Actor + actix::Handler<GetVersionsByPackageName>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+    T: Actor + Handler<GetVersionsByPackageName>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
 {
     let package_name = path_variable.into_inner();
     validate_name(package_name.to_string()).map_err(|error| {
@@ -253,7 +253,7 @@ pub async fn get_package_version<T>(
     app_state: Data<AppState<T>>,
 ) -> Result<Json<VersionRest>, Error>
 where
-    T: Actor + actix::Handler<GetPackageByNameAndVersion>,
+    T: Actor + Handler<GetPackageByNameAndVersion>,
     <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     let package_name = &path_variables.0;

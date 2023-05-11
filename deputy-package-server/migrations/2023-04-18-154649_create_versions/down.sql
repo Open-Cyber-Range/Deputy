@@ -1,5 +1,3 @@
--- This file should undo anything in `up.sql`
-
 ALTER TABLE packages ADD COLUMN version TINYTEXT AFTER id;
 ALTER TABLE packages ADD COLUMN license TEXT AFTER version;
 ALTER TABLE packages ADD COLUMN readme_path MEDIUMTEXT AFTER license;

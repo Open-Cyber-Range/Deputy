@@ -1,4 +1,3 @@
--- This file should undo anything in `up.sql`
 ALTER TABLE versions DROP COLUMN description;
 
 ALTER TABLE versions ADD COLUMN readme_path TEXT AFTER license;

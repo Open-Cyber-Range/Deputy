@@ -3,11 +3,6 @@
 diesel::table! {
     packages (id) {
         id -> Binary,
-        version -> Nullable<Tinytext>,
-        license -> Nullable<Text>,
-        readme_path -> Nullable<Mediumtext>,
-        readme_html -> Nullable<Longtext>,
-        checksum -> Nullable<Text>,
         name -> Tinytext,
         created_at -> Timestamp,
         updated_at -> Timestamp,

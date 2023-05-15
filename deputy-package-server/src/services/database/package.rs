@@ -14,18 +14,27 @@ impl Handler<CreatePackage> for Database {
     type Result = ResponseActFuture<Self, Result<PackageVersion>>;
 
     fn handle(&mut self, msg: CreatePackage, _ctx: &mut Self::Context) -> Self::Result {
-        let NewPackageVersion(new_package, new_version) = msg.0;
+        let NewPackageVersion(new_package, mut new_version) = msg.0;
         let connection_result = self.get_connection();
 
         Box::pin(
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    new_package.create_insert().execute(&mut connection)?;
-                    let package = Package::by_id(new_package.id).first(&mut connection)?;
+                    let optional_package = Package::by_name(new_package.name.clone())
+                        .first(&mut connection)
+                        .optional()?;
+                    let existing_package = match optional_package {
+                        Some(package) => package,
+                        None => {
+                            new_package.create_insert().execute(&mut connection)?;
+                            Package::by_id(new_package.id).first(&mut connection)?
+                        }
+                    };
+                    new_version.package_id = existing_package.id;
                     new_version.create_insert().execute(&mut connection)?;
                     let version = Version::by_id(new_version.id).first(&mut connection)?;
-                    Ok(PackageVersion(package, version))
+                    Ok(PackageVersion(existing_package, version))
                 })
                 .await??;
                 Ok(package)

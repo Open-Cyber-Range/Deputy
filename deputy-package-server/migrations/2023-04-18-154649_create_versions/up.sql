@@ -1,4 +1,3 @@
--- Your SQL goes here
 CREATE TABLE versions (
     id BINARY(16) PRIMARY KEY,
     package_id BINARY(16) NOT NULL,

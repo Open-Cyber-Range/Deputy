@@ -6,7 +6,9 @@ pub mod fetching {
     pub const DEFAULT_SAVE_PATH: &str = ".";
     pub const DEFAULT_PACKAGE_VERSION_REQUIREMENT: &str = "*";
 }
-
+pub mod inspecting {
+    pub const DEFAULT_PACKAGE_PATH: &str = ".";
+}
 pub mod endpoints {
     pub const PACKAGE_UPLOAD_PATH: &str = "api/v1/package";
 }

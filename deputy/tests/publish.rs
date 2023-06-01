@@ -22,6 +22,7 @@ mod tests {
         let mut command = Command::cargo_bin("deputy")?;
         command.arg("publish");
         command.current_dir(temp_project.root_dir.path());
+
         let test_backend = TestPackageServerBuilder::try_new()?;
 
         let host = test_backend.get_host();
@@ -50,7 +51,7 @@ mod tests {
 
         command.assert().success();
 
-        let saved_package_size = std::fs::metadata(saved_package_path)?.len();
+        let saved_package_size: u64 = std::fs::metadata(saved_package_path)?.len();
         assert_eq!(outbound_package_size, &saved_package_size);
 
         temp_project.root_dir.close()?;

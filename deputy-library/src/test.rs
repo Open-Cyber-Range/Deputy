@@ -1,14 +1,9 @@
 use crate::package::Package;
 use anyhow::{anyhow, Ok, Result};
 use byte_unit::Byte;
-use filetime::{set_file_times, FileTime};
 use rand::Rng;
 use rayon::current_num_threads;
-use std::{
-    fs::{set_permissions, Permissions},
-    io::Write,
-    os::unix::prelude::PermissionsExt,
-};
+use std::io::Write;
 use tempfile::{Builder, NamedTempFile, TempDir};
 
 lazy_static! {
@@ -34,7 +29,7 @@ lazy_static! {
         version = "1.0.4"
         authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
         license = "Apache-2.0"
-        readme = "readme"
+        readme = "src/readme.md"
         [content]
         type = "vm"
         [virtual-machine]
@@ -54,6 +49,7 @@ pub struct TempArchive {
     pub target_file: NamedTempFile,
     pub src_file: NamedTempFile,
     pub toml_file: NamedTempFile,
+    pub readme_file: NamedTempFile,
 }
 
 impl TempArchive {
@@ -157,14 +153,14 @@ impl TempArchiveBuilder {
                 version = "{}"
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
                 license = "Apache-2.0"
-                readme = "readme"
+                readme = "src/readme.md"
                 [content]
                 type = "vm"
                 [virtual-machine]
                 operating_system = "Ubuntu"
                 architecture = "arm64"
                 type = "OVA"
-                file_path = "/src/test_file.txt"
+                file_path = "src/test_file.txt"
             "#,
             self.package_name, self.package_version
         );
@@ -199,16 +195,6 @@ impl TempArchiveBuilder {
             .rand_bytes(0)
             .tempfile_in(&target_dir)?;
         target_file.write_all(target_file_ipsum)?;
-        if self.zero_filetimes {
-            set_file_times(target_file.path(), FileTime::zero(), FileTime::zero())?;
-        }
-        if cfg!(unix) && self.zero_fileowner {
-            use file_owner::PathExt;
-            target_file
-                .path()
-                .set_owner(1000)
-                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
-        }
 
         let src_dir = Builder::new()
             .prefix("src")
@@ -220,16 +206,6 @@ impl TempArchiveBuilder {
             .rand_bytes(0)
             .tempfile_in(&src_dir)?;
         src_file.write_all(src_file_ipsum)?;
-        if self.zero_filetimes {
-            set_file_times(src_file.path(), FileTime::zero(), FileTime::zero())?;
-        }
-        if cfg!(unix) && self.zero_fileowner {
-            use file_owner::PathExt;
-            src_file
-                .path()
-                .set_owner(1000)
-                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
-        }
 
         let mut toml_file = Builder::new()
             .prefix("package")
@@ -237,23 +213,13 @@ impl TempArchiveBuilder {
             .rand_bytes(0)
             .tempfile_in(&dir)?;
         toml_file.write_all(toml_content.as_bytes())?;
-        if self.zero_filetimes {
-            set_file_times(toml_file.path(), FileTime::zero(), FileTime::zero())?;
-        }
-        if cfg!(unix) && self.zero_fileowner {
-            use file_owner::PathExt;
-            toml_file
-                .path()
-                .set_owner(1000)
-                .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
-        }
 
-        if self.all_allowed_permission {
-            let permissions = Permissions::from_mode(0o777);
-            set_permissions(toml_file.path(), permissions.clone())?;
-            set_permissions(src_file.path(), permissions.clone())?;
-            set_permissions(target_file.path(), permissions)?;
-        }
+        let mut readme_file = Builder::new()
+            .prefix("readme")
+            .suffix(".md")
+            .rand_bytes(0)
+            .tempfile_in(&src_dir)?;
+        readme_file.write_all(b"This is a readme file")?;
 
         if self.is_large {
             let mut large_file = Builder::new()
@@ -264,21 +230,6 @@ impl TempArchiveBuilder {
             let random_bytes: Vec<u8> =
                 TempArchiveBuilder::generate_vec(Byte::from_str("20MB")?.get_bytes() as usize)?;
             large_file.write_all(&random_bytes)?;
-
-            if self.zero_filetimes {
-                set_file_times(large_file.path(), FileTime::zero(), FileTime::zero())?;
-            }
-            if self.all_allowed_permission {
-                let permissions = Permissions::from_mode(0o777);
-                set_permissions(large_file.path(), permissions)?;
-            }
-            if cfg!(unix) && self.zero_fileowner {
-                use file_owner::PathExt;
-                large_file
-                    .path()
-                    .set_owner(1000)
-                    .map_err(|error| anyhow!("Failed to set owner due to: {:?}", error))?;
-            }
         }
 
         let temp_project = TempArchive {
@@ -288,6 +239,7 @@ impl TempArchiveBuilder {
             target_file,
             src_file,
             toml_file,
+            readme_file,
         };
 
         Ok(temp_project)

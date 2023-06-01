@@ -1,5 +1,6 @@
 use crate::constants::{
     fetching::{DEFAULT_PACKAGE_VERSION_REQUIREMENT, DEFAULT_SAVE_PATH},
+    inspecting::DEFAULT_PACKAGE_PATH,
     DEFAULT_REGISTRY_NAME,
 };
 use clap::{ArgEnum, Args};
@@ -69,9 +70,10 @@ pub struct PublishOptions {
 }
 
 #[derive(Debug, Args)]
-pub struct ParseTOMLOptions {
-    pub package_toml_path: String,
-    #[clap(short, long, help = "Pretty print output")]
+pub struct InspectOptions {
+    #[clap(short, long, default_value = DEFAULT_PACKAGE_PATH, help = "Path for the package")]
+    pub package_path: String,
+    #[clap(long, help = "Pretty print output")]
     pub pretty: bool,
 }
 

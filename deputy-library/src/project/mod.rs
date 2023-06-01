@@ -108,7 +108,7 @@ pub struct VirtualMachine {
     pub architecture: Option<Architecture>,
     #[serde(rename = "type")]
     pub virtual_machine_type: VirtualMachineType,
-    file_path: String,
+    pub file_path: String,
     pub readme_path: Option<String>,
 }
 

@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
     commands::{
-        ChecksumOptions, FetchOptions, NormalizeVersionOptions, ParseTOMLOptions, PublishOptions,
+        ChecksumOptions, FetchOptions, InspectOptions, NormalizeVersionOptions, PublishOptions,
     },
     configuration::Configuration,
     executor::Executor,
@@ -22,7 +22,7 @@ enum Commands {
     Publish(PublishOptions),
     Fetch(FetchOptions),
     Checksum(ChecksumOptions),
-    ParseTOML(ParseTOMLOptions),
+    Inspect(InspectOptions),
     NormalizeVersion(NormalizeVersionOptions),
 }
 
@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         Commands::Publish(options) => executor.publish(options).await,
         Commands::Fetch(options) => executor.fetch(options).await,
         Commands::Checksum(options) => executor.checksum(options).await,
-        Commands::ParseTOML(options) => executor.parse_toml(options),
+        Commands::Inspect(options) => executor.inspect(options).await,
         Commands::NormalizeVersion(options) => executor.normalize_version(options).await,
     };
     if let Err(error) = result {

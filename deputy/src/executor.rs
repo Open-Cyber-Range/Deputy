@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::commands::{
-    ChecksumOptions, FetchOptions, NormalizeVersionOptions, ParseTOMLOptions, PublishOptions,
+    ChecksumOptions, FetchOptions, InspectOptions, NormalizeVersionOptions, PublishOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
@@ -11,9 +11,9 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{package::Package, project::create_project_from_toml_path};
-use path_absolutize::Absolutize;
+// use path_absolutize::Absolutize;
 use std::env::current_dir;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::fs::rename;
 
 pub struct Executor {
@@ -154,11 +154,73 @@ impl Executor {
         Ok(())
     }
 
-    pub fn parse_toml(&self, options: ParseTOMLOptions) -> Result<()> {
-        let package_toml_path = Path::new(&options.package_toml_path).absolutize()?;
-        let project = create_project_from_toml_path(&package_toml_path)?;
-        if options.pretty {
+    pub async fn inspect(&self, options: InspectOptions) -> Result<()> {
+        let package_path: &Path = match options.package_path.trim() {
+            "" => Path::new("."),
+            path => Path::new(path),
+        };
+        let toml_path = find_toml(package_path.to_path_buf())?;
+        let project = create_project_from_toml_path(&toml_path)?;
+        let readme_path = package_path.join(&project.package.readme);
+        if !readme_path.exists() {
+            println!("Warning: Readme not found");
+        } else if options.pretty {
             println!("{}", serde_json::to_string_pretty(&project)?);
+        } else if let Some(vm) = &project.virtual_machine {
+            let file_path = package_path.join(&vm.file_path);
+            if !file_path.exists() {
+                println!("Warning: Virtual machine file not found");
+            } else {
+                println!("{}", serde_json::to_string(&project)?);
+            }
+        } else if let Some(feature) = &project.feature {
+            let assets = &feature.assets;
+            let mut asset_paths: Vec<PathBuf> = Vec::new();
+            for asset in assets {
+                let asset_path = package_path.join(&asset[0]);
+                if !asset_path.exists() {
+                    println!("Warning: Feature asset not found");
+                } else {
+                    asset_paths.push(asset_path);
+                    println!("{}", serde_json::to_string(&project)?);
+                }
+            }
+        } else if let Some(condition) = &project.condition {
+            let assets = &condition.assets;
+            let mut asset_paths: Vec<PathBuf> = Vec::new();
+            for asset in assets {
+                let asset_path = package_path.join(&asset[0]);
+                if !asset_path.exists() {
+                    println!("Warning: Condition asset not found");
+                } else {
+                    asset_paths.push(asset_path);
+                    println!("{}", serde_json::to_string(&project)?);
+                }
+            }
+        } else if let Some(event) = &project.event {
+            let assets = &event.assets;
+            let mut asset_paths: Vec<PathBuf> = Vec::new();
+            for asset in assets {
+                let asset_path = package_path.join(&asset[0]);
+                if !asset_path.exists() {
+                    println!("Warning: Event asset not found");
+                } else {
+                    asset_paths.push(asset_path);
+                    println!("{}", serde_json::to_string(&project)?);
+                }
+            }
+        } else if let Some(inject) = &project.inject {
+            let assets = &inject.assets;
+            let mut asset_paths: Vec<PathBuf> = Vec::new();
+            for asset in assets {
+                let asset_path = package_path.join(&asset[0]);
+                if !asset_path.exists() {
+                    println!("Warning: Inject asset not found");
+                } else {
+                    asset_paths.push(asset_path);
+                    println!("{}", serde_json::to_string(&project)?);
+                }
+            }
         } else {
             println!("{}", serde_json::to_string(&project)?);
         }

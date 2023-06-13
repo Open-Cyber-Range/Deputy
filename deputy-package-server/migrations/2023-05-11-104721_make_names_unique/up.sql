@@ -1,12 +1,15 @@
 ALTER TABLE versions
-    DROP FOREIGN KEY FK_PackageVersion;
+    DROP FOREIGN KEY IF EXISTS FK_PackageVersion;
 
-CREATE TABLE unique_names AS
+CREATE TABLE IF NOT EXISTS unique_names AS
 SELECT MIN(id) AS id, name, created_at, updated_at, deleted_at
 FROM packages
 GROUP BY name;
 
 TRUNCATE TABLE packages;
+
+ALTER TABLE packages
+    DROP KEY IF EXISTS UC_UniqueName;
 
 ALTER TABLE packages
     ADD CONSTRAINT UC_UniqueName UNIQUE (name);

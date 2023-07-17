@@ -11,7 +11,6 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::Result;
 use deputy_library::{package::Package, project::create_project_from_toml_path};
-// use path_absolutize::Absolutize;
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use tokio::fs::rename;
@@ -112,7 +111,7 @@ impl Executor {
                 "Downloading the package".to_string(),
             )))
             .await??;
-        let (temporary_package_path, temporary_directory) =
+        let (temporary_package_path, temporary_parent_directory, temporary_package_directory) =
             create_temporary_package_download_path(&options.package_name, &version)?;
         client
             .download_package(&options.package_name, &version, &temporary_package_path)
@@ -132,7 +131,8 @@ impl Executor {
         );
 
         rename(unpacked_file_path, target_path).await?;
-        temporary_directory.close()?;
+        temporary_package_directory.close()?;
+        temporary_parent_directory.close()?;
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::Done))
             .await??;

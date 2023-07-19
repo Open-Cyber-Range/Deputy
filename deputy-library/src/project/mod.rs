@@ -177,7 +177,7 @@ pub struct Condition {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Inject {
     #[serde(alias = "Action", alias = "ACTION")]
-    pub action: String,
+    pub action: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

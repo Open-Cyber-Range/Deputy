@@ -31,12 +31,16 @@ pub fn print_error_message(error: Error) {
 pub fn create_temporary_package_download_path(
     package_name: &str,
     package_version: &str,
-) -> Result<(String, TempDir)> {
-    let temporary_directory = tempfile::Builder::new()
+) -> Result<(String, TempDir, TempDir)> {
+    let temporary_directory_root = tempfile::Builder::new()
+        .prefix("deputy-package-")
+        .rand_bytes(12)
+        .tempdir()?;
+    let temporary_package_directory = tempfile::Builder::new()
         .prefix(package_name)
         .rand_bytes(0)
-        .tempdir()?;
-    let file_name = temporary_directory.path().join(package_version);
+        .tempdir_in(&temporary_directory_root)?;
+    let file_name = temporary_package_directory.path().join(package_version);
 
     Ok((
         file_name
@@ -44,7 +48,8 @@ pub fn create_temporary_package_download_path(
             .to_str()
             .ok_or_else(|| anyhow!("Failed to create temporary path"))?
             .to_string(),
-        temporary_directory,
+        temporary_directory_root,
+        temporary_package_directory,
     ))
 }
 
@@ -124,9 +129,13 @@ mod tests {
     fn creates_temporary_file_path() -> Result<()> {
         let package_name = "Shakespeare";
         let version = "0.5.0";
-        let (temporary_path, temporary_directory) =
+        let (temporary_path, _temporary_parent_directory, temporary_directory) =
             create_temporary_package_download_path(package_name, version)?;
-        insta::assert_display_snapshot!(temporary_path);
+
+        let mut package_path = temporary_path.split('/').rev();
+        assert_eq!(package_path.next(), Some(version));
+        assert_eq!(package_path.next(), Some(package_name));
+
         temporary_directory.close()?;
         Ok(())
     }

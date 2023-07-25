@@ -28,6 +28,31 @@ pub struct Project {
 }
 
 impl Project {
+    pub fn validate_assets(&self) -> Result<()> {
+        let package_type: String = self.content.content_type.clone().try_into()?;
+        if let Some(assets) = &self.package.assets {
+            if assets.is_empty() {
+                return Err(anyhow!(
+                    "Assets are required for '{package_type}' package type"
+                ));
+            }
+            for (index, asset) in assets.iter().enumerate() {
+                if asset.len() < 2 {
+                    return Err(anyhow!(
+                        "Package.assets[{index}] is invalid.
+                        Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
+                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", 755] or [\"files/file.sh\", \"/usr/local/bin/\"]"
+                    ));
+                }
+            }
+        } else {
+            return Err(anyhow!(
+                "Assets are required for '{package_type}' package type"
+            ));
+        }
+        Ok(())
+    }
+
     pub fn validate_content(&mut self) -> Result<()> {
         let mut content_types = vec![
             self.virtual_machine.as_ref().map(|_| ContentType::VM),
@@ -52,30 +77,26 @@ impl Project {
             ContentType::Feature => {
                 if self.feature.is_none() {
                     return Err(anyhow!("Feature package info not found"));
-                } else if self.package.assets.is_none() {
-                    return Err(anyhow!("Feature package type requires Assets"));
                 }
+                self.validate_assets()?;
             }
             ContentType::Condition => {
                 if self.condition.is_none() {
                     return Err(anyhow!("Condition package info not found"));
-                } else if self.package.assets.is_none() {
-                    return Err(anyhow!("Condition package type requires Assets"));
                 }
+                self.validate_assets()?;
             }
             ContentType::Inject => {
                 if self.inject.is_none() {
                     return Err(anyhow!("Inject package info not found"));
-                } else if self.package.assets.is_none() {
-                    return Err(anyhow!("Inject package type requires Assets"));
                 }
+                self.validate_assets()?;
             }
             ContentType::Event => {
                 if self.event.is_none() {
                     return Err(anyhow!("Event package info not found"));
-                } else if self.package.assets.is_none() {
-                    return Err(anyhow!("Event package type requires Assets"));
                 }
+                self.validate_assets()?;
             }
         }
         Ok(())
@@ -205,6 +226,20 @@ pub enum ContentType {
     Inject,
     #[serde(alias = "event", alias = "EVENT")]
     Event,
+}
+
+impl TryFrom<ContentType> for String {
+    type Error = anyhow::Error;
+
+    fn try_from(content_type: ContentType) -> Result<String, Self::Error> {
+        match content_type {
+            ContentType::VM => Ok("VM".to_string()),
+            ContentType::Feature => Ok("Feature".to_string()),
+            ContentType::Condition => Ok("Condition".to_string()),
+            ContentType::Inject => Ok("Inject".to_string()),
+            ContentType::Event => Ok("Event".to_string()),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]

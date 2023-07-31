@@ -1,7 +1,6 @@
-
-import NextAuth from "next-auth"
-import KeycloakProvider from "next-auth/providers/keycloak";
-import GithubProvider from "next-auth/providers/github"
+import NextAuth from 'next-auth';
+import KeycloakProvider from 'next-auth/providers/keycloak';
+import GithubProvider from 'next-auth/providers/github';
 
 // https://next-auth.js.org/configuration/options
 export default NextAuth({
@@ -23,7 +22,8 @@ export default NextAuth({
     KeycloakProvider({
       clientId: 'myclient',
       clientSecret: 'NtVRhqyYqTzbsDQQ3zEH26tQmm4GWRlX',
-      issuer: 'http://localhost:8080/realms/testrealm/protocol/openid-connect/auth?client_id=myclient',
+      issuer:
+        'http://localhost:8080/realms/testrealm/protocol/openid-connect/auth?client_id=myclient',
     }),
     GithubProvider({
       clientId: '123',
@@ -42,32 +42,32 @@ export default NextAuth({
   // It is used to sign cookies and to sign and encrypt JSON Web Tokens, unless
   // a separate secret is defined explicitly for encrypting the JWT.
   // session: {
-    // Use JSON Web Tokens for session instead of database sessions.
-    // This option can be used with or without a database for users/accounts.
-    // Note: `strategy` should be set to 'jwt' if no database is used.
-    // strategy: 'jwt'
+  // Use JSON Web Tokens for session instead of database sessions.
+  // This option can be used with or without a database for users/accounts.
+  // Note: `strategy` should be set to 'jwt' if no database is used.
+  // strategy: 'jwt'
 
-    // Seconds - How long until an idle session expires and is no longer valid.
-    // maxAge: 30 * 24 * 60 * 60, // 30 days
+  // Seconds - How long until an idle session expires and is no longer valid.
+  // maxAge: 30 * 24 * 60 * 60, // 30 days
 
-    // Seconds - Throttle how frequently to write to database to extend a session.
-    // Use it to limit write operations. Set to 0 to always update the database.
-    // Note: This option is ignored if using JSON Web Tokens
-    // updateAge: 24 * 60 * 60, // 24 hours
+  // Seconds - Throttle how frequently to write to database to extend a session.
+  // Use it to limit write operations. Set to 0 to always update the database.
+  // Note: This option is ignored if using JSON Web Tokens
+  // updateAge: 24 * 60 * 60, // 24 hours
   // },
 
   // JSON Web tokens are only used for sessions if the `strategy: 'jwt'` session
   // option is set - or by default if no database is specified.
   // https://next-auth.js.org/configuration/options#jwt
   // jwt: {
-    // A secret to use for key generation (you should set this explicitly)
-    // secret: process.env.SECRET,
-    // Set to true to use encryption (default: false)
-    // encryption: true,
-    // You can define your own encode/decode functions for signing and encryption
-    // if you want to override the default behaviour.
-    // encode: async ({ secret, token, maxAge }) => {},
-    // decode: async ({ secret, token, maxAge }) => {},
+  // A secret to use for key generation (you should set this explicitly)
+  // secret: process.env.SECRET,
+  // Set to true to use encryption (default: false)
+  // encryption: true,
+  // You can define your own encode/decode functions for signing and encryption
+  // if you want to override the default behaviour.
+  // encode: async ({ secret, token, maxAge }) => {},
+  // decode: async ({ secret, token, maxAge }) => {},
   // },
 
   // You can define custom pages to override the built-in ones. These will be regular Next.js pages
@@ -88,7 +88,9 @@ export default NextAuth({
   // https://next-auth.js.org/configuration/callbacks
   callbacks: {
     // async signIn({ user, account, profile, email, credentials }) { return true },
-    async redirect({ url, baseUrl }) { return baseUrl },
+    async redirect({ url, baseUrl }) {
+      return baseUrl;
+    },
     // async session({ session, token, user }) { return session },
     // async jwt({ token, user, account, profile, isNewUser }) { return token }
   },
@@ -99,4 +101,4 @@ export default NextAuth({
 
   // Enable debug messages in the console if you are having problems
   debug: true,
-})
+});

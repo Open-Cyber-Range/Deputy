@@ -406,6 +406,36 @@ mod tests {
     }
 
     #[test]
+    fn malware_type_package_is_parsed_and_passes_validation() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
+            [content]
+            type = "malware"
+            [malware]
+            action = "installer/install_something.sh"
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(file.path()).is_ok());
+        insta::with_settings!({sort_maps => true}, {
+                insta::assert_toml_snapshot!(project);
+        });
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
     #[should_panic(expected = "Feature package info not found")]
     fn negative_result_on_content_type_not_matching_content() {
         let toml_content = br#"

@@ -25,6 +25,7 @@ pub struct Project {
     pub condition: Option<Condition>,
     pub event: Option<Event>,
     pub inject: Option<Inject>,
+    pub malware: Option<Malware>,
 }
 
 impl Project {
@@ -98,6 +99,12 @@ impl Project {
                 }
                 self.validate_assets()?;
             }
+            ContentType::Malware => {
+                if self.malware.is_none() {
+                    return Err(anyhow!("Malware package info not found"));
+                }
+                self.validate_assets()?;
+            }
         }
         Ok(())
     }
@@ -157,6 +164,12 @@ pub struct Condition {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Inject {
+    #[serde(alias = "Action", alias = "ACTION")]
+    pub action: String,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Malware {
     #[serde(alias = "Action", alias = "ACTION")]
     pub action: String,
 }
@@ -226,6 +239,8 @@ pub enum ContentType {
     Inject,
     #[serde(alias = "event", alias = "EVENT")]
     Event,
+    #[serde(alias = "malware", alias = "MALWARE")]
+    Malware,
 }
 
 impl TryFrom<ContentType> for String {
@@ -238,6 +253,7 @@ impl TryFrom<ContentType> for String {
             ContentType::Condition => Ok("Condition".to_string()),
             ContentType::Inject => Ok("Inject".to_string()),
             ContentType::Event => Ok("Event".to_string()),
+            ContentType::Malware => Ok("Malware".to_string()),
         }
     }
 }

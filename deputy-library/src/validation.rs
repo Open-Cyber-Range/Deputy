@@ -292,16 +292,16 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             [content]
             type = "feature"
             [feature]
             type = "configuration"
             action = "ping 8.8.8.8"
-            assets = [
-            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-            ]
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
@@ -323,15 +323,15 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             [content]
             type = "inject"
             [inject]
             action = "ping 8.8.8.8"
-            assets = [
-            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-            ]
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
@@ -353,20 +353,20 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
-            [content]
-            type = "condition"
-            [condition]
-            action = "executable/path.sh"
-            interval = 30
             assets = [
                 ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
                 ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
                 ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
                 ]
+            [content]
+            type = "condition"
+            [condition]
+            action = "executable/path.sh"
+            interval = 30
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(file.path()).is_ok());
+        validate_package_toml(file.path())?;
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -384,19 +384,19 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             [content]
             type = "event"
             [event]
             action = "ping 1.3.3.7"
-            assets = [
-            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-            ]
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 
-        assert!(validate_package_toml(file.path()).is_ok());
+        validate_package_toml(file.path())?;
         insta::with_settings!({sort_maps => true}, {
                 insta::assert_toml_snapshot!(project);
         });
@@ -406,7 +406,8 @@ mod tests {
     }
 
     #[test]
-    fn negative_result_on_content_type_not_matching_content() -> Result<()> {
+    #[should_panic(expected = "Feature package info not found")]
+    fn negative_result_on_content_type_not_matching_content() {
         let toml_content = br#"
             [package]
             name = "my-cool-condition"
@@ -414,26 +415,25 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
-            [content]
-            type = "feature"
-            [condition]
-            action = "executable/path.sh"
-            interval = 30
             assets = [
                 ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
                 ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
                 ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
                 ]
+            [content]
+            type = "feature"
+            [condition]
+            action = "executable/path.sh"
+            interval = 30
             "#;
-        let (file, _) = create_temp_file(toml_content)?;
-
-        assert!(validate_package_toml(file.path()).is_err());
-        file.close()?;
-        Ok(())
+        let (file, _) = create_temp_file(toml_content).unwrap();
+        validate_package_toml(file.path()).unwrap();
+        file.close().unwrap();
     }
 
     #[test]
-    fn negative_result_on_multiple_contents() -> Result<()> {
+    #[should_panic(expected = "Multiple content types per package are not supported")]
+    fn negative_result_on_multiple_contents() {
         let toml_content = br#"
             [package]
             name = "my-cool-condition"
@@ -441,29 +441,22 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
             [content]
             type = "feature"
             [feature]
             type = "configuration"
             action = "ping 8.8.8.8"
-            assets = [
-            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-            ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-            ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-            ]
             [condition]
             action = "executable/path.sh"
             interval = 30
-            assets = [
-                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-                ]
             "#;
-        let (file, _) = create_temp_file(toml_content)?;
-
-        assert!(validate_package_toml(file.path()).is_err());
-        file.close()?;
-        Ok(())
+        let (file, _) = create_temp_file(toml_content).unwrap();
+        validate_package_toml(file.path()).unwrap();
+        file.close().unwrap();
     }
 }

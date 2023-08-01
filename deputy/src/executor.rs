@@ -5,11 +5,11 @@ use crate::commands::{
 use crate::configuration::Configuration;
 use crate::helpers::{
     create_temporary_package_download_path, find_toml, get_download_target_name,
-    unpack_package_file,
+    print_error_message, unpack_package_file,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use deputy_library::{package::Package, project::create_project_from_toml_path};
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
@@ -163,63 +163,36 @@ impl Executor {
         let project = create_project_from_toml_path(&toml_path)?;
         let readme_path = package_path.join(&project.package.readme);
         if !readme_path.exists() {
-            println!("Warning: Readme not found");
+            print_error_message(anyhow!("Readme not found"));
         } else if options.pretty {
             println!("{}", serde_json::to_string_pretty(&project)?);
         } else if let Some(vm) = &project.virtual_machine {
             let file_path = package_path.join(&vm.file_path);
             if !file_path.exists() {
-                println!("Warning: Virtual machine file not found");
+                print_error_message(anyhow!("Virtual machine file not found"));
             } else {
                 println!("{}", serde_json::to_string(&project)?);
             }
-        } else if let Some(feature) = &project.feature {
-            let assets = &feature.assets;
-            let mut asset_paths: Vec<PathBuf> = Vec::new();
-            for asset in assets {
-                let asset_path = package_path.join(&asset[0]);
-                if !asset_path.exists() {
-                    println!("Warning: Feature asset not found");
-                } else {
-                    asset_paths.push(asset_path);
-                    println!("{}", serde_json::to_string(&project)?);
+        } else if project.feature.is_some()
+            || project.condition.is_some()
+            || project.event.is_some()
+            || project.inject.is_some()
+        {
+            if let Some(assets) = &project.package.assets {
+                let mut asset_paths: Vec<PathBuf> = Vec::new();
+                for asset in assets {
+                    let asset_path = package_path.join(&asset[0]);
+                    if !asset_path.exists() {
+                        print_error_message(anyhow!("Asset '{}' not found", asset_path.display()));
+                    } else {
+                        asset_paths.push(asset_path);
+                        println!("{}", serde_json::to_string(&project)?);
+                    }
                 }
-            }
-        } else if let Some(condition) = &project.condition {
-            let assets = &condition.assets;
-            let mut asset_paths: Vec<PathBuf> = Vec::new();
-            for asset in assets {
-                let asset_path = package_path.join(&asset[0]);
-                if !asset_path.exists() {
-                    println!("Warning: Condition asset not found");
-                } else {
-                    asset_paths.push(asset_path);
-                    println!("{}", serde_json::to_string(&project)?);
-                }
-            }
-        } else if let Some(event) = &project.event {
-            let assets = &event.assets;
-            let mut asset_paths: Vec<PathBuf> = Vec::new();
-            for asset in assets {
-                let asset_path = package_path.join(&asset[0]);
-                if !asset_path.exists() {
-                    println!("Warning: Event asset not found");
-                } else {
-                    asset_paths.push(asset_path);
-                    println!("{}", serde_json::to_string(&project)?);
-                }
-            }
-        } else if let Some(inject) = &project.inject {
-            let assets = &inject.assets;
-            let mut asset_paths: Vec<PathBuf> = Vec::new();
-            for asset in assets {
-                let asset_path = package_path.join(&asset[0]);
-                if !asset_path.exists() {
-                    println!("Warning: Inject asset not found");
-                } else {
-                    asset_paths.push(asset_path);
-                    println!("{}", serde_json::to_string(&project)?);
-                }
+            } else {
+                print_error_message(anyhow!(
+                    "Package.Assets field is required for this Package Type"
+                ));
             }
         } else {
             println!("{}", serde_json::to_string(&project)?);

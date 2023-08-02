@@ -444,11 +444,6 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
-            assets = [
-                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-                ]
             [content]
             type = "exercise"
             [exercise]
@@ -474,11 +469,6 @@ mod tests {
             version = "1.0.0"
             license = "Apache-2.0"
             readme = "readme.md"
-            assets = [
-                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
-                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "777"],
-                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
-                ]
             [content]
             type = "other"
             [other]

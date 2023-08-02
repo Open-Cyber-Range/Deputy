@@ -111,7 +111,6 @@ impl Project {
                 if self.exercise.is_none() {
                     return Err(anyhow!("Exercise package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Other => {
                 if self.other.is_none() {

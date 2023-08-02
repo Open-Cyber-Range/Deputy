@@ -26,6 +26,7 @@ pub struct Project {
     pub event: Option<Event>,
     pub inject: Option<Inject>,
     pub malware: Option<Malware>,
+    pub exercise: Option<Exercise>,
 }
 
 impl Project {
@@ -105,6 +106,12 @@ impl Project {
                 }
                 self.validate_assets()?;
             }
+            ContentType::Exercise => {
+                if self.exercise.is_none() {
+                    return Err(anyhow!("Exercise package info not found"));
+                }
+                self.validate_assets()?;
+            }
         }
         Ok(())
     }
@@ -174,6 +181,12 @@ pub struct Malware {
     pub action: String,
 }
 
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Exercise {
+    #[serde(alias = "File_path", alias = "FILE_PATH")]
+    pub file_path: String,
+}
+
 #[derive(Debug)]
 enum Values<T> {
     Null,
@@ -241,6 +254,8 @@ pub enum ContentType {
     Event,
     #[serde(alias = "malware", alias = "MALWARE")]
     Malware,
+    #[serde(alias = "exercise", alias = "EXERCISE")]
+    Exercise,
 }
 
 impl TryFrom<ContentType> for String {
@@ -254,6 +269,7 @@ impl TryFrom<ContentType> for String {
             ContentType::Inject => Ok("Inject".to_string()),
             ContentType::Event => Ok("Event".to_string()),
             ContentType::Malware => Ok("Malware".to_string()),
+            ContentType::Exercise => Ok("Exercise".to_string()),
         }
     }
 }

@@ -172,6 +172,7 @@ where
 pub async fn search_packages<T>(
     search_term: Path<String>,
     app_state: Data<AppState<T>>,
+    query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error>
 where
     T: Actor + Handler<SearchPackages>,
@@ -181,6 +182,8 @@ where
         .database_address
         .send(SearchPackages {
             search_term: search_term.clone(),
+            page: query.page as i64,
+            per_page: query.limit as i64,
         })
         .await
         .map_err(|error| {

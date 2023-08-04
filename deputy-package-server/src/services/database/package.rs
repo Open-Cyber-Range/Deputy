@@ -79,6 +79,8 @@ impl Handler<GetPackages> for Database {
 #[rtype(result = "Result<Vec<Package>>")]
 pub struct SearchPackages {
     pub search_term: String,
+    pub page: i64,
+    pub per_page: i64,
 }
 
 impl Handler<SearchPackages> for Database {
@@ -96,8 +98,8 @@ impl Handler<SearchPackages> for Database {
                 let mut connection = connection_result?;
                 let package = block(move || {
                     let packages = Package::search_name(search_packages.search_term)
-                        .paginate(1)
-                        .per_page(5)
+                        .paginate(search_packages.page)
+                        .per_page(search_packages.per_page)
                         .load_and_count_pages(&mut connection)?;
                     Ok(packages.0)
                 })

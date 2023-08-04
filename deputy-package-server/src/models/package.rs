@@ -6,7 +6,7 @@ use crate::{
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::VersionRest;
-use diesel::helper_types::FindBy;
+use diesel::helper_types::{Filter, FindBy, Like};
 use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
@@ -84,6 +84,17 @@ impl Package {
 
     pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
         Self::all_with_deleted().filter(packages::deleted_at.is_null())
+    }
+
+    pub fn search_name(
+        search_term: String,
+    ) -> Filter<
+        FilterExisting<All<packages::table, Self>, packages::deleted_at>,
+        Like<packages::name, String>,
+    > {
+        Self::all_with_deleted()
+            .filter(packages::deleted_at.is_null())
+            .filter(packages::name.like(format!("%{}%", search_term)))
     }
 
     pub fn by_id(

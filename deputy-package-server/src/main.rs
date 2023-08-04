@@ -4,6 +4,7 @@ use actix_web::{
     App, HttpServer,
 };
 use anyhow::{Ok, Result};
+use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
     routes::{
@@ -42,27 +43,35 @@ async fn real_main() -> Result<()> {
             .service(version)
             .service(
                 scope("/api").service(
-                    scope("/v1").service(
-                        scope("/package")
-                            .service(
-                                scope("/{package_name}")
-                                    .route("", get().to(get_all_versions::<Database>))
-                                    .service(
-                                        scope("/{version}")
-                                            .route(
-                                                "/download",
-                                                get().to(download_package::<Database>),
-                                            )
-                                            .route(
-                                                "/path/{tail:.*}",
-                                                get().to(download_file::<Database>),
-                                            )
-                                            .route("", get().to(get_package_version::<Database>)),
-                                    ),
-                            )
-                            .route("", put().to(add_package::<Database>))
-                            .route("", get().to(get_all_packages::<Database>)),
-                    ),
+                    scope("/v1")
+                        .service(
+                            scope("/package")
+                                .service(
+                                    scope("/{package_name}")
+                                        .route("", get().to(get_all_versions::<Database>))
+                                        .service(
+                                            scope("/{version}")
+                                                .route(
+                                                    "/download",
+                                                    get().to(download_package::<Database>),
+                                                )
+                                                .route(
+                                                    "/path/{tail:.*}",
+                                                    get().to(download_file::<Database>),
+                                                )
+                                                .route(
+                                                    "",
+                                                    get().to(get_package_version::<Database>),
+                                                ),
+                                        ),
+                                )
+                                .route("", put().to(add_package::<Database>))
+                                .route("", get().to(get_all_packages::<Database>)),
+                        )
+                        .route(
+                            "/search/{search_term}",
+                            get().to(search_packages::<Database>),
+                        ),
                 ),
             )
     })

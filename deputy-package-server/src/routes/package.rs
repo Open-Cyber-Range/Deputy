@@ -3,6 +3,7 @@ use crate::models::helpers::versioning::{
 };
 use crate::services::database::package::{
     CreatePackage, GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName,
+    SearchPackages,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -155,6 +156,31 @@ where
         .send(GetPackages {
             page: query.page as i64,
             per_page: query.limit as i64,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all packages: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    Ok(Json(packages))
+}
+
+pub async fn search_packages<T>(
+    search_term: Path<String>,
+    app_state: Data<AppState<T>>,
+) -> Result<Json<Vec<crate::models::Package>>, Error>
+where
+    T: Actor + Handler<SearchPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, SearchPackages>,
+{
+    let packages = app_state
+        .database_address
+        .send(SearchPackages {
+            search_term: search_term.clone(),
         })
         .await
         .map_err(|error| {

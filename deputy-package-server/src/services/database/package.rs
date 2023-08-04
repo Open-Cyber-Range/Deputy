@@ -76,6 +76,40 @@ impl Handler<GetPackages> for Database {
 }
 
 #[derive(Message)]
+#[rtype(result = "Result<Vec<Package>>")]
+pub struct SearchPackages {
+    pub search_term: String,
+}
+
+impl Handler<SearchPackages> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+
+    fn handle(
+        &mut self,
+        search_packages: SearchPackages,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    let packages = Package::search_name(search_packages.search_term)
+                        .paginate(1)
+                        .per_page(5)
+                        .load_and_count_pages(&mut connection)?;
+                    Ok(packages.0)
+                })
+                .await??;
+                Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
 #[rtype(result = "Result<Version>")]
 pub struct GetPackageByNameAndVersion {
     pub name: String,

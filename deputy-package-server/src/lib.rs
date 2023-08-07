@@ -1,8 +1,10 @@
 use actix::{Actor, Addr};
+use configuration::Keycloak;
 
 pub mod configuration;
 pub mod constants;
 mod errors;
+pub mod middleware;
 pub mod models;
 pub mod routes;
 pub mod schema;
@@ -19,4 +21,5 @@ where
 {
     pub database_address: Addr<T>,
     pub package_folder: String,
+    pub keycloak: Keycloak,
 }

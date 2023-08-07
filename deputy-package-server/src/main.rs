@@ -33,6 +33,7 @@ async fn real_main() -> Result<()> {
     let app_state = AppState {
         package_folder: configuration.package_folder,
         database_address: database,
+        keycloak: configuration.keycloak,
     };
 
     HttpServer::new(move || {

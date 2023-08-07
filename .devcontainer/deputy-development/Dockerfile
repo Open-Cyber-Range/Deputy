@@ -4,7 +4,7 @@ RUN wget -qO - https://nexus.ocr.cr14.net/repository/ocr-raw-hosted/ubuntu/gpg |
 RUN echo 'deb [arch=amd64] https://nexus.ocr.cr14.net/repository/ocr-apt-hosted/ focal main' >> /etc/apt/sources.list.d/ocr.list
 
 RUN apt-get update && apt-get upgrade -y
-RUN apt-get install deputy -y
+RUN apt-get install deputy mitmproxy -y
 
 ENV NODE_VERSION=18.15.0
 RUN apt-get install -y curl libmariadb-dev-compat libmariadb-dev

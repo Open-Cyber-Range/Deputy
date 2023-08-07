@@ -13,16 +13,14 @@ const Deputy = ({
   const { t } = useTranslation('common');
 
   return (
-    <>
+    <SessionProvider session={session}>
       <Head>
         <title>{t('title')}</title>
         <meta name={t('metaName')} content={t('metaContent')} />
       </Head>
       <MainNavbar />
-      <SessionProvider session={session}>
-        <Component {...pageProps} />
-      </SessionProvider>
-    </>
+      <Component {...pageProps} />
+    </SessionProvider>
   );
 };
 

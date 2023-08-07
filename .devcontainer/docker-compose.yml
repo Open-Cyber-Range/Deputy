@@ -4,7 +4,7 @@ services:
   deputy-development:
     image: deputy-development
     build: ./deputy-development
-    command: /bin/sh -c "while sleep 1000; do :; done"
+    command: mitmdump  --mode reverse:http://development-keycloak:8080
     volumes:
       - ..:/workspace:cached
     user: vscode

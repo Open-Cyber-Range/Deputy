@@ -72,6 +72,7 @@ impl Version {
 pub struct Package {
     pub id: Uuid,
     pub name: String,
+    pub package_type: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -135,6 +136,7 @@ pub struct PackageVersion(pub Package, pub Version);
 pub struct NewPackage {
     pub id: Uuid,
     pub name: String,
+    pub package_type: String,
 }
 
 impl NewPackage {
@@ -170,6 +172,7 @@ impl From<(PackageMetadata, String)> for NewPackageVersion {
         let package = NewPackage {
             id: Uuid::random().to_owned(),
             name: package_metadata.name,
+            package_type: String::from(package_metadata.package_type),
         };
         let version = NewVersion {
             id: Uuid::random().to_owned(),

@@ -170,7 +170,7 @@ where
 }
 
 pub async fn search_packages<T>(
-    search_term: Path<String>,
+    path_variables: Path<(String, String, String)>,
     app_state: Data<AppState<T>>,
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error>
@@ -178,6 +178,13 @@ where
     T: Actor + Handler<SearchPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, SearchPackages>,
 {
+    let search_term = path_variables.0.to_string();
+    let package_type = path_variables.1.to_string();
+    let package_category = path_variables.2.to_string();
+    println!(
+        "vars: {:?}, {:?}, {:?}",
+        search_term, package_type, package_category
+    );
     let packages = app_state
         .database_address
         .send(SearchPackages {
@@ -194,7 +201,11 @@ where
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    Ok(Json(packages))
+    let filtered_packages: Vec<crate::models::Package> = packages
+        .into_iter()
+        .filter(|package| package.package_type == package_type)
+        .collect();
+    Ok(Json(filtered_packages))
 }
 
 #[derive(Deserialize, Debug)]

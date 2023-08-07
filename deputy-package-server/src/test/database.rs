@@ -24,6 +24,7 @@ impl From<NewPackageVersion> for PackageVersion {
     fn from(NewPackageVersion(new_package, new_version): NewPackageVersion) -> Self {
         let package = Package {
             id: new_package.id,
+            package_type: new_package.package_type,
             created_at: NaiveDateTime::MAX,
             updated_at: NaiveDateTime::MAX,
             deleted_at: None,

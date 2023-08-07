@@ -3,7 +3,8 @@ pub(crate) mod enums;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs::File, io::Read, path::Path};
+use std::{fmt, fs::File, io::Read, path::Path};
+use std::fmt::Formatter;
 
 use self::enums::VirtualMachineType;
 
@@ -225,6 +226,7 @@ where
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Body {
     pub name: String,
+    pub package_type: ContentType,
     pub description: String,
     pub version: String,
     pub authors: Option<Vec<String>>,
@@ -238,6 +240,7 @@ impl Body {
         let deserialized_toml = create_project_from_toml_path(toml_path)?;
         Ok(Body {
             name: deserialized_toml.package.name,
+            package_type: deserialized_toml.content.content_type,
             description: deserialized_toml.package.description,
             version: deserialized_toml.package.version,
             authors: deserialized_toml.package.authors,
@@ -268,19 +271,17 @@ pub enum ContentType {
     Other,
 }
 
-impl TryFrom<ContentType> for String {
-    type Error = anyhow::Error;
-
-    fn try_from(content_type: ContentType) -> Result<String, Self::Error> {
+impl From<ContentType> for String {
+    fn from(content_type: ContentType) -> String {
         match content_type {
-            ContentType::VM => Ok("VM".to_string()),
-            ContentType::Feature => Ok("Feature".to_string()),
-            ContentType::Condition => Ok("Condition".to_string()),
-            ContentType::Inject => Ok("Inject".to_string()),
-            ContentType::Event => Ok("Event".to_string()),
-            ContentType::Malware => Ok("Malware".to_string()),
-            ContentType::Exercise => Ok("Exercise".to_string()),
-            ContentType::Other => Ok("Other".to_string()),
+            ContentType::VM => "VM".to_string(),
+            ContentType::Feature => "Feature".to_string(),
+            ContentType::Condition => "Condition".to_string(),
+            ContentType::Inject => "Inject".to_string(),
+            ContentType::Event => "Event".to_string(),
+            ContentType::Malware => "Malware".to_string(),
+            ContentType::Exercise => "Exercise".to_string(),
+            ContentType::Other => "Other".to_string(),
         }
     }
 }

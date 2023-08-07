@@ -69,7 +69,7 @@ async fn real_main() -> Result<()> {
                                 .route("", get().to(get_all_packages::<Database>)),
                         )
                         .route(
-                            "/search/{search_term}",
+                            "/search/{search_term}&type={type}&category={category}",
                             get().to(search_packages::<Database>),
                         ),
                 ),

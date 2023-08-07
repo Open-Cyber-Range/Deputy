@@ -19,10 +19,12 @@ use std::{
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
+use crate::project::ContentType;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
+    pub package_type: ContentType,
     pub version: String,
     pub description: String,
     pub license: String,
@@ -204,6 +206,7 @@ impl Package {
         let archive_file = File::open(archive_path)?;
         Ok(PackageMetadata {
             name: package_body.name,
+            package_type: package_body.package_type,
             version: package_body.version,
             description: package_body.description,
             license: package_body.license,

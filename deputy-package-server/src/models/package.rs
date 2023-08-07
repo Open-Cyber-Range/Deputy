@@ -172,7 +172,7 @@ impl From<(PackageMetadata, String)> for NewPackageVersion {
         let package = NewPackage {
             id: Uuid::random().to_owned(),
             name: package_metadata.name,
-            package_type: String::from(package_metadata.package_type),
+            package_type: package_metadata.package_type.to_string(),
         };
         let version = NewVersion {
             id: Uuid::random().to_owned(),

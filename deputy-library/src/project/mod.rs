@@ -33,7 +33,7 @@ pub struct Project {
 
 impl Project {
     pub fn validate_assets(&self) -> Result<()> {
-        let package_type: String = self.content.content_type.clone().try_into()?;
+        let package_type: String = self.content.content_type.to_string();
         if let Some(assets) = &self.package.assets {
             if assets.is_empty() {
                 return Err(anyhow!(
@@ -282,6 +282,21 @@ impl From<ContentType> for String {
             ContentType::Malware => "Malware".to_string(),
             ContentType::Exercise => "Exercise".to_string(),
             ContentType::Other => "Other".to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ContentType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ContentType::VM => write!(f, "VM"),
+            ContentType::Feature => write!(f, "Feature"),
+            ContentType::Condition => write!(f, "Condition"),
+            ContentType::Inject => write!(f, "Inject"),
+            ContentType::Event => write!(f, "Event"),
+            ContentType::Malware => write!(f, "Malware"),
+            ContentType::Exercise => write!(f, "Exercise"),
+            ContentType::Other => write!(f, "Other"),
         }
     }
 }

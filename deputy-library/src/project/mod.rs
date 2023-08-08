@@ -3,8 +3,8 @@ pub(crate) mod enums;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fmt, fs::File, io::Read, path::Path};
 use std::fmt::Formatter;
+use std::{fmt, fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
@@ -269,21 +269,6 @@ pub enum ContentType {
     Exercise,
     #[serde(alias = "other", alias = "OTHER")]
     Other,
-}
-
-impl From<ContentType> for String {
-    fn from(content_type: ContentType) -> String {
-        match content_type {
-            ContentType::VM => "VM".to_string(),
-            ContentType::Feature => "Feature".to_string(),
-            ContentType::Condition => "Condition".to_string(),
-            ContentType::Inject => "Inject".to_string(),
-            ContentType::Event => "Event".to_string(),
-            ContentType::Malware => "Malware".to_string(),
-            ContentType::Exercise => "Exercise".to_string(),
-            ContentType::Other => "Other".to_string(),
-        }
-    }
 }
 
 impl fmt::Display for ContentType {

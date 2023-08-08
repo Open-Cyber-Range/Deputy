@@ -1,6 +1,13 @@
 ALTER TABLE packages
 ADD COLUMN package_type TINYTEXT AFTER name;
 
+UPDATE packages
+SET package_type = 'Other'
+WHERE packages.package_type IS NULL;
+
+ALTER TABLE packages
+MODIFY COLUMN package_type TINYTEXT NOT NULL;
+
 CREATE TABLE categories (
     id BINARY(16) PRIMARY KEY,
     name TINYTEXT NOT NULL,

@@ -24,7 +24,7 @@ diesel::table! {
     packages (id) {
         id -> Binary,
         name -> Tinytext,
-        package_type -> Nullable<Tinytext>,
+        package_type -> Tinytext,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         deleted_at -> Nullable<Timestamp>,
@@ -48,9 +48,4 @@ diesel::table! {
 
 diesel::joinable!(versions -> packages (package_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    categories,
-    package_categories,
-    packages,
-    versions,
-);
+diesel::allow_tables_to_appear_in_same_query!(categories, package_categories, packages, versions);

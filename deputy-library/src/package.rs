@@ -1,3 +1,4 @@
+use crate::project::ContentType;
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
@@ -19,7 +20,6 @@ use std::{
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
-use crate::project::ContentType;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {

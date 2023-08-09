@@ -1,4 +1,4 @@
-use crate::project::ContentType;
+use crate::project::{Content, ContentType};
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
@@ -203,10 +203,11 @@ impl Package {
 
     fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
+        let package_content = Content::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
         Ok(PackageMetadata {
             name: package_body.name,
-            package_type: package_body.package_type,
+            package_type: package_content.content_type,
             version: package_body.version,
             description: package_body.description,
             license: package_body.license,

@@ -226,7 +226,6 @@ where
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Body {
     pub name: String,
-    pub package_type: ContentType,
     pub description: String,
     pub version: String,
     pub authors: Option<Vec<String>>,
@@ -240,7 +239,6 @@ impl Body {
         let deserialized_toml = create_project_from_toml_path(toml_path)?;
         Ok(Body {
             name: deserialized_toml.package.name,
-            package_type: deserialized_toml.content.content_type,
             description: deserialized_toml.package.description,
             version: deserialized_toml.package.version,
             authors: deserialized_toml.package.authors,
@@ -303,4 +301,14 @@ pub struct Content {
     pub content_type: ContentType,
     #[serde(alias = "preview", alias = "PREVIEW")]
     pub preview: Option<Vec<Preview>>,
+}
+
+impl Content {
+    pub fn create_from_toml(toml_path: &Path) -> Result<Content> {
+        let deserialized_toml = create_project_from_toml_path(toml_path)?;
+        Ok(Content {
+            content_type: deserialized_toml.content.content_type,
+            preview: deserialized_toml.content.preview,
+        })
+    }
 }

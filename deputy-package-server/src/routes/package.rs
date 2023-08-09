@@ -203,7 +203,8 @@ where
         })?;
     let filtered_packages: Vec<crate::models::Package> = packages
         .into_iter()
-        .filter(|package| package.package_type == package_type)
+        .filter(|package|
+            package.package_type.to_lowercase() == package_type.to_lowercase())
         .collect();
     Ok(Json(filtered_packages))
 }

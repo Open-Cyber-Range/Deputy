@@ -11,7 +11,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    package_categories (package_id, category_id) {
+    package_categories (package_id) {
         package_id -> Binary,
         category_id -> Binary,
         created_at -> Timestamp,
@@ -46,6 +46,8 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(package_categories -> categories (category_id));
+diesel::joinable!(package_categories -> packages (package_id));
 diesel::joinable!(versions -> packages (package_id));
 
 diesel::allow_tables_to_appear_in_same_query!(categories, package_categories, packages, versions);

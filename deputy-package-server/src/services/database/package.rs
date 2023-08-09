@@ -1,10 +1,11 @@
 use super::Database;
 use crate::models::helpers::pagination::*;
-use crate::models::{NewPackageVersion, Package, PackageVersion, Version};
+use crate::models::{Category, NewPackageVersion, Package, PackageCategory, PackageVersion, Version};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
 use diesel::{OptionalExtension, RunQueryDsl};
+use crate::models::helpers::uuid::Uuid;
 
 #[derive(Message)]
 #[rtype(result = "Result<PackageVersion>")]
@@ -181,3 +182,43 @@ impl Handler<GetVersionsByPackageName> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Category>>")]
+pub struct GetCategoriesForPackage(pub Uuid);
+
+impl Handler<GetCategoriesForPackage> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(
+        &mut self,
+        query_params: GetCategoriesForPackage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let categories = block(move || {
+                    let package_categories = PackageCategory::by_package_id(query_params.0)
+                        .load(&mut connection)?;
+
+                    let category_ids: Vec<Uuid> = package_categories
+                        .iter()
+                        .map(|pc| pc.category_id)
+                        .collect();
+
+                    let categories = Category::belonging_to_query(&category_ids)
+                        .load(&mut connection)?;
+
+                    Ok(categories)
+                })
+                    .await??;
+                Ok(categories)
+            }
+            .into_actor(self),
+        )
+    }
+}
+

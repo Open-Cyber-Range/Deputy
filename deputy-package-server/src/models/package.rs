@@ -1,6 +1,6 @@
 use crate::models::helpers::uuid::Uuid;
 use crate::{
-    schema::{packages, versions},
+    schema::{categories, package_categories, packages, versions},
     services::database::{All, Create, FilterExisting},
 };
 use chrono::NaiveDateTime;
@@ -11,6 +11,30 @@ use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(
+    Clone, Queryable, QueryableByName, Selectable, Identifiable, Debug, Deserialize, Serialize,
+)]
+#[diesel(table_name = categories)]
+pub struct Category {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
+}
+
+#[derive(Associations, Clone, Queryable, QueryableByName, Selectable, Debug, Deserialize, Serialize)]
+#[diesel(belongs_to(Package, foreign_key = package_id))]
+#[diesel(belongs_to(Category, foreign_key = category_id))]
+#[diesel(table_name = package_categories)]
+pub struct PackageCategory {
+    pub package_id: Uuid,
+    pub category_id: Uuid,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
+}
 
 #[derive(
     Associations,

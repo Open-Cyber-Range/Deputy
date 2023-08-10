@@ -6,14 +6,24 @@ use crate::{
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::VersionRest;
-use diesel::helper_types::{Filter, FindBy, Like};
+use diesel::helper_types::{EqAny, Filter, FindBy, Like};
 use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Clone, Queryable, QueryableByName, Selectable, Identifiable, Debug, Deserialize, Serialize,
+    Queryable,
+    QueryableByName,
+    Identifiable,
+    Selectable,
+    Insertable,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Deserialize,
+    Serialize,
 )]
 #[diesel(table_name = categories)]
 pub struct Category {
@@ -24,7 +34,30 @@ pub struct Category {
     pub deleted_at: Option<NaiveDateTime>,
 }
 
-#[derive(Associations, Clone, Queryable, QueryableByName, Selectable, Debug, Deserialize, Serialize)]
+impl Category {
+    fn all_with_deleted() -> All<categories::table, Self> {
+        categories::table.select(Self::as_select())
+    }
+
+    pub fn all() -> FilterExisting<All<categories::table, Self>, categories::deleted_at> {
+        Self::all_with_deleted().filter(categories::deleted_at.is_null())
+    }
+
+    pub fn by_ids (
+        category_ids: Vec<Uuid>
+    ) -> Filter<
+        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
+        EqAny<categories::id, Uuid>,
+    > {
+        let x = Self::all()
+            .filter(categories::id.eq_any(category_ids));
+        x
+    }
+}
+
+#[derive(
+    Associations, Clone, Queryable, QueryableByName, Selectable, Debug, Deserialize, Serialize,
+)]
 #[diesel(belongs_to(Package, foreign_key = package_id))]
 #[diesel(belongs_to(Category, foreign_key = category_id))]
 #[diesel(table_name = package_categories)]
@@ -34,6 +67,27 @@ pub struct PackageCategory {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
+}
+
+impl PackageCategory {
+    fn all_with_deleted() -> All<package_categories::table, Self> {
+        package_categories::table.select(Self::as_select())
+    }
+
+    pub fn all(
+    ) -> FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at> {
+        Self::all_with_deleted().filter(package_categories::deleted_at.is_null())
+    }
+
+    pub fn by_package_id(
+        id: Uuid,
+    ) -> FindBy<
+        FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at>,
+        package_categories::package_id,
+        Uuid,
+    > {
+        Self::all().filter(package_categories::package_id.eq(id))
+    }
 }
 
 #[derive(

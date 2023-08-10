@@ -209,7 +209,7 @@ impl Handler<GetCategoriesForPackage> for Database {
                         .map(|pc| pc.category_id)
                         .collect();
 
-                    let categories = Category::belonging_to_query(&category_ids)
+                    let categories = Category::by_ids(category_ids)
                         .load(&mut connection)?;
 
                     Ok(categories)

@@ -1,4 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
+use crate::services::database::CategoryFilter;
 use crate::{
     schema::{categories, package_categories, packages, versions},
     services::database::{All, Create, FilterExisting},
@@ -6,7 +7,7 @@ use crate::{
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::VersionRest;
-use diesel::helper_types::{EqAny, Filter, FindBy, Like};
+use diesel::helper_types::{Filter, FindBy, Like};
 use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
@@ -43,15 +44,10 @@ impl Category {
         Self::all_with_deleted().filter(categories::deleted_at.is_null())
     }
 
-    pub fn by_ids (
-        category_ids: Vec<Uuid>
-    ) -> Filter<
-        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
-        EqAny<categories::id, Uuid>,
-    > {
-        let x = Self::all()
-            .filter(categories::id.eq_any(category_ids));
-        x
+    pub fn by_ids(
+        category_ids: Vec<Uuid>,
+    ) -> CategoryFilter<categories::table, categories::id, categories::deleted_at, Self> {
+        Self::all().filter(categories::id.eq_any(category_ids))
     }
 }
 

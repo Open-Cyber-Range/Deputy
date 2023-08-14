@@ -1,9 +1,11 @@
+use crate::models::helpers::uuid::Uuid;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
+use crate::models::NewCategory;
 use crate::services::database::package::{
-    CreatePackage, GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName,
-    SearchPackages,
+    CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
+    GetVersionsByPackageName, SearchPackages,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -49,11 +51,13 @@ where
         + Handler<CreatePackage>
         + Handler<GetVersionsByPackageName>
         + Handler<GetPackageByNameAndVersion>
-        + Handler<GetPackages>,
+        + Handler<GetPackages>
+        + Handler<CreateCategory>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, CreatePackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, CreateCategory>,
 {
     let (package_metadata, body) = PackageMetadata::from_stream(body).await.map_err(|error| {
         error!("Failed to parse package metadata: {error}");
@@ -101,6 +105,21 @@ where
         })?
         .map_err(|error| {
             error!("Failed to add package: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?;
+    app_state
+        .database_address
+        .send(CreateCategory(NewCategory {
+            id: Uuid(Default::default()),
+            name: "hello".to_string(),
+        }))
+        .await
+        .map_err(|error| {
+            error!("Failed to add category: {error}");
+            ServerResponseError(PackageServerError::PackageSave.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to add category: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
 
@@ -203,8 +222,7 @@ where
         })?;
     let filtered_packages: Vec<crate::models::Package> = packages
         .into_iter()
-        .filter(|package|
-            package.package_type.to_lowercase() == package_type.to_lowercase())
+        .filter(|package| package.package_type.to_lowercase() == package_type.to_lowercase())
         .collect();
     Ok(Json(filtered_packages))
 }
@@ -295,7 +313,7 @@ pub async fn get_package_version<T>(
 ) -> Result<Json<VersionRest>, Error>
 where
     T: Actor + Handler<GetPackageByNameAndVersion>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;

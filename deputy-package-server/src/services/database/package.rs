@@ -2,7 +2,7 @@ use super::Database;
 use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
 use crate::models::{
-    Category, NewPackageVersion, Package, PackageCategory, PackageVersion, Version,
+    Category, NewCategory, NewPackageVersion, Package, PackageCategory, PackageVersion, Version,
 };
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
@@ -179,6 +179,34 @@ impl Handler<GetVersionsByPackageName> for Database {
                 })
                 .await??;
                 Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Category>")]
+pub struct CreateCategory(pub NewCategory);
+
+impl Handler<CreateCategory> for Database {
+    type Result = ResponseActFuture<Self, Result<Category>>;
+
+    fn handle(&mut self, msg: CreateCategory, _ctx: &mut Self::Context) -> Self::Result {
+        let new_category: NewCategory = msg.0;
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let category: Category = block(move || {
+                    new_category.create_insert().execute(&mut connection)?;
+                    let created_category =
+                        Category::by_id(new_category.id).first(&mut connection)?;
+                    Ok(created_category)
+                })
+                .await??;
+                Ok(category)
             }
             .into_actor(self),
         )

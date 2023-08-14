@@ -44,10 +44,52 @@ impl Category {
         Self::all_with_deleted().filter(categories::deleted_at.is_null())
     }
 
+    pub fn by_id(
+        id: Uuid,
+    ) -> FindBy<
+        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
+        categories::id,
+        Uuid,
+    > {
+        Self::all().filter(categories::id.eq(id))
+    }
+
     pub fn by_ids(
         category_ids: Vec<Uuid>,
     ) -> CategoryFilter<categories::table, categories::id, categories::deleted_at, Self> {
         Self::all().filter(categories::id.eq_any(category_ids))
+    }
+}
+
+#[derive(
+    Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
+)]
+#[diesel(table_name = categories)]
+pub struct NewCategory {
+    pub id: Uuid,
+    pub name: String,
+}
+
+impl NewCategory {
+    pub fn create_insert(&self) -> Create<&Self, categories::table> {
+        insert_into(categories::table).values(self)
+    }
+}
+
+#[derive(
+    Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
+)]
+#[diesel(belongs_to(Package, foreign_key = package_id))]
+#[diesel(belongs_to(Category, foreign_key = category_id))]
+#[diesel(table_name = package_categories)]
+pub struct NewPackageCategory {
+    pub package_id: Uuid,
+    pub category_id: Uuid,
+}
+
+impl NewPackageCategory {
+    pub fn create_insert(&self) -> Create<&Self, package_categories::table> {
+        insert_into(package_categories::table).values(self)
     }
 }
 

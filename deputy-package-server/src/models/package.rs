@@ -1,5 +1,5 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::CategoryFilter;
+use crate::services::database::{CategoryFilter, SelectById};
 use crate::{
     schema::{categories, package_categories, packages, versions},
     services::database::{All, Create, FilterExisting},
@@ -129,10 +129,11 @@ impl PackageCategory {
 
     pub fn by_package_id(
         id: Uuid,
-    ) -> FindBy<
-        FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at>,
+    ) -> SelectById<
+        package_categories::table,
         package_categories::package_id,
-        Uuid,
+        package_categories::deleted_at,
+        Self,
     > {
         Self::all().filter(package_categories::package_id.eq(id))
     }
@@ -141,10 +142,11 @@ impl PackageCategory {
         package_id: Uuid,
         category_id: Uuid,
     ) -> FindBy<
-        FindBy<
-            FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at>,
+        SelectById<
+            package_categories::table,
             package_categories::package_id,
-            Uuid,
+            package_categories::deleted_at,
+            Self,
         >,
         package_categories::category_id,
         Uuid,

@@ -15,6 +15,7 @@ lazy_static! {
         authors = ["Robert robert@exmaple.com"]
         license = "very bad licence"
         readme = "readme"
+        categories = ["category1", "category2"]
         [content]
         type = "vm"
         [virtual-machine]
@@ -30,6 +31,7 @@ lazy_static! {
         authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
         license = "Apache-2.0"
         readme = "src/readme.md"
+        categories = ["category1", "category2"]
         [content]
         type = "vm"
         [virtual-machine]
@@ -154,6 +156,7 @@ impl TempArchiveBuilder {
                 authors = ["Robert robert@exmaple.com", "Bobert the III bobert@exmaple.com", "Miranda Rustacean miranda@rustacean.rust" ]
                 license = "Apache-2.0"
                 readme = "src/readme.md"
+                categories = ["category1", "category2"]
                 [content]
                 type = "vm"
                 [virtual-machine]

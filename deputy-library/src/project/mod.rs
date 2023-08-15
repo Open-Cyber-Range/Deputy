@@ -231,6 +231,7 @@ pub struct Body {
     pub authors: Option<Vec<String>>,
     pub license: String,
     pub readme: String,
+    pub categories: Option<Vec<String>>,
     pub assets: Option<Vec<Vec<String>>>,
 }
 
@@ -244,6 +245,7 @@ impl Body {
             authors: deserialized_toml.package.authors,
             license: deserialized_toml.package.license,
             readme: deserialized_toml.package.readme,
+            categories: deserialized_toml.package.categories,
             assets: deserialized_toml.package.assets,
         })
     }

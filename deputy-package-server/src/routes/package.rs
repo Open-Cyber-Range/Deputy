@@ -1,8 +1,6 @@
-use crate::models::helpers::uuid::Uuid;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
-use crate::models::NewCategory;
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
     GetVersionsByPackageName, SearchPackages,
@@ -107,25 +105,23 @@ where
             error!("Failed to add package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-    app_state
-        .database_address
-        .send(CreateCategory(
-            NewCategory {
-                id: Uuid::random().to_owned(),
-                name: "hello".to_string(),
-            },
-            response.0.id,
-        ))
-        .await
-        .map_err(|error| {
-            error!("Failed to add category: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?
-        .map_err(|error| {
-            error!("Failed to add category: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
-        })?;
-
+    let optional_categories = package.metadata.categories;
+    if let Some(categories) = optional_categories {
+        for category in categories {
+            app_state
+                .database_address
+                .send(CreateCategory(category.into(), response.0.id))
+                .await
+                .map_err(|error| {
+                    error!("Failed to add category: {error}");
+                    ServerResponseError(PackageServerError::PackageSave.into())
+                })?
+                .map_err(|error| {
+                    error!("Failed to add category: {error}");
+                    ServerResponseError(PackageServerError::PackageSave.into())
+                })?;
+        }
+    }
     Ok(HttpResponse::Ok().body("OK"))
 }
 

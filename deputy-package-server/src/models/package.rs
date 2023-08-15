@@ -345,3 +345,12 @@ impl From<Version> for VersionRest {
         }
     }
 }
+
+impl From<String> for NewCategory {
+    fn from(category: String) -> Self {
+        Self {
+            id: Uuid::random().to_owned(),
+            name: category,
+        }
+    }
+}

@@ -17,11 +17,12 @@ CREATE TABLE categories (
 );
 
 CREATE TABLE package_categories (
-    package_id BINARY(16) PRIMARY KEY,
+    package_id BINARY(16) NOT NULL,
     category_id BINARY(16) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (package_id, category_id),
     CONSTRAINT FK_Category FOREIGN KEY (category_id) REFERENCES categories(id),
     CONSTRAINT FK_Package FOREIGN KEY (package_id) REFERENCES packages(id)
 );

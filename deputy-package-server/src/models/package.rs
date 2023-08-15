@@ -54,6 +54,16 @@ impl Category {
         Self::all().filter(categories::id.eq(id))
     }
 
+    pub fn by_name(
+        name: String,
+    ) -> FindBy<
+        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
+        categories::name,
+        String,
+    > {
+        Self::all().filter(categories::name.eq(name))
+    }
+
     pub fn by_ids(
         category_ids: Vec<Uuid>,
     ) -> CategoryFilter<categories::table, categories::id, categories::deleted_at, Self> {
@@ -125,6 +135,23 @@ impl PackageCategory {
         Uuid,
     > {
         Self::all().filter(package_categories::package_id.eq(id))
+    }
+
+    pub fn by_package_and_category_id(
+        package_id: Uuid,
+        category_id: Uuid,
+    ) -> FindBy<
+        FindBy<
+            FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at>,
+            package_categories::package_id,
+            Uuid,
+        >,
+        package_categories::category_id,
+        Uuid,
+    > {
+        Self::all()
+            .filter(package_categories::package_id.eq(package_id))
+            .filter(package_categories::category_id.eq(category_id))
     }
 }
 

@@ -95,7 +95,7 @@ where
             ServerResponseError(PackageServerError::PackageSave.into())
         })?
         .unwrap_or_default();
-    app_state
+    let response = app_state
         .database_address
         .send(CreatePackage((package_metadata, readme_html).into()))
         .await
@@ -109,10 +109,13 @@ where
         })?;
     app_state
         .database_address
-        .send(CreateCategory(NewCategory {
-            id: Uuid(Default::default()),
-            name: "hello".to_string(),
-        }))
+        .send(CreateCategory(
+            NewCategory {
+                id: Uuid::random().to_owned(),
+                name: "hello".to_string(),
+            },
+            response.0.id,
+        ))
         .await
         .map_err(|error| {
             error!("Failed to add category: {error}");

@@ -8,6 +8,7 @@ use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
     routes::{
+        apitoken::get_all_api_tokens,
         basic::{status, version},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
@@ -70,6 +71,9 @@ async fn real_main() -> Result<()> {
                                 .route("", get().to(get_all_packages::<Database>)),
                         )
                         .service(scope("/search").route("", get().to(search_packages::<Database>))),
+                        .service(
+                            scope("/token").route("", get().to(get_all_api_tokens::<Database>)),
+                        ),
                 ),
             )
     })

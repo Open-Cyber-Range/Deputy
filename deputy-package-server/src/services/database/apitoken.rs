@@ -3,7 +3,7 @@ use crate::models::apitoken::{ApiToken, NewApiToken};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
-use diesel::query_dsl::methods::FilterDsl;
+use deputy_library::rest::ApiTokenRest;
 use diesel::RunQueryDsl;
 
 #[derive(Message)]
@@ -34,13 +34,13 @@ impl Handler<CreateApiToken> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<ApiToken>>")]
+#[rtype(result = "Result<Vec<ApiTokenRest>>")]
 pub struct GetApiTokens {
     pub user_id: String,
 }
 
 impl Handler<GetApiTokens> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<ApiToken>>>;
+    type Result = ResponseActFuture<Self, Result<Vec<ApiTokenRest>>>;
 
     fn handle(&mut self, get_api_tokens: GetApiTokens, _ctx: &mut Self::Context) -> Self::Result {
         let connection_result = self.get_connection();
@@ -51,6 +51,10 @@ impl Handler<GetApiTokens> for Database {
                 let api_tokens = block(move || {
                     let api_tokens =
                         ApiToken::by_user_id(get_api_tokens.user_id).load(&mut connection)?;
+                    let api_tokens = api_tokens
+                        .into_iter()
+                        .map(|api_token| api_token.into())
+                        .collect();
                     Ok(api_tokens)
                 })
                 .await??;

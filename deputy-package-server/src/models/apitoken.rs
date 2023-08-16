@@ -70,22 +70,27 @@ impl NewApiToken {
     }
 }
 
-impl From<(String, String)> for NewApiToken {
-    fn from((name, user_id): (String, String)) -> Self {
-        Self {
+#[derive(Deserialize, Serialize)]
+pub struct NewApiTokenRest {
+    pub name: String,
+}
+
+impl NewApiTokenRest {
+    fn generate_token() -> String {
+        let token_byte_length = 128;
+        let random_bytes = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(token_byte_length)
+            .collect::<Vec<u8>>();
+        general_purpose::STANDARD.encode(random_bytes)
+    }
+
+    pub fn create_new_token(&self, user_id: String) -> NewApiToken {
+        NewApiToken {
             id: Uuid::random(),
-            name,
-            token: generate_token(),
+            name: self.name.clone(),
+            token: Self::generate_token(),
             user_id,
         }
     }
-}
-
-pub fn generate_token() -> String {
-    let token_byte_length = 128;
-    let random_bytes = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(token_byte_length)
-        .collect::<Vec<u8>>();
-    general_purpose::STANDARD.encode(random_bytes)
 }

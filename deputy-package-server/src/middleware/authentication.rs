@@ -23,7 +23,7 @@ pub struct RealmAccess {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Token {
     pub sub: String,
-    pub realm_access: RealmAccess,
+    pub realm_access: Option<RealmAccess>,
     pub exp: u64,
     pub name: Option<String>,
     pub email: Option<String>,

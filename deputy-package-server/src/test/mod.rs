@@ -2,7 +2,6 @@ pub mod database;
 
 use self::database::MockDatabase;
 use crate::{
-    configuration::Keycloak,
     routes::{
         basic::{status, version},
         package::{
@@ -110,13 +109,9 @@ impl TestPackageServer {
         let runtime = actix_rt::System::new();
         runtime.block_on(async {
             let database = MockDatabase::default().start();
-            let keycloak = Keycloak {
-                pem_content: String::new(),
-            };
             let app_data: AppState<MockDatabase> = AppState {
                 package_folder,
                 database_address: database,
-                keycloak,
             };
             try_join!(
                 HttpServer::new(move || {

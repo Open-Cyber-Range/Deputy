@@ -1,14 +1,15 @@
 use actix::Actor;
 use actix_web::{
-    web::{get, put, scope, Data},
+    web::{get, post, put, scope, Data},
     App, HttpServer,
 };
 use anyhow::{Ok, Result};
 use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
+    middleware::authentication::AuthenticationMiddlewareFactory,
     routes::{
-        apitoken::get_all_api_tokens,
+        apitoken::{create_api_token, get_all_api_tokens},
         basic::{status, version},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
@@ -34,10 +35,11 @@ async fn real_main() -> Result<()> {
     let app_state = AppState {
         package_folder: configuration.package_folder,
         database_address: database,
-        keycloak: configuration.keycloak,
     };
 
     HttpServer::new(move || {
+        let auth_middleware =
+            AuthenticationMiddlewareFactory(configuration.keycloak.pem_content.clone());
         let app_data = Data::new(app_state.clone());
         App::new()
             .app_data(app_data)
@@ -72,8 +74,11 @@ async fn real_main() -> Result<()> {
                         )
                         .service(scope("/search").route("", get().to(search_packages::<Database>))),
                         .service(
-                            scope("/token").route("", get().to(get_all_api_tokens::<Database>)),
-                        ),
+                            scope("/token")
+                                .route("", post().to(create_api_token::<Database>))
+                                .route("", get().to(get_all_api_tokens::<Database>)),
+                        )
+                        .wrap(auth_middleware),
                 ),
             )
     })

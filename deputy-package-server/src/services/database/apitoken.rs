@@ -1,9 +1,8 @@
 use super::Database;
-use crate::models::apitoken::{ApiToken, NewApiToken};
+use crate::models::apitoken::{ApiToken, ApiTokenRest, NewApiToken};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
-use deputy_library::rest::ApiTokenRest;
 use diesel::RunQueryDsl;
 
 #[derive(Message)]

@@ -1,6 +1,8 @@
 use crate::{
     errors::{PackageServerError, ServerResponseError},
-    services::database::apitoken::GetApiTokens,
+    middleware::authentication::UserInfo,
+    models::apitoken::{ApiTokenRest, FullApiTokenRest, NewApiTokenRest},
+    services::database::apitoken::{CreateApiToken, GetApiTokens},
     AppState,
 };
 use actix::{Actor, Handler};
@@ -9,7 +11,6 @@ use actix_web::{
     Error,
 };
 use anyhow::Result;
-use deputy_library::rest::ApiTokenRest;
 use log::error;
 
 pub async fn get_all_api_tokens<T>(
@@ -35,4 +36,32 @@ where
             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
         })?;
     Ok(Json(apitokens))
+}
+
+pub async fn create_api_token<T>(
+    app_state: Data<AppState<T>>,
+    new_api_token: Json<NewApiTokenRest>,
+    user_info: UserInfo,
+) -> Result<Json<FullApiTokenRest>, Error>
+where
+    T: Actor + Handler<CreateApiToken>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, CreateApiToken>,
+{
+    let new_api_token = new_api_token
+        .into_inner()
+        .create_new_token(user_info.id.clone());
+
+    let full_api_token = app_state
+        .database_address
+        .send(CreateApiToken(new_api_token))
+        .await
+        .map_err(|error| {
+            error!("Failed to get all tokens: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get all tokens: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?;
+    Ok(Json(full_api_token.into()))
 }

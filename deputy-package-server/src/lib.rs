@@ -1,5 +1,4 @@
 use actix::{Actor, Addr};
-use configuration::Keycloak;
 
 pub mod configuration;
 pub mod constants;
@@ -21,5 +20,4 @@ where
 {
     pub database_address: Addr<T>,
     pub package_folder: String,
-    pub keycloak: Keycloak,
 }

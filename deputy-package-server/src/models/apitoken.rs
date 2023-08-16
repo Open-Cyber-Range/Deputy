@@ -5,7 +5,6 @@ use crate::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::NaiveDateTime;
-use deputy_library::rest::ApiTokenRest;
 use diesel::{helper_types::FindBy, insert_into, prelude::*};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -45,12 +44,44 @@ impl ApiToken {
     }
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiTokenRest {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+}
+
 impl From<ApiToken> for ApiTokenRest {
     fn from(api_token: ApiToken) -> Self {
         Self {
-            id: api_token.id.into(),
+            id: api_token.id,
             name: api_token.name,
             created_at: api_token.created_at,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullApiTokenRest {
+    pub id: Uuid,
+    pub name: String,
+    pub token: String,
+    pub user_id: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: Option<NaiveDateTime>,
+}
+
+impl From<ApiToken> for FullApiTokenRest {
+    fn from(api_token: ApiToken) -> Self {
+        Self {
+            id: api_token.id,
+            name: api_token.name,
+            token: api_token.token,
+            user_id: api_token.user_id,
+            created_at: api_token.created_at,
+            updated_at: api_token.deleted_at,
         }
     }
 }

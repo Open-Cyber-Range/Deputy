@@ -35,7 +35,10 @@ where
         .map_err(|error| {
             error!("Failed to get API tokens: {error}");
             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
-        })?;
+        })?
+        .into_iter()
+        .map(|apitoken| apitoken.into())
+        .collect();
     Ok(Json(apitokens))
 }
 

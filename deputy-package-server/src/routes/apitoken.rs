@@ -29,11 +29,11 @@ where
         })
         .await
         .map_err(|error| {
-            error!("Failed to get all tokens: {error}");
-            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+            error!("Failed to get API tokens: {error}");
+            ServerResponseError(PackageServerError::MailboxError.into())
         })?
         .map_err(|error| {
-            error!("Failed to get all tokens: {error}");
+            error!("Failed to get API tokens: {error}");
             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
         })?;
     Ok(Json(apitokens))

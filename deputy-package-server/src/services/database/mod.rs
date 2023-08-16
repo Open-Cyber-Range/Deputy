@@ -1,5 +1,5 @@
+pub(crate) mod apitoken;
 pub(crate) mod package;
-pub(crate) mod token;
 
 use crate::models::helpers::uuid::Uuid;
 use crate::utilities::run_migrations;

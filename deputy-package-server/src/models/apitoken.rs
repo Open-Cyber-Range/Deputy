@@ -5,11 +5,12 @@ use crate::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::NaiveDateTime;
+use deputy_library::rest::ApiTokenRest;
 use diesel::{helper_types::FindBy, insert_into, prelude::*};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Deserialize, Serialize)]
+#[derive(Queryable, Selectable, Eq, PartialEq, Deserialize, Serialize)]
 #[diesel(table_name = tokens)]
 pub struct ApiToken {
     pub id: Uuid,
@@ -21,6 +22,14 @@ pub struct ApiToken {
 }
 
 impl ApiToken {
+    fn all_with_deleted() -> All<tokens::table, Self> {
+        tokens::table.select(Self::as_select())
+    }
+
+    pub fn all() -> FilterExisting<All<tokens::table, Self>, tokens::deleted_at> {
+        Self::all_with_deleted().filter(tokens::deleted_at.is_null())
+    }
+
     pub fn by_id(
         id: Uuid,
     ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::id, Uuid>
@@ -28,12 +37,21 @@ impl ApiToken {
         Self::all().filter(tokens::id.eq(id))
     }
 
-    fn all_with_deleted() -> All<tokens::table, Self> {
-        tokens::table.select(Self::as_select())
+    pub fn by_user_id(
+        user_id: String,
+    ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::user_id, String>
+    {
+        Self::all().filter(tokens::user_id.eq(user_id))
     }
+}
 
-    pub fn all() -> FilterExisting<All<tokens::table, Self>, tokens::deleted_at> {
-        Self::all_with_deleted().filter(tokens::deleted_at.is_null())
+impl From<ApiToken> for ApiTokenRest {
+    fn from(api_token: ApiToken) -> Self {
+        Self {
+            id: api_token.id.into(),
+            name: api_token.name,
+            created_at: api_token.created_at,
+        }
     }
 }
 

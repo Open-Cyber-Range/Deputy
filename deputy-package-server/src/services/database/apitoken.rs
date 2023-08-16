@@ -1,8 +1,9 @@
 use super::Database;
-use crate::models::token::{ApiToken, NewApiToken};
+use crate::models::apitoken::{ApiToken, NewApiToken};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
+use diesel::query_dsl::methods::FilterDsl;
 use diesel::RunQueryDsl;
 
 #[derive(Message)]
@@ -26,6 +27,34 @@ impl Handler<CreateApiToken> for Database {
                 })
                 .await??;
                 Ok(api_token)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<ApiToken>>")]
+pub struct GetApiTokens {
+    pub user_id: String,
+}
+
+impl Handler<GetApiTokens> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<ApiToken>>>;
+
+    fn handle(&mut self, get_api_tokens: GetApiTokens, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let api_tokens = block(move || {
+                    let api_tokens =
+                        ApiToken::by_user_id(get_api_tokens.user_id).load(&mut connection)?;
+                    Ok(api_tokens)
+                })
+                .await??;
+                Ok(api_tokens)
             }
             .into_actor(self),
         )

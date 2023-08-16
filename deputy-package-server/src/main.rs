@@ -68,10 +68,7 @@ async fn real_main() -> Result<()> {
                                 .route("", put().to(add_package::<Database>))
                                 .route("", get().to(get_all_packages::<Database>)),
                         )
-                        .route(
-                            "/search/{search_term}&type={type}&category={category}",
-                            get().to(search_packages::<Database>),
-                        ),
+                        .service(scope("/search").route("", get().to(search_packages::<Database>))),
                 ),
             )
     })

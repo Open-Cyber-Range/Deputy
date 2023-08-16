@@ -41,3 +41,10 @@ impl VersionRest {
         }
     }
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct ApiTokenRest {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+}

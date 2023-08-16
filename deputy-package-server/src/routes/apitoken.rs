@@ -15,12 +15,13 @@ use log::error;
 
 pub async fn get_all_api_tokens<T>(
     app_state: Data<AppState<T>>,
+    user_info: UserInfo,
 ) -> Result<Json<Vec<ApiTokenRest>>, Error>
 where
     T: Actor + Handler<GetApiTokens>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetApiTokens>,
 {
-    let user_id = "123".to_string();
+    let user_id = user_info.id.clone();
     let apitokens = app_state
         .database_address
         .send(GetApiTokens {

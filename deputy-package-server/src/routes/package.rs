@@ -29,6 +29,7 @@ use futures::{Stream, StreamExt};
 use log::error;
 use semver::{Version, VersionReq};
 use serde::Deserialize;
+use serde_with::{formats::CommaSeparator, StringWithSeparator};
 use std::path::PathBuf;
 
 async fn drain_stream(
@@ -187,7 +188,8 @@ where
         })?;
     Ok(Json(packages))
 }
-
+#[serde_with::serde_as]
+#[serde_with::skip_serializing_none]
 #[derive(Deserialize, Debug, Default)]
 pub struct SearchQuery {
     #[serde(default = "default_page")]
@@ -198,8 +200,9 @@ pub struct SearchQuery {
     search_term: String,
     #[serde(rename = "type", default)]
     type_param: Option<String>,
+    #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
     #[serde(rename = "categories", default)]
-    category_param: Option<String>,
+    category_param: Option<Vec<String>>,
 }
 
 pub async fn search_packages<T>(
@@ -240,7 +243,7 @@ where
         _type_filtered_packages = packages;
     }
     let mut filtered_packages: Vec<crate::models::Package> = Default::default();
-    if let Some(cat) = optional_package_categories {
+    if let Some(search_package_categories) = optional_package_categories {
         for package in _type_filtered_packages.clone() {
             let package_categories: Vec<Category> = app_state
                 .database_address
@@ -254,8 +257,12 @@ where
                     error!("Failed to get categories for package: {error}");
                     ServerResponseError(PackageServerError::Pagination.into())
                 })?;
-            let category_names: Vec<String> = package_categories.into_iter().map(|p| p.name).collect();
-            if category_names.contains(cat) {
+            let category_names: Vec<String> =
+                package_categories.into_iter().map(|p| p.name).collect();
+            if search_package_categories
+                .iter()
+                .all(|item| category_names.contains(item))
+            {
                 filtered_packages.push(package);
             }
         }

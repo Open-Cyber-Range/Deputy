@@ -239,7 +239,7 @@ impl Handler<CreateCategory> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Category>>")]
-pub struct GetCategoriesForPackage{
+pub struct GetCategoriesForPackage {
     pub id: Uuid,
 }
 

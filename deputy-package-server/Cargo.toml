@@ -55,6 +55,7 @@ rand = "0.8"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_with = "3"
 serde_yaml = "0.9"
 tar = { git = "https://github.com/npajkovsky/tar-rs", branch = "master" }
 tempfile = "3"

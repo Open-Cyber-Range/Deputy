@@ -1,9 +1,10 @@
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
+use crate::models::Category;
 use crate::services::database::package::{
-    CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
-    GetVersionsByPackageName, SearchPackages,
+    CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
+    GetPackages, GetVersionsByPackageName, SearchPackages,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -193,16 +194,13 @@ pub async fn search_packages<T>(
     query: Query<PackageQuery>,
 ) -> Result<Json<Vec<crate::models::Package>>, Error>
 where
-    T: Actor + Handler<SearchPackages>,
+    T: Actor + Handler<SearchPackages> + Handler<GetCategoriesForPackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, SearchPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let search_term = path_variables.0.to_string();
     let package_type = path_variables.1.to_string();
     let package_category = path_variables.2.to_string();
-    println!(
-        "vars: {:?}, {:?}, {:?}",
-        search_term, package_type, package_category
-    );
     let packages = app_state
         .database_address
         .send(SearchPackages {
@@ -219,10 +217,29 @@ where
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    let filtered_packages: Vec<crate::models::Package> = packages
+    let type_filtered_packages: Vec<crate::models::Package> = packages
         .into_iter()
         .filter(|package| package.package_type.to_lowercase() == package_type.to_lowercase())
         .collect();
+    let mut filtered_packages: Vec<crate::models::Package> = Default::default();
+    for package in type_filtered_packages.clone() {
+        let package_categories: Vec<Category> = app_state
+            .database_address
+            .send(GetCategoriesForPackage { id: package.id })
+            .await
+            .map_err(|error| {
+                error!("Failed to get all packages: {error}");
+                ServerResponseError(PackageServerError::Pagination.into())
+            })?
+            .map_err(|error| {
+                error!("Failed to get all packages: {error}");
+                ServerResponseError(PackageServerError::Pagination.into())
+            })?;
+        let category_names: Vec<String> = package_categories.into_iter().map(|p| p.name).collect();
+        if category_names.contains(&package_category) {
+            filtered_packages.push(package);
+        }
+    }
     Ok(Json(filtered_packages))
 }
 

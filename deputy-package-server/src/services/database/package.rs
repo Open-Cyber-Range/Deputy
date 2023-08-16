@@ -239,7 +239,9 @@ impl Handler<CreateCategory> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Category>>")]
-pub struct GetCategoriesForPackage(pub Uuid);
+pub struct GetCategoriesForPackage{
+    pub id: Uuid,
+}
 
 impl Handler<GetCategoriesForPackage> for Database {
     type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
@@ -256,7 +258,7 @@ impl Handler<GetCategoriesForPackage> for Database {
                 let mut connection = connection_result?;
                 let categories = block(move || {
                     let package_categories =
-                        PackageCategory::by_package_id(query_params.0).load(&mut connection)?;
+                        PackageCategory::by_package_id(query_params.id).load(&mut connection)?;
                     let category_ids: Vec<Uuid> =
                         package_categories.iter().map(|pc| pc.category_id).collect();
                     let categories = Category::by_ids(category_ids).load(&mut connection)?;

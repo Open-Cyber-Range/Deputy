@@ -63,3 +63,38 @@ impl Handler<GetApiTokens> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<Option<ApiToken>>")]
+pub struct GetTokenByToken(pub String);
+
+impl Handler<GetTokenByToken> for Database {
+    type Result = ResponseActFuture<Self, Result<Option<ApiToken>>>;
+
+    fn handle(
+        &mut self,
+        get_api_tokens: GetTokenByToken,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let token = get_api_tokens.0;
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let api_token = block(move || {
+                    let api_tokens = ApiToken::by_token(token).load(&mut connection)?;
+                    let api_token = api_tokens
+                        .into_iter()
+                        .collect::<Vec<ApiToken>>()
+                        .first()
+                        .cloned();
+                    Ok(api_token)
+                })
+                .await??;
+                Ok(api_token)
+            }
+            .into_actor(self),
+        )
+    }
+}

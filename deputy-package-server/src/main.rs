@@ -7,7 +7,10 @@ use anyhow::{Ok, Result};
 use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
-    middleware::authentication::AuthenticationMiddlewareFactory,
+    middleware::authentication::{
+        jwt::AuthenticationMiddlewareFactory,
+        local_token::LocalTokenAuthenticationMiddlewareFactory,
+    },
     routes::{
         apitoken::{create_api_token, get_all_api_tokens},
         basic::{status, version},
@@ -69,16 +72,25 @@ async fn real_main() -> Result<()> {
                                                 ),
                                         ),
                                 )
-                                .route("", put().to(add_package::<Database>))
+                                .service(
+                                    scope("")
+                                        .service(
+                                            scope("").route("", put().to(add_package::<Database>)),
+                                        )
+                                        .wrap(LocalTokenAuthenticationMiddlewareFactory),
+                                )
                                 .route("", get().to(get_all_packages::<Database>)),
                         )
                         .service(scope("/search").route("", get().to(search_packages::<Database>))),
                         .service(
                             scope("/token")
-                                .route("", post().to(create_api_token::<Database>))
-                                .route("", get().to(get_all_api_tokens::<Database>)),
-                        )
-                        .wrap(auth_middleware),
+                                .service(
+                                    scope("")
+                                        .route("", post().to(create_api_token::<Database>))
+                                        .route("", get().to(get_all_api_tokens::<Database>)),
+                                )
+                                .wrap(auth_middleware),
+                        ),
                 ),
             )
     })

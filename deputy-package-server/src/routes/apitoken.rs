@@ -1,6 +1,6 @@
 use crate::{
     errors::{PackageServerError, ServerResponseError},
-    middleware::authentication::UserInfo,
+    middleware::authentication::jwt::UserInfo,
     models::apitoken::{ApiTokenRest, FullApiTokenRest, NewApiTokenRest},
     services::database::apitoken::{CreateApiToken, GetApiTokens},
     AppState,

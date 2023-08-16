@@ -9,7 +9,7 @@ use diesel::{helper_types::FindBy, insert_into, prelude::*};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Queryable, Selectable, Eq, PartialEq, Deserialize, Serialize, Clone, Debug)]
 #[diesel(table_name = tokens)]
 pub struct ApiToken {
     pub id: Uuid,
@@ -34,6 +34,13 @@ impl ApiToken {
     ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::id, Uuid>
     {
         Self::all().filter(tokens::id.eq(id))
+    }
+
+    pub fn by_token(
+        token: String,
+    ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::token, String>
+    {
+        Self::all().filter(tokens::token.eq(token))
     }
 
     pub fn by_user_id(

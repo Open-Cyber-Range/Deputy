@@ -37,6 +37,10 @@ pub enum PackageServerError {
     KeycloakValidationFailed,
     #[error("Token missing")]
     TokenMissing,
+    #[error("App state missing")]
+    AppStateMissing,
+    #[error("Database query failed")]
+    DatabaseQueryFailed,
 }
 
 #[derive(Debug)]

@@ -4,11 +4,32 @@ import {
   NavbarHeading,
   NavbarDivider,
   Button,
+  Menu,
+  MenuItem,
+  Popover,
+  Position,
 } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import styles from '../styles/MainNavbar.module.css';
+
+const UserMenu = () => {
+  const { t } = useTranslation('common');
+  const router = useRouter();
+
+  return (
+    <Menu>
+      <MenuItem
+        text={t('tokens')}
+        onClick={() => {
+          router.push('/tokens');
+        }}
+      />
+    </Menu>
+  );
+};
 
 const MainNavbar = () => {
   const { t } = useTranslation('common');
@@ -16,7 +37,11 @@ const MainNavbar = () => {
 
   const loginComponent = session ? (
     <>
-      <b>{session.user?.name}</b>
+      {session.user?.name && (
+        <Popover content={<UserMenu />} position={Position.BOTTOM}>
+          <Button text={session.user.name} minimal icon="caret-down" />
+        </Popover>
+      )}
       <Button
         className="ml-2"
         minimal

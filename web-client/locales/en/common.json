@@ -12,5 +12,13 @@
   "logOut": "Log out",
   "versions": "Versions",
   "preview": "Preview",
-  "created_at": "Created at"
+  "createdAt": "Created at",
+  "tokens": "Tokens",
+  "createToken": "Create Token",
+  "name": "Name",
+  "tokenValue": "Token Value",
+  "tokenName": "Token Name",
+  "delete": "Delete",
+  "create": "Create",
+  "copyValue": "Copy Value"
 }

@@ -72,14 +72,14 @@ async fn real_main() -> Result<()> {
                                                 ),
                                         ),
                                 )
+                                .route("", get().to(get_all_packages::<Database>))
                                 .service(
                                     scope("")
                                         .service(
                                             scope("").route("", put().to(add_package::<Database>)),
                                         )
                                         .wrap(LocalTokenAuthenticationMiddlewareFactory),
-                                )
-                                .route("", get().to(get_all_packages::<Database>)),
+                                ),
                         )
                         .service(scope("/search").route("", get().to(search_packages::<Database>))),
                         .service(

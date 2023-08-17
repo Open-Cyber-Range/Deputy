@@ -1,5 +1,5 @@
 use super::Database;
-use crate::models::apitoken::{ApiToken, ApiTokenRest, NewApiToken};
+use crate::models::apitoken::{ApiToken, NewApiToken};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};

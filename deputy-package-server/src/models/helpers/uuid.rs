@@ -1,5 +1,5 @@
 use diesel::{
-    backend::RawValue,
+    backend::Backend,
     deserialize,
     deserialize::FromSql,
     mysql::Mysql,
@@ -71,7 +71,7 @@ impl Display for Uuid {
 }
 
 impl FromSql<Binary, Mysql> for Uuid {
-    fn from_sql(bytes: RawValue<Mysql>) -> deserialize::Result<Self> {
+    fn from_sql(bytes: <Mysql as Backend>::RawValue<'_>) -> deserialize::Result<Self> {
         let value = <Vec<u8>>::from_sql(bytes)?;
         uuid::Uuid::from_slice(&value)
             .map(Uuid)

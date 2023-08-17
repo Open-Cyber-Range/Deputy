@@ -1,6 +1,7 @@
 use crate::client::Client;
 use crate::commands::{
-    ChecksumOptions, FetchOptions, InspectOptions, NormalizeVersionOptions, PublishOptions,
+    ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
+    PublishOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
@@ -17,21 +18,32 @@ use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,
+    token_file: PathBuf,
 }
 
 impl Executor {
+    fn get_token_value(&self) -> Option<String> {
+        std::fs::read_to_string(&self.token_file).ok()
+    }
+
     fn try_create_client(&self, registry_name: String) -> Result<Client> {
         let api_url = if let Some(registry) = self.configuration.registries.get(&registry_name) {
             registry.api.clone()
         } else {
             return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
+        let token = self.get_token_value();
 
-        Client::try_new(api_url)
+        Client::try_new(api_url, token)
     }
 
-    pub fn new(configuration: Configuration) -> Self {
-        Self { configuration }
+    pub fn try_new() -> Result<Self> {
+        let configuration = Configuration::get_configuration()?;
+        let token_file = Configuration::get_token_file_path()?;
+        Ok(Self {
+            configuration,
+            token_file,
+        })
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
@@ -209,6 +221,14 @@ impl Executor {
             .await?
             .version;
         println!("{}", version);
+        Ok(())
+    }
+
+    pub async fn login(&self, options: LoginOptions) -> Result<()> {
+        let token_value = options.token;
+        let token_path = self.token_file.clone();
+
+        std::fs::write(token_path, token_value)?;
         Ok(())
     }
 }

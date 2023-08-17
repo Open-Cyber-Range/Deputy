@@ -1,6 +1,6 @@
 use crate::{constants::endpoints::PACKAGE_UPLOAD_PATH, helpers::create_file_from_stream};
 use anyhow::{anyhow, Error, Ok, Result};
-use awc::Client as ActixWebClient;
+use awc::{http::header, Client as ActixWebClient};
 use deputy_library::{package::PackageStream, rest::VersionRest};
 use log::error;
 use qstring::QString;
@@ -10,13 +10,16 @@ use url::Url;
 pub struct Client {
     client: ActixWebClient,
     api_base_url: Url,
+    token: Option<String>,
 }
 
 impl Client {
-    pub fn try_new(api_base_url: String) -> Result<Self> {
+    pub fn try_new(api_base_url: String, token: Option<String>) -> Result<Self> {
+        let token = token.map(|token| format!("Bearer {}", token));
         Ok(Self {
             client: ActixWebClient::new(),
             api_base_url: Url::parse(&api_base_url)?,
+            token,
         })
     }
 
@@ -28,9 +31,19 @@ impl Client {
 
     pub async fn upload_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
         let put_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
-        let mut response = self
-            .client
-            .put(put_uri.to_string())
+        let mut client_request = self.client.put(put_uri.to_string());
+        let token = self
+            .token
+            .clone()
+            .ok_or_else(|| anyhow!("No login token found"))?;
+
+        let headers = client_request.headers_mut();
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&token)?,
+        );
+
+        let mut response = client_request
             .timeout(std::time::Duration::from_secs(timeout))
             .send_stream(stream)
             .await

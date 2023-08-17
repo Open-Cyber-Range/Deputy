@@ -1,4 +1,5 @@
 pub const CONFIGURATION_FILE_RELATIVE_PATH: &str = "configuration.toml";
+pub const TOKEN_FILE_RELATIVE_PATH: &str = "token";
 pub const PACKAGE_TOML: &str = "package.toml";
 pub const DEFAULT_REGISTRY_NAME: &str = "main-registry";
 

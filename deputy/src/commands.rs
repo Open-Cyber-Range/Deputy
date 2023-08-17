@@ -90,3 +90,8 @@ pub struct NormalizeVersionOptions {
     )]
     pub registry_name: String,
 }
+
+#[derive(Debug, Args)]
+pub struct LoginOptions {
+    pub token: String,
+}

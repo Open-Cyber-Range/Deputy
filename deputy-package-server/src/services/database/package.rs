@@ -1,6 +1,10 @@
 use super::Database;
 use crate::models::helpers::pagination::*;
-use crate::models::{NewPackageVersion, Package, PackageVersion, Version};
+use crate::models::helpers::uuid::Uuid;
+use crate::models::{
+    Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory,
+    PackageVersion, Version,
+};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
@@ -64,6 +68,42 @@ impl Handler<GetPackages> for Database {
                     let packages = Package::all()
                         .paginate(get_packages.page)
                         .per_page(get_packages.per_page)
+                        .load_and_count_pages(&mut connection)?;
+                    Ok(packages.0)
+                })
+                .await??;
+                Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Package>>")]
+pub struct SearchPackages {
+    pub search_term: String,
+    pub page: i64,
+    pub per_page: i64,
+}
+
+impl Handler<SearchPackages> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+
+    fn handle(
+        &mut self,
+        search_packages: SearchPackages,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let package = block(move || {
+                    let packages = Package::search_name(search_packages.search_term)
+                        .paginate(search_packages.page)
+                        .per_page(search_packages.per_page)
                         .load_and_count_pages(&mut connection)?;
                     Ok(packages.0)
                 })
@@ -140,6 +180,92 @@ impl Handler<GetVersionsByPackageName> for Database {
                 })
                 .await??;
                 Ok(package)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Category>")]
+pub struct CreateCategory(pub NewCategory, pub Uuid);
+
+impl Handler<CreateCategory> for Database {
+    type Result = ResponseActFuture<Self, Result<Category>>;
+
+    fn handle(&mut self, msg: CreateCategory, _ctx: &mut Self::Context) -> Self::Result {
+        let new_category: NewCategory = msg.0;
+        let package_id: Uuid = msg.1;
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let category: Category = block(move || {
+                    let optional_category = Category::by_name(new_category.name.clone())
+                        .first(&mut connection)
+                        .optional()?;
+                    let existing_category = match optional_category {
+                        Some(cat) => cat,
+                        None => {
+                            new_category.create_insert().execute(&mut connection)?;
+                            Category::by_id(new_category.id).first(&mut connection)?
+                        }
+                    };
+                    let optional_package_category = PackageCategory::by_package_and_category_id(
+                        package_id,
+                        existing_category.id,
+                    )
+                    .first(&mut connection)
+                    .optional()?;
+                    if optional_package_category.is_none() {
+                        let new_package_category = NewPackageCategory {
+                            package_id,
+                            category_id: existing_category.id,
+                        };
+                        new_package_category
+                            .create_insert()
+                            .execute(&mut connection)?;
+                    }
+                    Ok(existing_category)
+                })
+                .await??;
+                Ok(category)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Category>>")]
+pub struct GetCategoriesForPackage {
+    pub id: Uuid,
+}
+
+impl Handler<GetCategoriesForPackage> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(
+        &mut self,
+        query_params: GetCategoriesForPackage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let categories = block(move || {
+                    let package_categories =
+                        PackageCategory::by_package_id(query_params.id).load(&mut connection)?;
+                    let category_ids: Vec<Uuid> =
+                        package_categories.iter().map(|pc| pc.category_id).collect();
+                    let categories = Category::by_ids(category_ids).load(&mut connection)?;
+                    Ok(categories)
+                })
+                .await??;
+                Ok(categories)
             }
             .into_actor(self),
         )

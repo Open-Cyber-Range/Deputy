@@ -5,7 +5,7 @@ use crate::utilities::run_migrations;
 use actix::Actor;
 use anyhow::{anyhow, Result};
 use diesel::{
-    helper_types::{AsSelect, Eq, Filter, IsNull, Select},
+    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select},
     mysql::{Mysql, MysqlConnection},
     query_builder::InsertStatement,
     r2d2::{ConnectionManager, Pool, PooledConnection},
@@ -18,6 +18,8 @@ pub type ById<Id, R> = Filter<R, Eq<Id, Uuid>>;
 pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
+pub type CategoryFilter<Table, Id, DeletedAtColumn, T> =
+    Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Id, Vec<Uuid>>>;
 
 #[derive(Clone)]
 pub struct Database {

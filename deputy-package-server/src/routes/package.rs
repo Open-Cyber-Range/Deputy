@@ -1,8 +1,10 @@
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
+use crate::models::Category;
 use crate::services::database::package::{
-    CreatePackage, GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName,
+    CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
+    GetPackages, GetVersionsByPackageName, SearchPackages,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -27,6 +29,7 @@ use futures::{Stream, StreamExt};
 use log::error;
 use semver::{Version, VersionReq};
 use serde::Deserialize;
+use serde_with::{formats::CommaSeparator, StringWithSeparator};
 use std::path::PathBuf;
 
 async fn drain_stream(
@@ -48,11 +51,13 @@ where
         + Handler<CreatePackage>
         + Handler<GetVersionsByPackageName>
         + Handler<GetPackageByNameAndVersion>
-        + Handler<GetPackages>,
+        + Handler<GetPackages>
+        + Handler<CreateCategory>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, CreatePackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, CreateCategory>,
 {
     let (package_metadata, body) = PackageMetadata::from_stream(body).await.map_err(|error| {
         error!("Failed to parse package metadata: {error}");
@@ -90,7 +95,7 @@ where
             ServerResponseError(PackageServerError::PackageSave.into())
         })?
         .unwrap_or_default();
-    app_state
+    let response = app_state
         .database_address
         .send(CreatePackage((package_metadata, readme_html).into()))
         .await
@@ -102,7 +107,23 @@ where
             error!("Failed to add package: {error}");
             ServerResponseError(PackageServerError::PackageSave.into())
         })?;
-
+    let optional_categories = package.metadata.categories;
+    if let Some(categories) = optional_categories {
+        for category in categories {
+            app_state
+                .database_address
+                .send(CreateCategory(category.into(), response.0.id))
+                .await
+                .map_err(|error| {
+                    error!("Failed to add category: {error}");
+                    ServerResponseError(PackageServerError::PackageSave.into())
+                })?
+                .map_err(|error| {
+                    error!("Failed to add category: {error}");
+                    ServerResponseError(PackageServerError::PackageSave.into())
+                })?;
+        }
+    }
     Ok(HttpResponse::Ok().body("OK"))
 }
 
@@ -166,6 +187,89 @@ where
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
     Ok(Json(packages))
+}
+#[serde_with::serde_as]
+#[serde_with::skip_serializing_none]
+#[derive(Deserialize, Debug, Default)]
+pub struct SearchQuery {
+    #[serde(default = "default_page")]
+    page: u32,
+    #[serde(default = "default_limit")]
+    limit: u32,
+    #[serde(default)]
+    search_term: String,
+    #[serde(rename = "type", default)]
+    type_param: Option<String>,
+    #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
+    #[serde(rename = "categories", default)]
+    category_param: Option<Vec<String>>,
+}
+
+pub async fn search_packages<T>(
+    app_state: Data<AppState<T>>,
+    query: Query<SearchQuery>,
+) -> Result<Json<Vec<crate::models::Package>>, Error>
+where
+    T: Actor + Handler<SearchPackages> + Handler<GetCategoriesForPackage>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, SearchPackages>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
+{
+    let search_term = &query.search_term;
+    let optional_package_type = &query.type_param;
+    let optional_package_categories = &query.category_param;
+    let packages = app_state
+        .database_address
+        .send(SearchPackages {
+            search_term: search_term.clone(),
+            page: query.page as i64,
+            per_page: query.limit as i64,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to get packages by name: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get packages by name: {error}");
+            ServerResponseError(PackageServerError::Pagination.into())
+        })?;
+    let mut _type_filtered_packages: Vec<crate::models::Package> = Default::default();
+    if let Some(package_type) = optional_package_type {
+        _type_filtered_packages = packages
+            .into_iter()
+            .filter(|package| package.package_type.to_lowercase() == package_type.to_lowercase())
+            .collect();
+    } else {
+        _type_filtered_packages = packages;
+    }
+    let mut filtered_packages: Vec<crate::models::Package> = Default::default();
+    if let Some(search_package_categories) = optional_package_categories {
+        for package in _type_filtered_packages.clone() {
+            let package_categories: Vec<Category> = app_state
+                .database_address
+                .send(GetCategoriesForPackage { id: package.id })
+                .await
+                .map_err(|error| {
+                    error!("Failed to get categories for package: {error}");
+                    ServerResponseError(PackageServerError::Pagination.into())
+                })?
+                .map_err(|error| {
+                    error!("Failed to get categories for package: {error}");
+                    ServerResponseError(PackageServerError::Pagination.into())
+                })?;
+            let category_names: Vec<String> =
+                package_categories.into_iter().map(|p| p.name).collect();
+            if search_package_categories
+                .iter()
+                .all(|item| category_names.contains(item))
+            {
+                filtered_packages.push(package);
+            }
+        }
+    } else {
+        filtered_packages = _type_filtered_packages;
+    }
+    Ok(Json(filtered_packages))
 }
 
 #[derive(Deserialize, Debug)]
@@ -254,7 +358,7 @@ pub async fn get_package_version<T>(
 ) -> Result<Json<VersionRest>, Error>
 where
     T: Actor + Handler<GetPackageByNameAndVersion>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;

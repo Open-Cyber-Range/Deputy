@@ -1,3 +1,4 @@
+use crate::project::{Content, ContentType};
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
@@ -23,10 +24,12 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageMetadata {
     pub name: String,
+    pub package_type: ContentType,
     pub version: String,
     pub description: String,
     pub license: String,
     pub readme_path: String,
+    pub categories: Option<Vec<String>>,
     pub checksum: String,
 }
 
@@ -201,13 +204,16 @@ impl Package {
 
     fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
+        let package_content = Content::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
         Ok(PackageMetadata {
             name: package_body.name,
+            package_type: package_content.content_type,
             version: package_body.version,
             description: package_body.description,
             license: package_body.license,
             readme_path: package_body.readme,
+            categories: package_body.categories,
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
         })
     }

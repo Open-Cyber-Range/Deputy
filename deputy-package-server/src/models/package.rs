@@ -1,16 +1,161 @@
 use crate::models::helpers::uuid::Uuid;
+use crate::services::database::{CategoryFilter, SelectById};
 use crate::{
-    schema::{packages, versions},
+    schema::{categories, package_categories, packages, versions},
     services::database::{All, Create, FilterExisting},
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::VersionRest;
-use diesel::helper_types::FindBy;
+use diesel::helper_types::{Filter, FindBy, Like};
 use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(
+    Queryable,
+    QueryableByName,
+    Identifiable,
+    Selectable,
+    Insertable,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Deserialize,
+    Serialize,
+)]
+#[diesel(table_name = categories)]
+pub struct Category {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
+}
+
+impl Category {
+    fn all_with_deleted() -> All<categories::table, Self> {
+        categories::table.select(Self::as_select())
+    }
+
+    pub fn all() -> FilterExisting<All<categories::table, Self>, categories::deleted_at> {
+        Self::all_with_deleted().filter(categories::deleted_at.is_null())
+    }
+
+    pub fn by_id(
+        id: Uuid,
+    ) -> FindBy<
+        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
+        categories::id,
+        Uuid,
+    > {
+        Self::all().filter(categories::id.eq(id))
+    }
+
+    pub fn by_name(
+        name: String,
+    ) -> FindBy<
+        FilterExisting<All<categories::table, Self>, categories::deleted_at>,
+        categories::name,
+        String,
+    > {
+        Self::all().filter(categories::name.eq(name))
+    }
+
+    pub fn by_ids(
+        category_ids: Vec<Uuid>,
+    ) -> CategoryFilter<categories::table, categories::id, categories::deleted_at, Self> {
+        Self::all().filter(categories::id.eq_any(category_ids))
+    }
+}
+
+#[derive(
+    Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
+)]
+#[diesel(table_name = categories)]
+pub struct NewCategory {
+    pub id: Uuid,
+    pub name: String,
+}
+
+impl NewCategory {
+    pub fn create_insert(&self) -> Create<&Self, categories::table> {
+        insert_into(categories::table).values(self)
+    }
+}
+
+#[derive(
+    Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
+)]
+#[diesel(belongs_to(Package, foreign_key = package_id))]
+#[diesel(belongs_to(Category, foreign_key = category_id))]
+#[diesel(table_name = package_categories)]
+pub struct NewPackageCategory {
+    pub package_id: Uuid,
+    pub category_id: Uuid,
+}
+
+impl NewPackageCategory {
+    pub fn create_insert(&self) -> Create<&Self, package_categories::table> {
+        insert_into(package_categories::table).values(self)
+    }
+}
+
+#[derive(
+    Associations, Clone, Queryable, QueryableByName, Selectable, Debug, Deserialize, Serialize,
+)]
+#[diesel(belongs_to(Package, foreign_key = package_id))]
+#[diesel(belongs_to(Category, foreign_key = category_id))]
+#[diesel(table_name = package_categories)]
+pub struct PackageCategory {
+    pub package_id: Uuid,
+    pub category_id: Uuid,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
+}
+
+impl PackageCategory {
+    fn all_with_deleted() -> All<package_categories::table, Self> {
+        package_categories::table.select(Self::as_select())
+    }
+
+    pub fn all(
+    ) -> FilterExisting<All<package_categories::table, Self>, package_categories::deleted_at> {
+        Self::all_with_deleted().filter(package_categories::deleted_at.is_null())
+    }
+
+    pub fn by_package_id(
+        id: Uuid,
+    ) -> SelectById<
+        package_categories::table,
+        package_categories::package_id,
+        package_categories::deleted_at,
+        Self,
+    > {
+        Self::all().filter(package_categories::package_id.eq(id))
+    }
+
+    pub fn by_package_and_category_id(
+        package_id: Uuid,
+        category_id: Uuid,
+    ) -> FindBy<
+        SelectById<
+            package_categories::table,
+            package_categories::package_id,
+            package_categories::deleted_at,
+            Self,
+        >,
+        package_categories::category_id,
+        Uuid,
+    > {
+        Self::all()
+            .filter(package_categories::package_id.eq(package_id))
+            .filter(package_categories::category_id.eq(category_id))
+    }
+}
 
 #[derive(
     Associations,
@@ -72,6 +217,7 @@ impl Version {
 pub struct Package {
     pub id: Uuid,
     pub name: String,
+    pub package_type: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
@@ -84,6 +230,17 @@ impl Package {
 
     pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
         Self::all_with_deleted().filter(packages::deleted_at.is_null())
+    }
+
+    pub fn search_name(
+        search_term: String,
+    ) -> Filter<
+        FilterExisting<All<packages::table, Self>, packages::deleted_at>,
+        Like<packages::name, String>,
+    > {
+        Self::all_with_deleted()
+            .filter(packages::deleted_at.is_null())
+            .filter(packages::name.like(format!("%{}%", search_term)))
     }
 
     pub fn by_id(
@@ -124,6 +281,7 @@ pub struct PackageVersion(pub Package, pub Version);
 pub struct NewPackage {
     pub id: Uuid,
     pub name: String,
+    pub package_type: String,
 }
 
 impl NewPackage {
@@ -159,6 +317,7 @@ impl From<(PackageMetadata, String)> for NewPackageVersion {
         let package = NewPackage {
             id: Uuid::random().to_owned(),
             name: package_metadata.name,
+            package_type: package_metadata.package_type.to_string(),
         };
         let version = NewVersion {
             id: Uuid::random().to_owned(),
@@ -185,6 +344,15 @@ impl From<Version> for VersionRest {
             checksum: version.checksum,
             created_at: version.created_at,
             updated_at: version.updated_at,
+        }
+    }
+}
+
+impl From<String> for NewCategory {
+    fn from(category: String) -> Self {
+        Self {
+            id: Uuid::random().to_owned(),
+            name: category,
         }
     }
 }

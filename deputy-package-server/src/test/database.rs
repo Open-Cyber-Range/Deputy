@@ -1,7 +1,8 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::models::{NewPackageVersion, Package, PackageVersion, Version};
+use crate::models::{Category, NewCategory, NewPackageVersion, Package, PackageVersion, Version};
 use crate::services::database::package::{
-    CreatePackage, GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName,
+    CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
+    GetVersionsByPackageName,
 };
 use actix::Actor;
 use actix::ActorFutureExt;
@@ -14,6 +15,7 @@ use std::collections::HashMap;
 pub struct MockDatabase {
     packages: HashMap<Uuid, Package>,
     package_versions: HashMap<Uuid, Vec<Version>>,
+    categories: HashMap<Uuid, Category>,
 }
 
 impl Actor for MockDatabase {
@@ -24,6 +26,7 @@ impl From<NewPackageVersion> for PackageVersion {
     fn from(NewPackageVersion(new_package, new_version): NewPackageVersion) -> Self {
         let package = Package {
             id: new_package.id,
+            package_type: new_package.package_type,
             created_at: NaiveDateTime::MAX,
             updated_at: NaiveDateTime::MAX,
             deleted_at: None,
@@ -142,5 +145,29 @@ impl Handler<GetVersionsByPackageName> for MockDatabase {
                     Ok(vec![])
                 }),
         )
+    }
+}
+
+impl Handler<CreateCategory> for MockDatabase {
+    type Result = ResponseActFuture<Self, Result<Category>>;
+
+    fn handle(&mut self, msg: CreateCategory, _ctx: &mut Self::Context) -> Self::Result {
+        let new_category: NewCategory = msg.0;
+
+        Box::pin(async move { new_category }.into_actor(self).map(
+            move |new_category, mock_database, _| {
+                let category = Category {
+                    id: new_category.id,
+                    name: new_category.name,
+                    created_at: Default::default(),
+                    updated_at: Default::default(),
+                    deleted_at: None,
+                };
+                mock_database
+                    .categories
+                    .insert(category.id, category.clone());
+                Ok(category)
+            },
+        ))
     }
 }

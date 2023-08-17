@@ -3,7 +3,8 @@ pub(crate) mod enums;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs::File, io::Read, path::Path};
+use std::fmt::Formatter;
+use std::{fmt, fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
 
@@ -32,7 +33,7 @@ pub struct Project {
 
 impl Project {
     pub fn validate_assets(&self) -> Result<()> {
-        let package_type: String = self.content.content_type.clone().try_into()?;
+        let package_type: String = self.content.content_type.to_string();
         if let Some(assets) = &self.package.assets {
             if assets.is_empty() {
                 return Err(anyhow!(
@@ -230,6 +231,7 @@ pub struct Body {
     pub authors: Option<Vec<String>>,
     pub license: String,
     pub readme: String,
+    pub categories: Option<Vec<String>>,
     pub assets: Option<Vec<Vec<String>>>,
 }
 
@@ -243,6 +245,7 @@ impl Body {
             authors: deserialized_toml.package.authors,
             license: deserialized_toml.package.license,
             readme: deserialized_toml.package.readme,
+            categories: deserialized_toml.package.categories,
             assets: deserialized_toml.package.assets,
         })
     }
@@ -268,19 +271,17 @@ pub enum ContentType {
     Other,
 }
 
-impl TryFrom<ContentType> for String {
-    type Error = anyhow::Error;
-
-    fn try_from(content_type: ContentType) -> Result<String, Self::Error> {
-        match content_type {
-            ContentType::VM => Ok("VM".to_string()),
-            ContentType::Feature => Ok("Feature".to_string()),
-            ContentType::Condition => Ok("Condition".to_string()),
-            ContentType::Inject => Ok("Inject".to_string()),
-            ContentType::Event => Ok("Event".to_string()),
-            ContentType::Malware => Ok("Malware".to_string()),
-            ContentType::Exercise => Ok("Exercise".to_string()),
-            ContentType::Other => Ok("Other".to_string()),
+impl fmt::Display for ContentType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ContentType::VM => write!(f, "VM"),
+            ContentType::Feature => write!(f, "Feature"),
+            ContentType::Condition => write!(f, "Condition"),
+            ContentType::Inject => write!(f, "Inject"),
+            ContentType::Event => write!(f, "Event"),
+            ContentType::Malware => write!(f, "Malware"),
+            ContentType::Exercise => write!(f, "Exercise"),
+            ContentType::Other => write!(f, "Other"),
         }
     }
 }
@@ -302,4 +303,14 @@ pub struct Content {
     pub content_type: ContentType,
     #[serde(alias = "preview", alias = "PREVIEW")]
     pub preview: Option<Vec<Preview>>,
+}
+
+impl Content {
+    pub fn create_from_toml(toml_path: &Path) -> Result<Content> {
+        let deserialized_toml = create_project_from_toml_path(toml_path)?;
+        Ok(Content {
+            content_type: deserialized_toml.content.content_type,
+            preview: deserialized_toml.content.preview,
+        })
+    }
 }

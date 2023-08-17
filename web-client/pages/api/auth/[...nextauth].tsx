@@ -31,7 +31,6 @@ export const authOptions: AuthOptions = {
       return sessionParamter;
     },
   },
-  debug: true,
 };
 
 export default NextAuth(authOptions);

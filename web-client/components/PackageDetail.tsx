@@ -1,3 +1,4 @@
+import { ParsedUrlQuery } from 'querystring';
 import useSWR from 'swr';
 import { Card, Elevation } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
@@ -5,7 +6,6 @@ import { useRouter } from 'next/router';
 import parse from 'html-react-parser';
 import { TabList, TabPanel, Tab, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import { ParsedUrlQuery } from 'querystring';
 import styles from '../styles/PackageList.module.css';
 import { packageTOMLFetcher, packageVersionFethcer } from '../utils/api';
 import PackageVersions from './PackageVersions';

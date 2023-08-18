@@ -4,7 +4,12 @@ import { getSession } from 'next-auth/react';
 import { Package, PackageWithVersions, Version } from '../interfaces/Package';
 import { compareVersions } from './sort';
 import { Project } from '../interfaces/Project';
-import { ModifiedSession, PostToken, Token } from '../interfaces/Token';
+import {
+  ModifiedSession,
+  PostToken,
+  Token,
+  TokenRest,
+} from '../interfaces/Token';
 
 export const packagesWithVersionsFetcher: Fetcher<
   PackageWithVersions[],
@@ -44,6 +49,20 @@ export const packageVersionFethcer: Fetcher<Version, string> = async (
 export const packageTOMLFetcher: Fetcher<Project, string> = async (...url) => {
   const response = await fetch(...url);
   return TOML.parse(await response.text()) as unknown as Project;
+};
+
+export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {
+  const session = (await getSession()) as ModifiedSession;
+  if (session && session.idToken) {
+    const response = await fetch(...url, {
+      headers: {
+        Authorization: `Bearer ${session.idToken}`,
+      },
+    });
+    return response.json();
+  }
+
+  throw new Error('No session found');
 };
 
 export const createToken = async (postToken: PostToken) => {

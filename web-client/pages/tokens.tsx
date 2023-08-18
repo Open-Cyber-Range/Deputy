@@ -1,17 +1,20 @@
 import type { NextPage } from 'next';
 import {
   Button,
+  Card,
   Dialog,
   DialogBody,
   DialogFooter,
-  Divider,
+  Elevation,
   H3,
+  H5,
   HTMLTable,
   InputGroup,
 } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import { useState } from 'react';
-import { createToken } from '../utils/api';
+import useSWR from 'swr';
+import { apiTokenFetcher, createToken } from '../utils/api';
 import { Token } from '../interfaces/Token';
 
 const Tokens: NextPage = () => {
@@ -19,6 +22,15 @@ const Tokens: NextPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [tokenName, setTokenName] = useState('');
   const [createdTokens, setCreatedTokens] = useState<Token[]>([]);
+
+  const { data: fetchedTokens, error } = useSWR(
+    '/api/v1/token',
+    apiTokenFetcher
+  );
+
+  if (error || !fetchedTokens) {
+    return <div>{t('failedToFetchTokens')} </div>;
+  }
 
   return (
     <div>
@@ -70,35 +82,43 @@ const Tokens: NextPage = () => {
               />
             </Dialog>
           </div>
-          <Divider className="mt-10 mb-4" />
-          <HTMLTable striped bordered>
+          {createdTokens
+            .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+            .map((token) => (
+              <Card
+                className="mt-10"
+                interactive={false}
+                elevation={Elevation.TWO}
+              >
+                <H5>{token.name}</H5>
+
+                <Button
+                  icon="clipboard"
+                  minimal
+                  onClick={() => {
+                    navigator.clipboard.writeText(token.token);
+                  }}
+                >
+                  {t('copyValue')}
+                </Button>
+              </Card>
+            ))}
+          <HTMLTable striped bordered className="mt-10">
             <thead>
               <tr>
                 <th>{t('name')}</th>
-                <th>{t('tokenValue')}</th>
                 <th>{t('createdAt')}</th>
                 <th> </th>
               </tr>
             </thead>
             <tbody>
-              {createdTokens
+              {fetchedTokens
                 .sort(
                   (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
                 )
                 .map((token) => (
                   <tr key={token.id}>
                     <td>{token.name}</td>
-                    <td className="flex justify-center">
-                      <Button
-                        icon="clipboard"
-                        minimal
-                        onClick={() => {
-                          navigator.clipboard.writeText(token.token);
-                        }}
-                      >
-                        {t('copyValue')}
-                      </Button>
-                    </td>
                     <td>{new Date(token.createdAt).toLocaleString()}</td>
                     <td>
                       <Button intent="danger" icon="trash" small>
@@ -107,28 +127,6 @@ const Tokens: NextPage = () => {
                     </td>
                   </tr>
                 ))}
-              <tr>
-                <td>Blueprint</td>
-                <td>CSS framework and UI toolkit</td>
-                <td> </td>
-                <td>
-                  <Button intent="danger" icon="trash" small>
-                    {t('delete')}
-                  </Button>
-                </td>
-              </tr>
-              <tr>
-                <td>TSLint</td>
-                <td>Static analysis linter for TypeScript</td>
-                <td>TypeScript</td>
-                <td>403</td>
-              </tr>
-              <tr>
-                <td>Plottable</td>
-                <td>Composable charting library built on top of D3</td>
-                <td>SVG, TypeScript, D3</td>
-                <td>737</td>
-              </tr>
             </tbody>
           </HTMLTable>
         </div>

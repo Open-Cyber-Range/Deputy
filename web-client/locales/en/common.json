@@ -20,5 +20,6 @@
   "tokenName": "Token Name",
   "delete": "Delete",
   "create": "Create",
-  "copyValue": "Copy Value"
+  "copyValue": "Copy Value",
+  "failedToFetchTokens": "Failed to fetch tokens"
 }

@@ -9,6 +9,12 @@ export interface Token {
   updatedAt: string;
 }
 
+export interface TokenRest {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface PostToken {
   name: string;
 }

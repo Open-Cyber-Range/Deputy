@@ -21,5 +21,6 @@
   "delete": "Delete",
   "create": "Create",
   "copyValue": "Copy Value",
-  "failedToFetchTokens": "Failed to fetch tokens"
+  "failedToFetchTokens": "Failed to fetch tokens",
+  "failedToCreateToken": "Failed to create token"
 }

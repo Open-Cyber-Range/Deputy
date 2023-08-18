@@ -22,5 +22,6 @@
   "create": "Create",
   "copyValue": "Copy Value",
   "failedToFetchTokens": "Failed to fetch tokens",
-  "failedToCreateToken": "Failed to create token"
+  "failedToCreateToken": "Failed to create token",
+  "userEmailMissing": "User email is missing"
 }

@@ -15,6 +15,7 @@ import {
   Position,
   Toast,
 } from '@blueprintjs/core';
+import { useSession } from 'next-auth/react';
 import useTranslation from 'next-translate/useTranslation';
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -27,6 +28,8 @@ const Tokens: NextPage = () => {
   const [tokenName, setTokenName] = useState('');
   const [createdTokens, setCreatedTokens] = useState<Token[]>([]);
   const [creationError, setCreationError] = useState<string | null>(null);
+  const session = useSession();
+  const email = session?.data?.user?.email;
 
   const { data: fetchedTokens, error } = useSWR(
     '/api/v1/token',
@@ -77,14 +80,19 @@ const Tokens: NextPage = () => {
                     intent="primary"
                     text={t('create')}
                     onClick={async () => {
-                      try {
-                        const newToken = await createToken({
-                          name: tokenName,
-                        });
-                        setCreatedTokens([...createdTokens, newToken]);
-                        setIsDialogOpen(false);
-                      } catch (err) {
-                        setCreationError(t('failedToCreateToken'));
+                      if (email) {
+                        try {
+                          const newToken = await createToken({
+                            name: tokenName,
+                            email,
+                          });
+                          setCreatedTokens([...createdTokens, newToken]);
+                          setIsDialogOpen(false);
+                        } catch (err) {
+                          setCreationError(t('failedToCreateToken'));
+                        }
+                      } else {
+                        setCreationError(t('userEmailMissing'));
                       }
                       setTokenName('');
                     }}

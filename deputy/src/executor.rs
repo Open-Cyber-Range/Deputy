@@ -73,11 +73,13 @@ impl Executor {
                 package.metadata.clone().version,
             )
             .await?;
+
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Uploading".to_string(),
             )))
             .await??;
+
         client
             .upload_package(package.to_stream().await?, options.timeout)
             .await?;

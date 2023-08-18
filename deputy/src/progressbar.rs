@@ -8,16 +8,36 @@ pub enum ProgressStatus {
     Done,
 }
 
-pub struct SpinnerProgressBar(ProgressBar, String);
+pub struct SpinnerProgressBar(ProgressBar, String, bool);
 
 impl SpinnerProgressBar {
     pub fn new(final_message: String) -> Self {
-        let bar = ProgressBar::new(1);
-        bar.set_style(
-            ProgressStyle::default_spinner().template("[{elapsed_precise}] {spinner} {msg}"),
-        );
-        bar.enable_steady_tick(75);
-        Self(bar, final_message)
+        let bar = ProgressBar::new(100);
+        let style = ProgressStyle::default_spinner()
+            .template("[{elapsed_precise}] {spinner:.cyan} {msg}")
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+            .progress_chars("█▉▊▋▌▍▎▏  ");
+        bar.set_style(style);
+        Self(bar, final_message, false)
+    }
+
+    fn show(&mut self) {
+        if !self.2 {
+            self.2 = true;
+            self.0.enable_steady_tick(75);
+            self.0.set_message("Starting....");
+            self.0.tick();
+        }
+    }
+
+    fn finish(&mut self) {
+        if self.2 {
+            self.0.set_style(
+                ProgressStyle::default_spinner().template("[{elapsed_precise}] {msg:.green.bold}"),
+            );
+            self.0.finish_with_message(self.1.clone());
+            self.2 = false;
+        }
     }
 }
 
@@ -33,15 +53,15 @@ impl Handler<AdvanceProgressBar> for SpinnerProgressBar {
     type Result = Result<()>;
 
     fn handle(&mut self, msg: AdvanceProgressBar, _ctx: &mut Context<Self>) -> Self::Result {
-        let final_message = self.1.clone();
         match msg.0 {
             ProgressStatus::InProgress(progress_string) => {
+                self.show();
                 self.0.set_message(progress_string);
+
+                self.0.tick();
             }
             ProgressStatus::Done => {
-                self.0.set_style(ProgressStyle::default_spinner()
-                    .template("[{elapsed_precise}]  [{bar:40.cyan/blue}] ({pos}/{len}, ETA {eta}) \x1b[32m{msg}\x1b[0m"));
-                self.0.finish_with_message(final_message);
+                self.finish();
             }
         }
         Ok(())

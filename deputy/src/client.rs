@@ -35,6 +35,7 @@ impl Client {
             .send_stream(stream)
             .await
             .map_err(|error| anyhow!("Failed to upload package: {:?}", error))?;
+
         if response.status().is_success() {
             return Ok(());
         }

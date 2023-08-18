@@ -19,12 +19,15 @@ use std::{
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UserId(String);
+pub struct UserToken {
+    pub id: String,
+    pub email: String,
+}
 
 #[derive(Clone)]
-pub struct UserIdInfo(pub Rc<UserId>);
+pub struct UserTokenInfo(pub Rc<UserToken>);
 
-impl FromRequest for UserIdInfo {
+impl FromRequest for UserTokenInfo {
     type Error = Error;
     type Future = Ready<Result<Self, Self::Error>>;
 
@@ -32,9 +35,9 @@ impl FromRequest for UserIdInfo {
         req: &actix_web::HttpRequest,
         _payload: &mut actix_web::dev::Payload,
     ) -> Self::Future {
-        let value = req.extensions().get::<Rc<UserId>>().cloned();
+        let value = req.extensions().get::<Rc<UserToken>>().cloned();
         let result = match value {
-            Some(v) => Ok(UserIdInfo(v)),
+            Some(v) => Ok(UserTokenInfo(v)),
             None => {
                 Err(ServerResponseError(PackageServerError::KeycloakValidationFailed.into()).into())
             }
@@ -43,8 +46,8 @@ impl FromRequest for UserIdInfo {
     }
 }
 
-impl std::ops::Deref for UserIdInfo {
-    type Target = Rc<UserId>;
+impl std::ops::Deref for UserTokenInfo {
+    type Target = Rc<UserToken>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -127,7 +130,10 @@ where
                 })?;
 
             req.extensions_mut()
-                .insert::<Rc<UserId>>(Rc::new(UserId(token_option.user_id.clone())));
+                .insert::<Rc<UserToken>>(Rc::new(UserToken {
+                    id: token_option.user_id,
+                    email: token_option.email,
+                }));
 
             let res = service.call(req).await?;
             Ok(res)

@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 pub struct ApiToken {
     pub id: Uuid,
     pub name: String,
+    pub email: String,
     pub token: String,
     pub user_id: String,
     pub created_at: NaiveDateTime,
@@ -74,6 +75,7 @@ impl From<ApiToken> for ApiTokenRest {
 pub struct FullApiTokenRest {
     pub id: Uuid,
     pub name: String,
+    pub email: String,
     pub token: String,
     pub user_id: String,
     pub created_at: NaiveDateTime,
@@ -85,6 +87,7 @@ impl From<ApiToken> for FullApiTokenRest {
         Self {
             id: api_token.id,
             name: api_token.name,
+            email: api_token.email,
             token: api_token.token,
             user_id: api_token.user_id,
             created_at: api_token.created_at,
@@ -98,6 +101,7 @@ impl From<ApiToken> for FullApiTokenRest {
 pub struct NewApiToken {
     pub id: Uuid,
     pub name: String,
+    pub email: String,
     pub token: String,
     pub user_id: String,
 }
@@ -111,6 +115,7 @@ impl NewApiToken {
 #[derive(Deserialize, Serialize)]
 pub struct NewApiTokenRest {
     pub name: String,
+    pub email: String,
 }
 
 impl NewApiTokenRest {
@@ -123,10 +128,11 @@ impl NewApiTokenRest {
         general_purpose::STANDARD.encode(random_bytes)
     }
 
-    pub fn create_new_token(&self, user_id: String) -> NewApiToken {
+    pub fn create_new_token(self, user_id: String) -> NewApiToken {
         NewApiToken {
             id: Uuid::random(),
-            name: self.name.clone(),
+            name: self.name,
+            email: self.email,
             token: Self::generate_token(),
             user_id,
         }

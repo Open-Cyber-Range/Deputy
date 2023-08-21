@@ -27,11 +27,6 @@ diesel::table! {
     packages (id) {
         #[max_length = 16]
         id -> Binary,
-        version -> Nullable<Tinytext>,
-        license -> Nullable<Text>,
-        readme_path -> Nullable<Mediumtext>,
-        readme_html -> Nullable<Longtext>,
-        checksum -> Nullable<Text>,
         name -> Tinytext,
         package_type -> Tinytext,
         created_at -> Timestamp,

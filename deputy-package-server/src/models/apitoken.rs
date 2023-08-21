@@ -1,7 +1,7 @@
 use crate::{
     models::helpers::uuid::Uuid,
     schema::tokens::{self},
-    services::database::{All, Create, FilterExisting},
+    services::database::{All, Create, FilterExisting, SoftDeleteById},
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::NaiveDateTime;
@@ -49,6 +49,11 @@ impl ApiToken {
     ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::user_id, String>
     {
         Self::all().filter(tokens::user_id.eq(user_id))
+    }
+
+    pub fn soft_delete(&self) -> SoftDeleteById<tokens::id, tokens::deleted_at, tokens::table> {
+        diesel::update(tokens::table.filter(tokens::id.eq(self.id)))
+            .set(tokens::deleted_at.eq(diesel::dsl::now))
     }
 }
 

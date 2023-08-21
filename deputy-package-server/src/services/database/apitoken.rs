@@ -94,3 +94,46 @@ impl Handler<GetTokenByToken> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<String>")]
+pub struct DeleteApiToken {
+    pub user_id: String,
+    pub token_id: String,
+}
+
+impl Handler<DeleteApiToken> for Database {
+    type Result = ResponseActFuture<Self, Result<String>>;
+
+    fn handle(
+        &mut self,
+        delete_token_info: DeleteApiToken,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let id = block(move || {
+                    let api_tokens =
+                        ApiToken::by_user_id(delete_token_info.user_id).load(&mut connection)?;
+                    let delete_api_token = api_tokens
+                        .into_iter()
+                        .filter(|api_token| api_token.id.to_string() == delete_token_info.token_id)
+                        .collect::<Vec<ApiToken>>()
+                        .first()
+                        .cloned()
+                        .ok_or(anyhow::anyhow!("Token not found"))?;
+                    delete_api_token.soft_delete().execute(&mut connection)?;
+
+                    Ok(delete_token_info.token_id)
+                })
+                .await??;
+
+                Ok(id)
+            }
+            .into_actor(self),
+        )
+    }
+}

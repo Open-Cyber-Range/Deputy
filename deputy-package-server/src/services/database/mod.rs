@@ -6,7 +6,8 @@ use crate::utilities::run_migrations;
 use actix::Actor;
 use anyhow::{anyhow, Result};
 use diesel::{
-    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select},
+    dsl::now,
+    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select, Update},
     mysql::{Mysql, MysqlConnection},
     query_builder::InsertStatement,
     r2d2::{ConnectionManager, Pool, PooledConnection},
@@ -21,6 +22,9 @@ pub type SelectById<Table, Id, DeletedAtColumn, T> =
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
 pub type CategoryFilter<Table, Id, DeletedAtColumn, T> =
     Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Id, Vec<Uuid>>>;
+type UpdateDeletedAt<DeletedAtColumn> = Eq<DeletedAtColumn, now>;
+pub type SoftDelete<L, DeletedAtColumn> = Update<L, UpdateDeletedAt<DeletedAtColumn>>;
+pub type SoftDeleteById<Id, DeleteAtColumn, Table> = SoftDelete<ById<Id, Table>, DeleteAtColumn>;
 
 #[derive(Clone)]
 pub struct Database {

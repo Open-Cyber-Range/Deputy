@@ -2,12 +2,12 @@ use crate::{
     errors::{PackageServerError, ServerResponseError},
     middleware::authentication::jwt::UserInfo,
     models::apitoken::{ApiTokenRest, FullApiTokenRest, NewApiTokenRest},
-    services::database::apitoken::{CreateApiToken, GetApiTokens},
+    services::database::apitoken::{CreateApiToken, GetApiTokens, DeleteApiToken},
     AppState,
 };
 use actix::{Actor, Handler};
 use actix_web::{
-    web::{Data, Json},
+    web::{Data, Json, Path},
     Error,
 };
 use anyhow::Result;
@@ -60,12 +60,41 @@ where
         .send(CreateApiToken(new_api_token))
         .await
         .map_err(|error| {
-            error!("Failed to get all tokens: {error}");
-            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+            error!("Failed to create token: {error}");
+            ServerResponseError(PackageServerError::MailboxError.into())
         })?
         .map_err(|error| {
-            error!("Failed to get all tokens: {error}");
+            error!("Failed to create token: {error}");
             ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
         })?;
     Ok(Json(full_api_token.into()))
+}
+
+pub async fn delete_api_token<T>(
+    app_state: Data<AppState<T>>,
+    path_variables: Path<String>,
+    user_info: UserInfo,
+) -> Result<String, Error>
+where
+    T: Actor + Handler<DeleteApiToken>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, DeleteApiToken>,
+{
+    let token_id = path_variables.into_inner();
+    let user_id = user_info.id.clone();
+    let deleted_token_id = app_state
+        .database_address
+        .send(DeleteApiToken {
+            user_id,
+            token_id,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to delete token: {error}");
+            ServerResponseError(PackageServerError::MailboxError.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to delete token: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?;
+    Ok(deleted_token_id)
 }

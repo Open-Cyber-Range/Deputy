@@ -23,6 +23,9 @@
   "forwardPorts": [
     "development-keycloak:8080"
   ],
+  "containerEnv": {
+    "RUST_LOG": "info"
+  },
   "workspaceFolder": "/workspace",
   "remoteUser": "vscode"
 }

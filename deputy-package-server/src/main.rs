@@ -13,6 +13,7 @@ use deputy_package_server::{
     routes::{
         apitoken::{create_api_token, delete_api_token, get_all_api_tokens},
         basic::{status, version},
+        owner::{delete_owner, get_all_owners, post_new_owner},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
             get_package_version, search_packages, yank_version,
@@ -55,6 +56,16 @@ async fn real_main() -> Result<()> {
                                 .service(
                                     scope("/{package_name}")
                                         .route("", get().to(get_all_versions::<Database>))
+                                        .service(
+                                            scope("/owner")
+                                                .route("", get().to(get_all_owners::<Database>))
+                                                .route("", post().to(post_new_owner::<Database>))
+                                                .route(
+                                                    "/{owner_email}",
+                                                    delete().to(delete_owner::<Database>),
+                                                )
+                                                .wrap(LocalTokenAuthenticationMiddlewareFactory),
+                                        )
                                         .service(
                                             scope("/{version}")
                                                 .route(

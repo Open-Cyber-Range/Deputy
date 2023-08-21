@@ -87,3 +87,23 @@ export const createToken = async (postToken: PostToken) => {
 
   throw new Error('No session found');
 };
+
+export const deleteToken = async (tokenId: String) => {
+  const session = (await getSession()) as ModifiedSession;
+  if (session && session.idToken) {
+    const response = await fetch(`/api/v1/token/${tokenId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${session.idToken}`,
+      },
+    });
+
+    if (response.ok) {
+      return;
+    }
+
+    throw new Error('Failed to delete token');
+  }
+
+  throw new Error('No session found');
+};

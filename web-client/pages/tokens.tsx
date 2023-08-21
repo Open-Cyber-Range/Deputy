@@ -19,7 +19,7 @@ import { useSession } from 'next-auth/react';
 import useTranslation from 'next-translate/useTranslation';
 import { useState } from 'react';
 import useSWR from 'swr';
-import { apiTokenFetcher, createToken } from '../utils/api';
+import { apiTokenFetcher, createToken, deleteToken } from '../utils/api';
 import { Token } from '../interfaces/Token';
 
 const Tokens: NextPage = () => {
@@ -28,19 +28,28 @@ const Tokens: NextPage = () => {
   const [tokenName, setTokenName] = useState('');
   const [createdTokens, setCreatedTokens] = useState<Token[]>([]);
   const [creationError, setCreationError] = useState<string | null>(null);
+  const [deletionError, setDeletionError] = useState<string | null>(null);
+  const [deletionSuccess, setDeletionSuccess] = useState<string | null>(null);
   const session = useSession();
   const email = session?.data?.user?.email;
 
-  const { data: fetchedTokens, error } = useSWR(
-    '/api/v1/token',
-    apiTokenFetcher
-  );
+  const {
+    data: fetchedTokens,
+    error,
+    mutate,
+  } = useSWR('/api/v1/token', apiTokenFetcher);
 
   return (
     <div>
       <OverlayToaster position={Position.TOP}>
         {creationError && (
-          <Toast timeout={10} intent="danger" message={creationError} />
+          <Toast timeout={10000} intent="danger" message={creationError} />
+        )}
+        {deletionError && (
+          <Toast timeout={10000} intent="danger" message={deletionError} />
+        )}
+        {deletionSuccess && (
+          <Toast timeout={10000} intent="success" message={deletionSuccess} />
         )}
       </OverlayToaster>
       <main className="flex flex-row justify-center">
@@ -128,11 +137,11 @@ const Tokens: NextPage = () => {
                 ))}
             </div>
           </div>
-          <div className="mt-10">
+          <div className="mt-10 flex flex-col justify-center">
             {error ? (
               <Callout intent="danger" title={t('failedToFetchTokens')} />
             ) : (
-              <HTMLTable striped bordered>
+              <HTMLTable striped bordered interactive>
                 <thead>
                   <tr>
                     <th>{t('name')}</th>
@@ -150,8 +159,21 @@ const Tokens: NextPage = () => {
                       <tr key={token.id}>
                         <td className="text-ellipsis">{token.name}</td>
                         <td>{new Date(token.createdAt).toLocaleString()}</td>
-                        <td className="flex justify-end">
-                          <Button intent="danger" icon="trash" small>
+                        <td className="flex justify-left">
+                          <Button
+                            intent="danger"
+                            icon="trash"
+                            small
+                            onClick={async () => {
+                              try {
+                                await deleteToken(token.id);
+                                setDeletionSuccess(t('tokenDeleted'));
+                                mutate();
+                              } catch (err) {
+                                setDeletionError(t('failedToDeleteToken'));
+                              }
+                            }}
+                          >
                             {t('delete')}
                           </Button>
                         </td>

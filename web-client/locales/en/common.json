@@ -23,5 +23,7 @@
   "copyValue": "Copy Value",
   "failedToFetchTokens": "Failed to fetch tokens",
   "failedToCreateToken": "Failed to create token",
-  "userEmailMissing": "User email is missing"
+  "userEmailMissing": "User email is missing",
+  "tokenDeleted": "Token deleted",
+  "failedToDeleteToken": "Failed to delete token"
 }

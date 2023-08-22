@@ -2,7 +2,7 @@ use crate::{
     errors::{PackageServerError, ServerResponseError},
     middleware::authentication::jwt::UserInfo,
     models::apitoken::{ApiTokenRest, FullApiTokenRest, NewApiTokenRest},
-    services::database::apitoken::{CreateApiToken, GetApiTokens, DeleteApiToken},
+    services::database::apitoken::{CreateApiToken, DeleteApiToken, GetApiTokens},
     AppState,
 };
 use actix::{Actor, Handler};
@@ -83,10 +83,7 @@ where
     let user_id = user_info.id.clone();
     let deleted_token_id = app_state
         .database_address
-        .send(DeleteApiToken {
-            user_id,
-            token_id,
-        })
+        .send(DeleteApiToken { user_id, token_id })
         .await
         .map_err(|error| {
             error!("Failed to delete token: {error}");

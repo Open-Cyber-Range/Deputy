@@ -93,5 +93,11 @@ pub struct NormalizeVersionOptions {
 
 #[derive(Debug, Args)]
 pub struct LoginOptions {
-    pub token: String,
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for publishing"
+    )]
+    pub registry_name: String,
 }

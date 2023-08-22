@@ -10,8 +10,9 @@ use crate::helpers::{
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 use deputy_library::{package::Package, project::create_project_from_toml_path};
+use dialoguer::Input;
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use tokio::fs::rename;
@@ -22,8 +23,30 @@ pub struct Executor {
 }
 
 impl Executor {
-    fn get_token_value(&self) -> Option<String> {
-        std::fs::read_to_string(&self.token_file).ok()
+    fn get_token_file(&self, registry_name: &str) -> Result<PathBuf> {
+        let mut token_file = self.token_file.clone();
+        token_file.set_file_name(format!(
+            "{}-{}",
+            token_file
+                .file_name()
+                .ok_or_else(|| {
+                    anyhow!("Failed to get token file name from path: {:?}", token_file)
+                })?
+                .to_str()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "Failed to convert token file name to string: {:?}",
+                        token_file
+                    )
+                })?,
+            registry_name
+        ));
+        Ok(token_file)
+    }
+
+    fn get_token_value(&self, registry_name: &str) -> Option<String> {
+        let token_file = self.get_token_file(registry_name).ok()?;
+        std::fs::read_to_string(token_file).ok()
     }
 
     fn try_create_client(&self, registry_name: String) -> Result<Client> {
@@ -32,7 +55,7 @@ impl Executor {
         } else {
             return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
-        let token = self.get_token_value();
+        let token = self.get_token_value(&registry_name);
 
         Client::try_new(api_url, token)
     }
@@ -225,8 +248,10 @@ impl Executor {
     }
 
     pub async fn login(&self, options: LoginOptions) -> Result<()> {
-        let token_value = options.token;
-        let token_path = self.token_file.clone();
+        let token_path = self.get_token_file(&options.registry_name)?;
+        let token_value = Input::<String>::new()
+            .with_prompt("Token")
+            .interact_text()?;
 
         std::fs::write(token_path, token_value)?;
         Ok(())

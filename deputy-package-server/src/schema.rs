@@ -44,7 +44,7 @@ diesel::table! {
         token -> Tinytext,
         user_id -> Tinytext,
         created_at -> Timestamp,
-        deleted_at -> Nullable<Timestamp>,
+        deleted_at -> Timestamp,
     }
 }
 

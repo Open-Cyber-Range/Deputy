@@ -5,6 +5,7 @@ use crate::models::helpers::uuid::Uuid;
 use crate::utilities::run_migrations;
 use actix::Actor;
 use anyhow::{anyhow, Result};
+use chrono::NaiveDateTime;
 use diesel::{
     dsl::now,
     helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select, Update},
@@ -16,6 +17,8 @@ use diesel::{
 
 pub type All<Table, T> = Select<Table, AsSelect<T, Mysql>>;
 pub type FilterExisting<Target, DeletedAtColumn> = Filter<Target, IsNull<DeletedAtColumn>>;
+pub type FilterExistingNotNull<Target, DeletedAtColumn> =
+    Filter<Target, Eq<DeletedAtColumn, NaiveDateTime>>;
 pub type ById<Id, R> = Filter<R, Eq<Id, Uuid>>;
 pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;

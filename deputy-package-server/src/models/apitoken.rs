@@ -1,7 +1,8 @@
 use crate::{
+    constants::NAIVEDATETIME_DEFAULT_VALUE,
     models::helpers::uuid::Uuid,
     schema::tokens::{self},
-    services::database::{All, Create, FilterExisting, SoftDeleteById},
+    services::database::{All, Create, FilterExistingNotNull, SoftDeleteById},
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::NaiveDateTime;
@@ -18,7 +19,7 @@ pub struct ApiToken {
     pub token: String,
     pub user_id: String,
     pub created_at: NaiveDateTime,
-    pub deleted_at: Option<NaiveDateTime>,
+    pub deleted_at: NaiveDateTime,
 }
 
 impl ApiToken {
@@ -26,28 +27,34 @@ impl ApiToken {
         tokens::table.select(Self::as_select())
     }
 
-    pub fn all() -> FilterExisting<All<tokens::table, Self>, tokens::deleted_at> {
-        Self::all_with_deleted().filter(tokens::deleted_at.is_null())
+    pub fn all() -> FilterExistingNotNull<All<tokens::table, Self>, tokens::deleted_at> {
+        Self::all_with_deleted().filter(tokens::deleted_at.eq(*NAIVEDATETIME_DEFAULT_VALUE))
     }
 
     pub fn by_id(
         id: Uuid,
-    ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::id, Uuid>
+    ) -> FindBy<FilterExistingNotNull<All<tokens::table, Self>, tokens::deleted_at>, tokens::id, Uuid>
     {
         Self::all().filter(tokens::id.eq(id))
     }
 
     pub fn by_token(
         token: String,
-    ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::token, String>
-    {
+    ) -> FindBy<
+        FilterExistingNotNull<All<tokens::table, Self>, tokens::deleted_at>,
+        tokens::token,
+        String,
+    > {
         Self::all().filter(tokens::token.eq(token))
     }
 
     pub fn by_user_id(
         user_id: String,
-    ) -> FindBy<FilterExisting<All<tokens::table, Self>, tokens::deleted_at>, tokens::user_id, String>
-    {
+    ) -> FindBy<
+        FilterExistingNotNull<All<tokens::table, Self>, tokens::deleted_at>,
+        tokens::user_id,
+        String,
+    > {
         Self::all().filter(tokens::user_id.eq(user_id))
     }
 
@@ -84,7 +91,7 @@ pub struct FullApiTokenRest {
     pub token: String,
     pub user_id: String,
     pub created_at: NaiveDateTime,
-    pub updated_at: Option<NaiveDateTime>,
+    pub deleted_at: NaiveDateTime,
 }
 
 impl From<ApiToken> for FullApiTokenRest {
@@ -96,7 +103,7 @@ impl From<ApiToken> for FullApiTokenRest {
             token: api_token.token,
             user_id: api_token.user_id,
             created_at: api_token.created_at,
-            updated_at: api_token.deleted_at,
+            deleted_at: api_token.deleted_at,
         }
     }
 }

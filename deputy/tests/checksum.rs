@@ -2,7 +2,7 @@ mod helpers;
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{publish_package, DeployerCLIConfigurationBuilder};
+    use crate::helpers::{login, publish_package, DeployerCLIConfigurationBuilder};
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy_library::{
@@ -49,6 +49,10 @@ mod tests {
             .host(host)
             .build()?;
 
+        login(
+            cli_configuration.configuration_folder.path(),
+            "some-token-value",
+        )?;
         publish_package(root_dir, cli_configuration.configuration_folder.path())?;
         let mut package: Package = (&temp_project).try_into()?;
         let local_checksum = package.file.calculate_checksum()?;
@@ -86,6 +90,10 @@ mod tests {
             .host(host)
             .build()?;
 
+        login(
+            cli_configuration.configuration_folder.path(),
+            "some-token-value",
+        )?;
         publish_package(root_dir, cli_configuration.configuration_folder.path())?;
         let mut package: Package = (&temp_project).try_into()?;
         let local_checksum = package.file.calculate_checksum()?;

@@ -3,7 +3,7 @@ import { Card, Elevation } from '@blueprintjs/core';
 import Link from 'next/link';
 import useTranslation from 'next-translate/useTranslation';
 import { packagesWithVersionsFetcher } from '../utils/api';
-import { getLatestVersion } from '../utils';
+import { formatBytes, getLatestVersion } from '../utils';
 import styles from '../styles/PackageList.module.css';
 
 const PackageListView = () => {
@@ -44,6 +44,9 @@ const PackageListView = () => {
                   </span>
                   <span className={styles.version}>
                     {latestVersion.version}
+                  </span>
+                  <span className={styles.packageSize}>
+                    {formatBytes(latestVersion.package_size)}
                   </span>
                   <div className={styles.description}>
                     {deputyPackage.description}

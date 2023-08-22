@@ -177,6 +177,7 @@ pub struct Version {
     pub description: String,
     pub license: String,
     pub readme_html: String,
+    pub package_size: u64,
     pub checksum: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -300,6 +301,7 @@ pub struct NewVersion {
     pub description: String,
     pub license: String,
     pub readme_html: String,
+    pub package_size: u64,
     pub checksum: String,
     pub package_id: Uuid,
 }
@@ -325,6 +327,7 @@ impl From<(PackageMetadata, String)> for NewPackageVersion {
             description: package_metadata.description,
             license: package_metadata.license,
             readme_html,
+            package_size: package_metadata.package_size,
             checksum: package_metadata.checksum,
             package_id: package.id,
         };
@@ -341,6 +344,7 @@ impl From<Version> for VersionRest {
             description: version.description,
             license: version.license,
             readme_html: version.readme_html,
+            package_size: version.package_size,
             checksum: version.checksum,
             created_at: version.created_at,
             updated_at: version.updated_at,

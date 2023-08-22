@@ -11,6 +11,7 @@ pub struct VersionRest {
     pub description: String,
     pub license: String,
     pub readme_html: String,
+    pub package_size: u64,
     pub checksum: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

@@ -29,6 +29,7 @@ pub struct PackageMetadata {
     pub description: String,
     pub license: String,
     pub readme_path: String,
+    pub package_size: u64,
     pub categories: Option<Vec<String>>,
     pub checksum: String,
 }
@@ -214,6 +215,7 @@ impl Package {
             license: package_body.license,
             readme_path: package_body.readme,
             categories: package_body.categories,
+            package_size: archive_file.metadata()?.len(),
             checksum: PackageFile(archive_file, None).calculate_checksum()?,
         })
     }

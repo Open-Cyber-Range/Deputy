@@ -42,6 +42,7 @@ impl From<NewPackageVersion> for PackageVersion {
             description: new_version.description,
             license: new_version.license,
             readme_html: new_version.readme_html,
+            package_size: new_version.package_size,
             checksum: new_version.checksum,
         };
         Self(package, version)

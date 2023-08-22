@@ -11,6 +11,7 @@ import {
 } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import styles from '../styles/MainNavbar.module.css';
@@ -33,7 +34,26 @@ const UserMenu = () => {
 
 const MainNavbar = () => {
   const { t } = useTranslation('common');
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      update({ sinuema: Math.random() });
+    }, 1000 * 50);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        update({ sinuema: Math.random() });
+      }
+    };
+    window.addEventListener('visibilitychange', visibilityHandler, false);
+    return () =>
+      window.removeEventListener('visibilitychange', visibilityHandler, false);
+  }, []);
 
   const loginComponent = session ? (
     <>

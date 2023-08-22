@@ -1,10 +1,7 @@
 use super::Database;
 use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
-use crate::models::{
-    Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory,
-    PackageVersion, Version,
-};
+use crate::models::{Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory, PackageVersion, UpdateVersion, Version};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};
@@ -266,6 +263,35 @@ impl Handler<GetCategoriesForPackage> for Database {
                 })
                 .await??;
                 Ok(categories)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Version>")]
+pub struct UpdateVersionMsg {
+    pub id: Uuid,
+    pub version: UpdateVersion,
+}
+
+impl Handler<UpdateVersionMsg> for Database {
+    type Result = ResponseActFuture<Self, Result<Version>>;
+
+    fn handle(&mut self, msg: UpdateVersionMsg, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let exercise = block(move || {
+                    msg.version.create_update(msg.id).execute(&mut connection)?;
+                    let version = Version::by_id(msg.id).first(&mut connection)?;
+                    Ok(version)
+                })
+                .await??;
+                Ok(exercise)
             }
             .into_actor(self),
         )

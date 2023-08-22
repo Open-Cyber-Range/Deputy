@@ -4,7 +4,6 @@ use actix_web::{
     App, HttpServer,
 };
 use anyhow::{Ok, Result};
-use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
     middleware::authentication::{
@@ -16,7 +15,7 @@ use deputy_package_server::{
         basic::{status, version},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
-            get_package_version,
+            get_package_version, search_packages, yank_version,
         },
     },
     services::database::Database,
@@ -66,6 +65,7 @@ async fn real_main() -> Result<()> {
                                                     "/path/{tail:.*}",
                                                     get().to(download_file::<Database>),
                                                 )
+                                                .route("/yank", get().to(yank_version::<Database>))
                                                 .route(
                                                     "",
                                                     get().to(get_package_version::<Database>),

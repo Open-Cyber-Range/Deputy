@@ -10,6 +10,7 @@ pub struct VersionRest {
     pub version: String,
     pub description: String,
     pub license: String,
+    pub is_yanked: bool,
     pub readme_html: String,
     pub package_size: u64,
     pub checksum: String,

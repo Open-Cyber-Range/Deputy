@@ -1,8 +1,7 @@
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::{CategoryFilter, SelectById};
 use crate::{
     schema::{categories, package_categories, packages, versions},
-    services::database::{All, Create, FilterExisting},
+    services::database::{All, CategoryFilter, Create, FilterExisting, SelectById, UpdateById},
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
@@ -176,6 +175,7 @@ pub struct Version {
     pub version: String,
     pub description: String,
     pub license: String,
+    pub is_yanked: bool,
     pub readme_html: String,
     pub package_size: u64,
     pub checksum: String,
@@ -198,6 +198,40 @@ impl Version {
 
     pub fn all() -> FilterExisting<All<versions::table, Self>, versions::deleted_at> {
         Self::all_with_deleted().filter(versions::deleted_at.is_null())
+    }
+}
+
+#[derive(
+    AsChangeset,
+    Clone,
+    Queryable,
+    QueryableByName,
+    Selectable,
+    Identifiable,
+    Debug,
+    Deserialize,
+    Serialize,
+)]
+#[diesel(table_name = versions)]
+pub struct UpdateVersion {
+    pub id: Uuid,
+    pub package_id: Uuid,
+    pub version: String,
+    pub description: String,
+    pub license: String,
+    pub is_yanked: bool,
+    pub readme_html: String,
+    pub checksum: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
+}
+
+impl UpdateVersion {
+    pub fn create_update(&self, id: Uuid) -> UpdateById<versions::id, versions::table, &Self> {
+        diesel::update(versions::table)
+            .filter(versions::id.eq(id))
+            .set(self)
     }
 }
 
@@ -300,6 +334,7 @@ pub struct NewVersion {
     pub version: String,
     pub description: String,
     pub license: String,
+    pub is_yanked: bool,
     pub readme_html: String,
     pub package_size: u64,
     pub checksum: String,
@@ -326,6 +361,7 @@ impl From<(PackageMetadata, String)> for NewPackageVersion {
             version: package_metadata.version,
             description: package_metadata.description,
             license: package_metadata.license,
+            is_yanked: false,
             readme_html,
             package_size: package_metadata.package_size,
             checksum: package_metadata.checksum,
@@ -343,6 +379,7 @@ impl From<Version> for VersionRest {
             version: version.version,
             description: version.description,
             license: version.license,
+            is_yanked: version.is_yanked,
             readme_html: version.readme_html,
             package_size: version.package_size,
             checksum: version.checksum,
@@ -357,6 +394,24 @@ impl From<String> for NewCategory {
         Self {
             id: Uuid::random().to_owned(),
             name: category,
+        }
+    }
+}
+
+impl From<Version> for UpdateVersion {
+    fn from(version: Version) -> Self {
+        Self {
+            id: version.id,
+            package_id: version.package_id,
+            version: version.version,
+            description: version.description,
+            license: version.license,
+            is_yanked: version.is_yanked,
+            readme_html: version.readme_html,
+            checksum: version.checksum,
+            created_at: version.created_at,
+            updated_at: version.updated_at,
+            deleted_at: version.deleted_at,
         }
     }
 }

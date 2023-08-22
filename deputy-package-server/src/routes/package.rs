@@ -1,14 +1,14 @@
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
-use crate::models::Category;
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
-    GetPackages, GetVersionsByPackageName, SearchPackages,
+    GetPackages, GetVersionsByPackageName, SearchPackages, UpdateVersionMsg,
 };
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
+    models::{Category, UpdateVersion},
     AppState,
 };
 use actix::{Actor, Handler};
@@ -371,4 +371,42 @@ where
     .await?;
 
     Ok(Json(package_version.into()))
+}
+
+pub async fn yank_version<T>(
+    path_variables: Path<(String, String)>,
+    app_state: Data<AppState<T>>,
+) -> Result<Json<crate::models::Version>, Error>
+where
+    T: Actor + Handler<UpdateVersionMsg> + Handler<GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, UpdateVersionMsg>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+{
+    let package_name = &path_variables.0;
+    let package_version = &path_variables.1;
+
+    let mut package_version: UpdateVersion = get_package_by_name_and_version(
+        package_name.to_string(),
+        package_version.to_string(),
+        app_state.clone(),
+    )
+    .await?
+    .into();
+    package_version.is_yanked = true;
+    let response = app_state
+        .database_address
+        .send(UpdateVersionMsg {
+            id: package_version.id,
+            version: package_version,
+        })
+        .await
+        .map_err(|error| {
+            error!("Failed to update version: {error}");
+            ServerResponseError(PackageServerError::VersionUpdate.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to update version: {error}");
+            ServerResponseError(PackageServerError::VersionUpdate.into())
+        })?;
+    Ok(Json(response))
 }

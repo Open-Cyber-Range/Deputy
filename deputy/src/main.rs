@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use deputy::{
     commands::{
         ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-        PublishOptions,
+        PublishOptions, YankOptions,
     },
     executor::Executor,
     helpers::print_error_message,
@@ -25,6 +25,7 @@ enum Commands {
     Inspect(InspectOptions),
     NormalizeVersion(NormalizeVersionOptions),
     Login(LoginOptions),
+    Yank(YankOptions),
 }
 
 #[actix_rt::main]
@@ -39,6 +40,7 @@ async fn main() -> Result<()> {
         Commands::Inspect(options) => executor.inspect(options).await,
         Commands::NormalizeVersion(options) => executor.normalize_version(options).await,
         Commands::Login(options) => executor.login(options).await,
+        Commands::Yank(options) => executor.yank(options).await,
     };
     if let Err(error) = result {
         print_error_message(error);

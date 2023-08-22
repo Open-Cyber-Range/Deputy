@@ -12,6 +12,7 @@ export type Version = {
   license: string;
   readme_path: string;
   readme_html: string;
+  package_size: number;
   checksum: string;
   created_at: string;
   updated_at: string;

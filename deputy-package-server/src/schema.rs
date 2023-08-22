@@ -45,6 +45,7 @@ diesel::table! {
         description -> Longtext,
         license -> Text,
         readme_html -> Longtext,
+        package_size -> Unsigned<Bigint>,
         checksum -> Text,
         created_at -> Timestamp,
         updated_at -> Timestamp,

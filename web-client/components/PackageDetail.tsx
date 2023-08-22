@@ -10,7 +10,7 @@ import styles from '../styles/PackageList.module.css';
 import { packageTOMLFetcher, packageVersionFethcer } from '../utils/api';
 import PackageVersions from './PackageVersions';
 import FilePreview from './FilePreview';
-import { displayLocalTime } from '../utils';
+import { displayLocalTime, formatBytes } from '../utils';
 
 interface DetailParams extends ParsedUrlQuery {
   name: string;
@@ -49,6 +49,10 @@ const PackageDetailView = () => {
         <span className={styles.created_at}>
           Created at: {displayLocalTime(latestVersion.created_at)}
         </span>
+        <span className={styles.packageSize}>
+          {formatBytes(latestVersion.package_size)}
+        </span>
+
         <Tabs className="pt-[2rem] pb-[2rem]">
           <TabList>
             <Tab>Readme</Tab>

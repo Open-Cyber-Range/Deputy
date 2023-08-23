@@ -148,7 +148,7 @@ const Tokens: NextPage = () => {
             {error ? (
               <Callout intent="danger" title={t('failedToFetchTokens')} />
             ) : (
-              <HTMLTable striped bordered interactive>
+              <HTMLTable striped bordered>
                 <thead>
                   <tr>
                     <th>{t('name')}</th>

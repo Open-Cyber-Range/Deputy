@@ -21,6 +21,7 @@
   "delete": "Delete",
   "create": "Create",
   "copyValue": "Copy Value",
+  "apiTokenCopyWarning": "API token value can only be copied now. Please save it somewhere safe.",
   "failedToFetchTokens": "Failed to fetch tokens",
   "failedToCreateToken": "Failed to create token",
   "userEmailMissing": "User email is missing",

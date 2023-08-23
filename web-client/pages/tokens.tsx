@@ -10,6 +10,7 @@ import {
   H3,
   H5,
   HTMLTable,
+  Icon,
   InputGroup,
   OverlayToaster,
   Position,
@@ -119,21 +120,26 @@ const Tokens: NextPage = () => {
                 )
                 .map((token) => (
                   <Card
-                    className="mt-10 flex flex-row justify-between items-center"
+                    className="mt-10 flex flex-col justify-between items-center"
                     interactive={false}
                     elevation={Elevation.TWO}
                   >
-                    <H5 className="m-0 text-ellipsis">{token.name}</H5>
-
-                    <Button
-                      icon="clipboard"
-                      minimal
-                      onClick={() => {
-                        navigator.clipboard.writeText(token.token);
-                      }}
-                    >
-                      {t('copyValue')}
-                    </Button>
+                    <div className="flex items-center text-danger">
+                      <Icon icon="warning-sign" className="mr-2" />
+                      <p>{t('apiTokenCopyWarning')}</p>
+                    </div>
+                    <div className="mt-5 flex flex-row justify-between items-center w-full">
+                      <H5 className="m-0 text-ellipsis">{token.name}</H5>
+                      <Button
+                        icon="clipboard"
+                        minimal
+                        onClick={() => {
+                          navigator.clipboard.writeText(token.token);
+                        }}
+                      >
+                        {t('copyValue')}
+                      </Button>
+                    </div>
                   </Card>
                 ))}
             </div>

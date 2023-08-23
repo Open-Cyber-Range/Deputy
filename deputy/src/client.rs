@@ -175,11 +175,11 @@ impl Client {
         }
     }
 
-    pub async fn yank_version(&self, name: &str, version: &str) -> Result<VersionRest> {
+    pub async fn yank_version(&self, name: &str, version: &str, set_yank: &str) -> Result<VersionRest> {
         let put_uri = self
             .api_base_url
             .join("api/v1/package/")?
-            .join(format!("{name}/{version}/yank").as_str())?;
+            .join(format!("{name}/{version}/yank/{set_yank}").as_str())?;
         let mut response = self
             .client
             .put(put_uri.to_string())

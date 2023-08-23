@@ -260,9 +260,9 @@ impl Executor {
     pub async fn yank(&self, options: YankOptions) -> Result<()> {
         let client = self.try_create_client(options.registry_name.clone())?;
         let version_rest = client
-            .yank_version(&options.package_name, &options.version_requirement)
+            .yank_version(&options.package_name, &options.version_requirement, &options.undo)
             .await?;
-        println!("{}", version_rest.version);
+        println!("version: {}, is_yanked: {}", version_rest.version, version_rest.is_yanked);
         Ok(())
     }
 }

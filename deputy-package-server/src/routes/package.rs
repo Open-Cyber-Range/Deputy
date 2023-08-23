@@ -374,7 +374,7 @@ where
 }
 
 pub async fn yank_version<T>(
-    path_variables: Path<(String, String)>,
+    path_variables: Path<(String, String, String)>,
     app_state: Data<AppState<T>>,
 ) -> Result<Json<crate::models::Version>, Error>
 where
@@ -384,6 +384,7 @@ where
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
+    let set_yank = &path_variables.2;
 
     let mut package_version: UpdateVersion = get_package_by_name_and_version(
         package_name.to_string(),
@@ -392,7 +393,11 @@ where
     )
     .await?
     .into();
-    package_version.is_yanked = true;
+    package_version.is_yanked = match set_yank.as_str() {
+        "false" => false,
+        "true" => true,
+        _ => true,
+    };
     let response = app_state
         .database_address
         .send(UpdateVersionMsg {

@@ -101,3 +101,17 @@ pub struct LoginOptions {
     )]
     pub registry_name: String,
 }
+
+#[derive(Debug, Args)]
+pub struct YankOptions {
+    pub package_name: String,
+    #[clap(short, long, help = "Version of the package to yank")]
+    pub version_requirement: String,
+    #[clap(
+    short,
+    long,
+    default_value = DEFAULT_REGISTRY_NAME,
+    help = "Registry to use for package fetching"
+    )]
+    pub registry_name: String,
+}

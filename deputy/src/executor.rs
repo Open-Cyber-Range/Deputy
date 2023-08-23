@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::commands::{
     ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-    PublishOptions,
+    PublishOptions, YankOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
@@ -254,6 +254,15 @@ impl Executor {
             .interact_text()?;
 
         std::fs::write(token_path, token_value)?;
+        Ok(())
+    }
+
+    pub async fn yank(&self, options: YankOptions) -> Result<()> {
+        let client = self.try_create_client(options.registry_name.clone())?;
+        let version_rest = client
+            .yank_version(&options.package_name, &options.version_requirement)
+            .await?;
+        println!("{}", version_rest.version);
         Ok(())
     }
 }

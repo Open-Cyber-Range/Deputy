@@ -65,7 +65,7 @@ async fn real_main() -> Result<()> {
                                                     "/path/{tail:.*}",
                                                     get().to(download_file::<Database>),
                                                 )
-                                                .route("/yank", get().to(yank_version::<Database>))
+                                                .route("/yank", put().to(yank_version::<Database>))
                                                 .route(
                                                     "",
                                                     get().to(get_package_version::<Database>),

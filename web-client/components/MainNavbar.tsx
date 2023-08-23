@@ -38,7 +38,7 @@ const MainNavbar = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      update({ sinuema: Math.random() });
+      update();
     }, 1000 * 50);
 
     return () => clearInterval(interval);
@@ -47,7 +47,7 @@ const MainNavbar = () => {
   useEffect(() => {
     const visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
-        update({ sinuema: Math.random() });
+        update();
       }
     };
     window.addEventListener('visibilitychange', visibilityHandler, false);

@@ -97,6 +97,7 @@ const Tokens: NextPage = () => {
                           });
                           setCreatedTokens([...createdTokens, newToken]);
                           setIsDialogOpen(false);
+                          mutate();
                         } catch (err) {
                           setCreationError(t('failedToCreateToken'));
                         }

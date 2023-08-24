@@ -1,9 +1,13 @@
 #![allow(dead_code)]
 
 use actix::Actor;
+use actix_http::{HttpMessage, Request};
 use actix_web::web::{Bytes, Data};
 use anyhow::Result;
-use deputy_package_server::{test::database::MockDatabase, AppState};
+use deputy_package_server::{
+    middleware::authentication::local_token::UserToken, test::database::MockDatabase, AppState,
+};
+use std::rc::Rc;
 use tempfile::TempDir;
 
 pub trait BodyTest {
@@ -28,4 +32,13 @@ pub fn setup_package_server() -> Result<(TempDir, Data<AppState<MockDatabase>>)>
             database_address,
         }),
     ))
+}
+
+pub fn set_mock_user_token(request: &Request) {
+    request
+        .extensions_mut()
+        .insert::<Rc<UserToken>>(Rc::new(UserToken {
+            id: "test-id".to_string(),
+            email: "test-email".to_string(),
+        }));
 }

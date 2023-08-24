@@ -1,4 +1,5 @@
 pub mod database;
+pub mod middleware;
 
 use self::database::MockDatabase;
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
             get_package_version, yank_version,
         },
     },
+    test::middleware::MockTokenMiddlewareFactory,
     AppState,
 };
 use actix::Actor;
@@ -154,7 +156,14 @@ impl TestPackageServer {
                                                         ),
                                                 ),
                                         )
-                                        .route("", put().to(add_package::<MockDatabase>))
+                                        .service(
+                                            scope("")
+                                                .service(scope("").route(
+                                                    "",
+                                                    put().to(add_package::<MockDatabase>),
+                                                ))
+                                                .wrap(MockTokenMiddlewareFactory),
+                                        )
                                         .route("", get().to(get_all_packages::<MockDatabase>)),
                                 ),
                             ),

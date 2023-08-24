@@ -8,7 +8,7 @@ use crate::services::database::package::{
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::{Category, UpdateVersion},
+    models::Category,
     AppState,
 };
 use actix::{Actor, Handler};
@@ -386,13 +386,12 @@ where
     let package_version = &path_variables.1;
     let set_yank = &path_variables.2;
 
-    let mut package_version: UpdateVersion = get_package_by_name_and_version(
+    let mut package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
         app_state.clone(),
     )
-    .await?
-    .into();
+    .await?;
     package_version.is_yanked = match set_yank.as_str() {
         "false" => false,
         "true" => true,

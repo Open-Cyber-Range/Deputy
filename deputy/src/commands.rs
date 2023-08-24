@@ -111,9 +111,9 @@ pub struct YankOptions {
     short,
     long,
     default_value = DEFAULT_REGISTRY_NAME,
-    help = "Registry to use for package fetching"
+    help = "Registry to use for version yanking"
     )]
     pub registry_name: String,
-    #[clap(short, long, help = "Undo yank?")]
+    #[clap(short, long, help = "Undo yank")]
     pub undo: bool,
 }

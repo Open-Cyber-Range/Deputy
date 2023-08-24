@@ -3,7 +3,7 @@ use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
 use crate::models::{
     Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory,
-    PackageVersion, UpdateVersion, Version,
+    PackageVersion, Version,
 };
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
@@ -276,7 +276,7 @@ impl Handler<GetCategoriesForPackage> for Database {
 #[rtype(result = "Result<Version>")]
 pub struct UpdateVersionMsg {
     pub id: Uuid,
-    pub version: UpdateVersion,
+    pub version: Version,
 }
 
 impl Handler<UpdateVersionMsg> for Database {
@@ -288,13 +288,13 @@ impl Handler<UpdateVersionMsg> for Database {
         Box::pin(
             async move {
                 let mut connection = connection_result?;
-                let exercise = block(move || {
+                let version = block(move || {
                     msg.version.create_update(msg.id).execute(&mut connection)?;
                     let version = Version::by_id(msg.id).first(&mut connection)?;
                     Ok(version)
                 })
                 .await??;
-                Ok(exercise)
+                Ok(version)
             }
             .into_actor(self),
         )

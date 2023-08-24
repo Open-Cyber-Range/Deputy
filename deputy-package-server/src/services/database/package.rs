@@ -1,7 +1,10 @@
 use super::Database;
 use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
-use crate::models::{Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory, PackageVersion, UpdateVersion, Version};
+use crate::models::{
+    Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory,
+    PackageVersion, UpdateVersion, Version,
+};
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{Ok, Result};

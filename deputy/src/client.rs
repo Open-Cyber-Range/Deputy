@@ -175,7 +175,12 @@ impl Client {
         }
     }
 
-    pub async fn yank_version(&self, name: &str, version: &str, set_yank: &str) -> Result<VersionRest> {
+    pub async fn yank_version(
+        &self,
+        name: &str,
+        version: &str,
+        set_yank: &str,
+    ) -> Result<VersionRest> {
         let put_uri = self
             .api_base_url
             .join("api/v1/package/")?

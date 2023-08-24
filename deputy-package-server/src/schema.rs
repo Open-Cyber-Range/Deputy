@@ -85,4 +85,11 @@ diesel::joinable!(package_categories -> categories (category_id));
 diesel::joinable!(package_categories -> packages (package_id));
 diesel::joinable!(versions -> packages (package_id));
 
-diesel::allow_tables_to_appear_in_same_query!(packages, tokens, versions,);
+diesel::allow_tables_to_appear_in_same_query!(
+    categories,
+    owners,
+    package_categories,
+    packages,
+    tokens,
+    versions,
+);

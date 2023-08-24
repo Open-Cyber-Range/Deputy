@@ -81,7 +81,7 @@ async fn real_main() -> Result<()> {
                                         .wrap(LocalTokenAuthenticationMiddlewareFactory),
                                 ),
                         )
-                        .service(scope("/search").route("", get().to(search_packages::<Database>))),
+                        .service(scope("/search").route("", get().to(search_packages::<Database>)))
                         .service(
                             scope("/token")
                                 .service(

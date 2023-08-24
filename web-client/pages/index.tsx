@@ -2,7 +2,6 @@ import type { NextPage } from 'next';
 import { Button, H3 } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import { useRouter } from 'next/router';
-import styles from '../styles/Index.module.css';
 
 const Home: NextPage = () => {
   const { t } = useTranslation('common');
@@ -17,12 +16,14 @@ const Home: NextPage = () => {
 
   return (
     <div>
-      <div className={styles.dashboard}>
-        <H3>{t('welcome')}</H3>
-        <Button intent="primary" large onClick={handleClick}>
-          {t('documentationButton')}
-        </Button>
-      </div>
+      <main>
+        <div className="flex flex-col items-center p-10 mt-6">
+          <H3>{t('welcome')}</H3>
+          <Button className="mt-6" intent="primary" large onClick={handleClick}>
+            {t('documentationButton')}
+          </Button>
+        </div>
+      </main>
     </div>
   );
 };

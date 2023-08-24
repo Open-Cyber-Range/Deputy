@@ -1,13 +1,18 @@
 use actix::Actor;
 use actix_web::{
-    web::{get, put, scope, Data},
+    web::{delete, get, post, put, scope, Data},
     App, HttpServer,
 };
 use anyhow::{Ok, Result};
 use deputy_package_server::routes::package::search_packages;
 use deputy_package_server::{
     configuration::read_configuration,
+    middleware::authentication::{
+        jwt::AuthenticationMiddlewareFactory,
+        local_token::LocalTokenAuthenticationMiddlewareFactory,
+    },
     routes::{
+        apitoken::{create_api_token, delete_api_token, get_all_api_tokens},
         basic::{status, version},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
@@ -36,6 +41,8 @@ async fn real_main() -> Result<()> {
     };
 
     HttpServer::new(move || {
+        let auth_middleware =
+            AuthenticationMiddlewareFactory(configuration.keycloak.pem_content.clone());
         let app_data = Data::new(app_state.clone());
         App::new()
             .app_data(app_data)
@@ -65,10 +72,29 @@ async fn real_main() -> Result<()> {
                                                 ),
                                         ),
                                 )
-                                .route("", put().to(add_package::<Database>))
-                                .route("", get().to(get_all_packages::<Database>)),
+                                .route("", get().to(get_all_packages::<Database>))
+                                .service(
+                                    scope("")
+                                        .service(
+                                            scope("").route("", put().to(add_package::<Database>)),
+                                        )
+                                        .wrap(LocalTokenAuthenticationMiddlewareFactory),
+                                ),
                         )
-                        .service(scope("/search").route("", get().to(search_packages::<Database>))),
+                        .service(scope("/search").route("", get().to(search_packages::<Database>)))
+                        .service(
+                            scope("/token")
+                                .service(
+                                    scope("")
+                                        .route("", post().to(create_api_token::<Database>))
+                                        .route("", get().to(get_all_api_tokens::<Database>))
+                                        .route(
+                                            "/{token_id}",
+                                            delete().to(delete_api_token::<Database>),
+                                        ),
+                                )
+                                .wrap(auth_middleware),
+                        ),
                 ),
             )
     })

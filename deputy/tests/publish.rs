@@ -4,7 +4,7 @@ mod helpers;
 mod tests {
     use std::{fs, path::PathBuf};
 
-    use crate::helpers::DeployerCLIConfigurationBuilder;
+    use crate::helpers::{login, DeployerCLIConfigurationBuilder};
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy_library::{
@@ -33,6 +33,10 @@ mod tests {
         let cli_configuration = DeployerCLIConfigurationBuilder::builder()
             .host(host)
             .build()?;
+        login(
+            cli_configuration.configuration_folder.path(),
+            "some-token-value",
+        )?;
 
         command.env(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
@@ -77,6 +81,10 @@ mod tests {
             .host(host)
             .build()?;
 
+        login(
+            cli_configuration.configuration_folder.path(),
+            "some-token-value",
+        )?;
         command.env(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
             cli_configuration.configuration_folder.path(),
@@ -178,6 +186,17 @@ mod tests {
             .host(&host)
             .registry_name(&registry_name)
             .build()?;
+        let mut login_command = Command::cargo_bin("deputy")?;
+        login_command
+            .arg("login")
+            .arg("--registry-name")
+            .arg(&registry_name);
+        login_command.env(
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            deputy_configuration.configuration_folder.path(),
+        );
+        login_command.write_stdin("some-token-value\n");
+        login_command.assert().success();
 
         let mut command = Command::cargo_bin("deputy")?;
         command

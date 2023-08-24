@@ -7,6 +7,16 @@ use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
 use std::{io::Write, path::Path};
 use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
 
+pub fn login(configuration_folder: &Path, token_value: &str) -> Result<()> {
+    let mut command = Command::cargo_bin("deputy")?;
+    command.arg("login");
+    command.env(CONFIGURATION_FOLDER_PATH_ENV_KEY, configuration_folder);
+    command.write_stdin(format!("{}\n", token_value));
+
+    command.assert().success();
+    Ok(())
+}
+
 pub fn publish_package(package_folder: &Path, configuration_folder: &Path) -> Result<()> {
     let mut command = Command::cargo_bin("deputy")?;
     command.arg("publish");

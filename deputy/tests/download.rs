@@ -2,7 +2,7 @@ mod helpers;
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{publish_package, DeployerCLIConfigurationBuilder};
+    use crate::helpers::{login, publish_package, DeployerCLIConfigurationBuilder};
     use anyhow::Result;
     use assert_cmd::Command;
     use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::TempArchive};
@@ -26,6 +26,11 @@ mod tests {
         let cli_configuration = DeployerCLIConfigurationBuilder::builder()
             .host(host)
             .build()?;
+
+        login(
+            cli_configuration.configuration_folder.path(),
+            "some-token-value",
+        )?;
         publish_package(root_dir, cli_configuration.configuration_folder.path())?;
 
         let mut command = Command::cargo_bin("deputy")?;

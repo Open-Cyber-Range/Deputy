@@ -1,6 +1,7 @@
 use crate::client::Client;
 use crate::commands::{
-    ChecksumOptions, FetchOptions, InspectOptions, NormalizeVersionOptions, PublishOptions,
+    ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
+    PublishOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
@@ -9,29 +10,63 @@ use crate::helpers::{
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 use deputy_library::{package::Package, project::create_project_from_toml_path};
+use dialoguer::Input;
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use tokio::fs::rename;
 
 pub struct Executor {
     configuration: Configuration,
+    token_file: PathBuf,
 }
 
 impl Executor {
+    fn get_token_file(&self, registry_name: &str) -> Result<PathBuf> {
+        let mut token_file = self.token_file.clone();
+        token_file.set_file_name(format!(
+            "{}-{}",
+            token_file
+                .file_name()
+                .ok_or_else(|| {
+                    anyhow!("Failed to get token file name from path: {:?}", token_file)
+                })?
+                .to_str()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "Failed to convert token file name to string: {:?}",
+                        token_file
+                    )
+                })?,
+            registry_name
+        ));
+        Ok(token_file)
+    }
+
+    fn get_token_value(&self, registry_name: &str) -> Option<String> {
+        let token_file = self.get_token_file(registry_name).ok()?;
+        std::fs::read_to_string(token_file).ok()
+    }
+
     fn try_create_client(&self, registry_name: String) -> Result<Client> {
         let api_url = if let Some(registry) = self.configuration.registries.get(&registry_name) {
             registry.api.clone()
         } else {
             return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
+        let token = self.get_token_value(&registry_name);
 
-        Client::try_new(api_url)
+        Client::try_new(api_url, token)
     }
 
-    pub fn new(configuration: Configuration) -> Self {
-        Self { configuration }
+    pub fn try_new() -> Result<Self> {
+        let configuration = Configuration::get_configuration()?;
+        let token_file = Configuration::get_token_file_path()?;
+        Ok(Self {
+            configuration,
+            token_file,
+        })
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
@@ -209,6 +244,16 @@ impl Executor {
             .await?
             .version;
         println!("{}", version);
+        Ok(())
+    }
+
+    pub async fn login(&self, options: LoginOptions) -> Result<()> {
+        let token_path = self.get_token_file(&options.registry_name)?;
+        let token_value = Input::<String>::new()
+            .with_prompt("Token")
+            .interact_text()?;
+
+        std::fs::write(token_path, token_value)?;
         Ok(())
     }
 }

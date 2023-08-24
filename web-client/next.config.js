@@ -10,8 +10,8 @@ module.exports = nextTranslate({
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*',
+        source: '/api/v1/:path*',
+        destination: 'http://localhost:9000/api/v1/:path*',
       },
     ];
   },

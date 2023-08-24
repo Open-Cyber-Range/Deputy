@@ -1,9 +1,15 @@
 import { Fetcher } from 'swr';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import TOML from '@iarna/toml';
+import { getSession } from 'next-auth/react';
 import { Package, PackageWithVersions, Version } from '../interfaces/Package';
 import { compareVersions } from './sort';
 import { Project } from '../interfaces/Project';
+import {
+  ModifiedSession,
+  PostToken,
+  Token,
+  TokenRest,
+} from '../interfaces/Token';
 
 export const packagesWithVersionsFetcher: Fetcher<
   PackageWithVersions[],
@@ -43,4 +49,61 @@ export const packageVersionFethcer: Fetcher<Version, string> = async (
 export const packageTOMLFetcher: Fetcher<Project, string> = async (...url) => {
   const response = await fetch(...url);
   return TOML.parse(await response.text()) as unknown as Project;
+};
+
+export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {
+  const session = (await getSession()) as ModifiedSession;
+  if (session && session.idToken) {
+    const response = await fetch(...url, {
+      headers: {
+        Authorization: `Bearer ${session.idToken}`,
+      },
+    });
+    return response.json();
+  }
+
+  throw new Error('No session found');
+};
+
+export const createToken = async (postToken: PostToken) => {
+  const session = (await getSession()) as ModifiedSession;
+  if (session && session.idToken) {
+    const response = await fetch('/api/v1/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.idToken}`,
+      },
+      body: JSON.stringify(postToken),
+    });
+
+    if (response.ok) {
+      const token = (await response.json()) as unknown as Token;
+      return token;
+    }
+
+    throw new Error('Failed to create token');
+  }
+
+  throw new Error('No session found');
+};
+
+export const deleteToken = async (tokenId: String) => {
+  const session = (await getSession()) as ModifiedSession;
+  if (session && session.idToken) {
+    const response = await fetch(`/api/v1/token/${tokenId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${session.idToken}`,
+      },
+    });
+
+    if (response.ok) {
+      return;
+    }
+
+    throw new Error('Failed to delete token');
+  }
+
+  throw new Error('No session found');
 };

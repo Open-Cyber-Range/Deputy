@@ -9,7 +9,22 @@
   "welcome": "Welcome to Deputy Digital Library",
   "browseAllPackages": "Browse All Packages",
   "logIn": "Log In",
+  "logOut": "Log out",
   "versions": "Versions",
   "preview": "Preview",
-  "created_at": "Created at"
+  "createdAt": "Created at",
+  "tokens": "Tokens",
+  "createToken": "Create Token",
+  "name": "Name",
+  "tokenValue": "Token Value",
+  "tokenName": "Token Name",
+  "delete": "Delete",
+  "create": "Create",
+  "copyValue": "Copy Value",
+  "apiTokenCopyWarning": "API token value can only be copied now. Please save it somewhere safe.",
+  "failedToFetchTokens": "Failed to fetch tokens",
+  "failedToCreateToken": "Failed to create token",
+  "userEmailMissing": "User email is missing",
+  "tokenDeleted": "Token deleted",
+  "failedToDeleteToken": "Failed to delete token"
 }

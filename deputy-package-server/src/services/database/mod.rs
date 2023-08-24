@@ -1,11 +1,14 @@
+pub(crate) mod apitoken;
 pub(crate) mod package;
 
 use crate::models::helpers::uuid::Uuid;
 use crate::utilities::run_migrations;
 use actix::Actor;
 use anyhow::{anyhow, Result};
+use chrono::NaiveDateTime;
 use diesel::{
-    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select},
+    dsl::now,
+    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select, Update},
     mysql::{Mysql, MysqlConnection},
     query_builder::InsertStatement,
     r2d2::{ConnectionManager, Pool, PooledConnection},
@@ -14,12 +17,17 @@ use diesel::{
 
 pub type All<Table, T> = Select<Table, AsSelect<T, Mysql>>;
 pub type FilterExisting<Target, DeletedAtColumn> = Filter<Target, IsNull<DeletedAtColumn>>;
+pub type FilterExistingNotNull<Target, DeletedAtColumn> =
+    Filter<Target, Eq<DeletedAtColumn, NaiveDateTime>>;
 pub type ById<Id, R> = Filter<R, Eq<Id, Uuid>>;
 pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
 pub type CategoryFilter<Table, Id, DeletedAtColumn, T> =
     Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Id, Vec<Uuid>>>;
+type UpdateDeletedAt<DeletedAtColumn> = Eq<DeletedAtColumn, now>;
+pub type SoftDelete<L, DeletedAtColumn> = Update<L, UpdateDeletedAt<DeletedAtColumn>>;
+pub type SoftDeleteById<Id, DeleteAtColumn, Table> = SoftDelete<ById<Id, Table>, DeleteAtColumn>;
 
 #[derive(Clone)]
 pub struct Database {

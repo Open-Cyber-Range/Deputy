@@ -36,6 +36,7 @@ byte-unit = "4"
 clap = { version = "3", features = ["derive"] }
 colored = "2"
 deputy-library = { path = "../deputy-library", default-features = false }
+dialoguer = "0.10"
 git2 = "0.14"
 futures = "0.3"
 indicatif = "0.16"

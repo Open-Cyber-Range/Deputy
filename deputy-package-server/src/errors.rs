@@ -33,6 +33,14 @@ pub enum PackageServerError {
     FileNotFound,
     #[error("Not found")]
     DatabaseRecordNotFound,
+    #[error("Keycloak validation failed")]
+    KeycloakValidationFailed,
+    #[error("Token missing")]
+    TokenMissing,
+    #[error("App state missing")]
+    AppStateMissing,
+    #[error("Database query failed")]
+    DatabaseQueryFailed,
 }
 
 #[derive(Debug)]
@@ -58,6 +66,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::VersionConflict(_) => StatusCode::CONFLICT,
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
+                PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

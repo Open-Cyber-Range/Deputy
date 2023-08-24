@@ -14,11 +14,15 @@
         "mtxr.sqltools-driver-mysql",
         "github.copilot",
         "github.copilot-labs",
+        "github.copilot-chat",
         "rvest.vs-code-prettier-eslint",
         "dbaeumer.vscode-eslint"
       ]
     }
   },
+  "forwardPorts": [
+    "development-keycloak:8080"
+  ],
   "workspaceFolder": "/workspace",
   "remoteUser": "vscode"
 }

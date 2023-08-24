@@ -1,4 +1,4 @@
-use crate::constants::CONFIGURATION_FILE_RELATIVE_PATH;
+use crate::constants::{CONFIGURATION_FILE_RELATIVE_PATH, TOKEN_FILE_RELATIVE_PATH};
 use anyhow::Result;
 use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,16 @@ impl Configuration {
         .collect();
         let configuration_contents = read_to_string(configuration_path)?;
         Ok(toml::from_str(&configuration_contents)?)
+    }
+
+    pub fn get_token_file_path() -> Result<PathBuf> {
+        let token_file: PathBuf = [
+            env::var(CONFIGURATION_FOLDER_PATH_ENV_KEY)?,
+            TOKEN_FILE_RELATIVE_PATH.to_string(),
+        ]
+        .iter()
+        .collect();
+        Ok(token_file)
     }
 }
 

@@ -3,6 +3,7 @@ use actix::{Actor, Addr};
 pub mod configuration;
 pub mod constants;
 mod errors;
+pub mod middleware;
 pub mod models;
 pub mod routes;
 pub mod schema;

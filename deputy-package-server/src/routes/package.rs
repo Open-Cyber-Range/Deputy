@@ -311,7 +311,7 @@ where
         .filter_map(|package| match &version_requirement {
             Some(version_requirement) => {
                 if let Ok(version) = Version::parse(&package.version) {
-                    if version_requirement.matches(&version) {
+                    if version_requirement.matches(&version) && !package.is_yanked {
                         return Some(package);
                     }
                 }

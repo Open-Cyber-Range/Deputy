@@ -2,6 +2,7 @@
 
 diesel::table! {
     categories (id) {
+        #[max_length = 16]
         id -> Binary,
         name -> Tinytext,
         created_at -> Timestamp,
@@ -12,7 +13,9 @@ diesel::table! {
 
 diesel::table! {
     package_categories (package_id, category_id) {
+        #[max_length = 16]
         package_id -> Binary,
+        #[max_length = 16]
         category_id -> Binary,
         created_at -> Timestamp,
         updated_at -> Timestamp,
@@ -22,6 +25,7 @@ diesel::table! {
 
 diesel::table! {
     packages (id) {
+        #[max_length = 16]
         id -> Binary,
         name -> Tinytext,
         package_type -> Tinytext,
@@ -46,7 +50,9 @@ diesel::table! {
 
 diesel::table! {
     versions (id) {
+        #[max_length = 16]
         id -> Binary,
+        #[max_length = 16]
         package_id -> Binary,
         version -> Tinytext,
         description -> Longtext,

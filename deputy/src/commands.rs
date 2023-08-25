@@ -105,7 +105,7 @@ pub struct LoginOptions {
 #[derive(Debug, Args)]
 pub struct YankOptions {
     pub package_name: String,
-    #[clap(short, long, help = "Version of the package to yank")]
+    #[clap(help = "Version of the package to yank")]
     pub version_requirement: String,
     #[clap(
     short,

@@ -78,13 +78,13 @@ impl Handler<DeleteOwner> for Database {
 
     fn handle(&mut self, delete_owners: DeleteOwner, _ctx: &mut Self::Context) -> Self::Result {
         let connection_result = self.get_connection();
-        let DeleteOwner(name, owner_email) = delete_owners;
+        let DeleteOwner(package_name, owner_email) = delete_owners;
 
         Box::pin(
             async move {
                 let mut connection = connection_result?;
                 let owner_email = block(move || {
-                    let package: Package = Package::by_name(name).first(&mut connection)?;
+                    let package: Package = Package::by_name(package_name).first(&mut connection)?;
                     let owners = Owner::by_package_id(package.id).load(&mut connection)?;
                     if owners.len() == 1 {
                         return Err(anyhow!("Can not delete the last owner of a package"));

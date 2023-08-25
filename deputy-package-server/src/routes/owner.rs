@@ -13,7 +13,7 @@ use actix_web::{
 use anyhow::Result;
 use log::{debug, error};
 
-pub async fn post_new_owner<T>(
+pub async fn add_owner<T>(
     path_variables: Path<String>,
     app_state: Data<AppState<T>>,
     user_info: UserTokenInfo,

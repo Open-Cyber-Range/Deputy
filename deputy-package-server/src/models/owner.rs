@@ -1,16 +1,14 @@
 use crate::constants::NAIVEDATETIME_DEFAULT_VALUE;
 use crate::models::helpers::uuid::Uuid;
-use crate::services::database::ById;
+use crate::services::database::{FilterExistingNotNull, SoftDeleteById};
 use crate::{
     schema::owners,
     services::database::{All, Create},
 };
 use chrono::NaiveDateTime;
-use diesel::dsl::now;
 use diesel::{
-    helper_types::{Eq, Filter, FindBy, Update},
-    insert_into, ExpressionMethods, Identifiable, Insertable, QueryDsl, Queryable, Selectable,
-    SelectableHelper,
+    helper_types::FindBy, insert_into, ExpressionMethods, Identifiable, Insertable, QueryDsl,
+    Queryable, Selectable, SelectableHelper,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,23 +39,18 @@ pub struct OwnerQuery {
     pub email: String,
 }
 
-type FilterExisting<Target, DeletedAtColumn> = Filter<Target, Eq<DeletedAtColumn, NaiveDateTime>>;
-type UpdateDeletedAt<DeletedAtColumn> = Eq<DeletedAtColumn, now>;
-type SoftDelete<L, DeletedAtColumn> = Update<L, UpdateDeletedAt<DeletedAtColumn>>;
-type SoftDeleteById<Id, DeleteAtColumn, Table> = SoftDelete<ById<Id, Table>, DeleteAtColumn>;
-
 impl Owner {
     fn all_with_deleted() -> All<owners::table, Self> {
         owners::table.select(Self::as_select())
     }
 
-    pub fn all() -> FilterExisting<All<owners::table, Self>, owners::deleted_at> {
+    pub fn all() -> FilterExistingNotNull<All<owners::table, Self>, owners::deleted_at> {
         Self::all_with_deleted().filter(owners::deleted_at.eq(*NAIVEDATETIME_DEFAULT_VALUE))
     }
 
     pub fn by_id(
         id: Uuid,
-    ) -> FindBy<FilterExisting<All<owners::table, Self>, owners::deleted_at>, owners::id, Uuid>
+    ) -> FindBy<FilterExistingNotNull<All<owners::table, Self>, owners::deleted_at>, owners::id, Uuid>
     {
         Self::all().filter(owners::id.eq(id))
     }
@@ -65,7 +58,7 @@ impl Owner {
     pub fn by_package_id(
         id: Uuid,
     ) -> FindBy<
-        FilterExisting<All<owners::table, Self>, owners::deleted_at>,
+        FilterExistingNotNull<All<owners::table, Self>, owners::deleted_at>,
         owners::package_id,
         Uuid,
     > {
@@ -74,8 +67,11 @@ impl Owner {
 
     pub fn by_email(
         email: String,
-    ) -> FindBy<FilterExisting<All<owners::table, Self>, owners::deleted_at>, owners::email, String>
-    {
+    ) -> FindBy<
+        FilterExistingNotNull<All<owners::table, Self>, owners::deleted_at>,
+        owners::email,
+        String,
+    > {
         Self::all().filter(owners::email.eq(email))
     }
 

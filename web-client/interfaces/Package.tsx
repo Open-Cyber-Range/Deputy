@@ -10,6 +10,7 @@ export type Version = {
   id: string;
   version: string;
   license: string;
+  is_yanked: boolean;
   readme_path: string;
   readme_html: string;
   package_size: number;

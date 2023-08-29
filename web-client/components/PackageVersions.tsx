@@ -35,6 +35,9 @@ const PackageVersions = ({ packageName }: { packageName: string }) => {
                 </Link>
               </span>
               <span className={styles.version}>{deputyPackage.version}</span>
+              <span className={styles.yanked} hidden={!deputyPackage.is_yanked}>
+                {t('yanked')}
+              </span>
               {/* <div className={styles.description}>
                 {deputyPackage.description}
               </div> */}

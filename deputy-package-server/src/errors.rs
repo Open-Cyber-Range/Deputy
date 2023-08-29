@@ -25,6 +25,8 @@ pub enum PackageServerError {
     VersionParse,
     #[error("Package version on the server is either same or later: {0}")]
     VersionConflict(String),
+    #[error("Failed to update version")]
+    VersionUpdate,
     #[error("Failed to paginate packages")]
     Pagination,
     #[error("Actix mailbox full")]
@@ -64,6 +66,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::PackageVersionRequirementValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageNameValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::VersionConflict(_) => StatusCode::CONFLICT,
+                PackageServerError::VersionUpdate => StatusCode::BAD_REQUEST,
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,

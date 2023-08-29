@@ -23,6 +23,7 @@ pub type ById<Id, R> = Filter<R, Eq<Id, Uuid>>;
 pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
+pub type UpdateById<Id, Table, T> = Update<ById<Id, Table>, T>;
 pub type CategoryFilter<Table, Id, DeletedAtColumn, T> =
     Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Id, Vec<Uuid>>>;
 type UpdateDeletedAt<DeletedAtColumn> = Eq<DeletedAtColumn, now>;

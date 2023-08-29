@@ -174,4 +174,34 @@ impl Client {
             )?),
         }
     }
+
+    pub async fn yank_version(
+        &self,
+        name: &str,
+        version: &str,
+        set_yank: &str,
+    ) -> Result<VersionRest> {
+        let put_uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(format!("{name}/{version}/yank/{set_yank}").as_str())?;
+        let mut response = self
+            .client
+            .put(put_uri.to_string())
+            .timeout(std::time::Duration::from_secs(100))
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to yank version: {:?}", error))?;
+
+        if response.status().is_success() {
+            let body = response.body().await?;
+            let version_rest: VersionRest = serde_json::from_slice(&body)?;
+            return Ok(version_rest);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to yank version",
+            response.body().await?.to_vec(),
+        )?)
+    }
 }

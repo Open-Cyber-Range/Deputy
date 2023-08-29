@@ -2,7 +2,7 @@ use crate::models::helpers::uuid::Uuid;
 use crate::models::{Category, NewCategory, NewPackageVersion, Package, PackageVersion, Version};
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
-    GetVersionsByPackageName,
+    GetVersionsByPackageName, UpdateVersionMsg,
 };
 use actix::Actor;
 use actix::ActorFutureExt;
@@ -41,6 +41,7 @@ impl From<NewPackageVersion> for PackageVersion {
             version: new_version.version,
             description: new_version.description,
             license: new_version.license,
+            is_yanked: new_version.is_yanked,
             readme_html: new_version.readme_html,
             package_size: new_version.package_size,
             checksum: new_version.checksum,
@@ -170,5 +171,29 @@ impl Handler<CreateCategory> for MockDatabase {
                 Ok(category)
             },
         ))
+    }
+}
+
+impl Handler<UpdateVersionMsg> for MockDatabase {
+    type Result = ResponseActFuture<Self, Result<Version>>;
+
+    fn handle(&mut self, msg: UpdateVersionMsg, _ctx: &mut Self::Context) -> Self::Result {
+        Box::pin(
+            async move { msg }
+                .into_actor(self)
+                .map(move |msg, mock_database, _| {
+                    let version = msg.version;
+                    let versions = mock_database
+                        .package_versions
+                        .get_mut(&version.package_id)
+                        .ok_or(anyhow::anyhow!("Package not found"))?;
+                    let index = versions
+                        .iter()
+                        .position(|v| v.id == version.id)
+                        .ok_or(anyhow::anyhow!("Version not found"))?;
+                    versions[index] = version.clone();
+                    Ok(version)
+                }),
+        )
     }
 }

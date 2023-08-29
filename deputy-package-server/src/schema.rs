@@ -57,6 +57,7 @@ diesel::table! {
         version -> Tinytext,
         description -> Longtext,
         license -> Text,
+        is_yanked -> Bool,
         readme_html -> Longtext,
         package_size -> Unsigned<Bigint>,
         checksum -> Text,

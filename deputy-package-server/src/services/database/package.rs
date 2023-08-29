@@ -271,3 +271,32 @@ impl Handler<GetCategoriesForPackage> for Database {
         )
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<Version>")]
+pub struct UpdateVersionMsg {
+    pub id: Uuid,
+    pub version: Version,
+}
+
+impl Handler<UpdateVersionMsg> for Database {
+    type Result = ResponseActFuture<Self, Result<Version>>;
+
+    fn handle(&mut self, msg: UpdateVersionMsg, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let version = block(move || {
+                    msg.version.create_update(msg.id).execute(&mut connection)?;
+                    let version = Version::by_id(msg.id).first(&mut connection)?;
+                    Ok(version)
+                })
+                .await??;
+                Ok(version)
+            }
+            .into_actor(self),
+        )
+    }
+}

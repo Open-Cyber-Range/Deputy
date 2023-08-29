@@ -26,5 +26,6 @@
   "failedToCreateToken": "Failed to create token",
   "userEmailMissing": "User email is missing",
   "tokenDeleted": "Token deleted",
-  "failedToDeleteToken": "Failed to delete token"
+  "failedToDeleteToken": "Failed to delete token",
+  "yanked": "Yanked"
 }

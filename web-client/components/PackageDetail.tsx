@@ -46,11 +46,11 @@ const PackageDetailView = () => {
         <span className={styles.name}>{name}</span>
         <span className={styles.version}>{latestVersion.version}</span>
         <span className={styles.version}>{latestVersion.license}</span>
-        <span className={styles.created_at}>
-          Created at: {displayLocalTime(latestVersion.created_at)}
-        </span>
         <span className={styles.packageSize}>
           {formatBytes(latestVersion.package_size)}
+        </span>
+        <span className={styles.created_at}>
+          Created at: {displayLocalTime(latestVersion.created_at)}
         </span>
 
         <Tabs className="pt-[2rem] pb-[2rem]">

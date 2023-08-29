@@ -2,7 +2,6 @@ mod common;
 
 #[cfg(test)]
 mod tests {
-
     use crate::common::{setup_package_server, BodyTest};
     use actix_http::Payload;
     use actix_web::{
@@ -17,7 +16,7 @@ mod tests {
         test::TempArchive,
     };
     use deputy_package_server::{
-        routes::package::{add_package, download_file, download_package},
+        routes::package::{add_package, download_file, download_package, yank_version},
         test::database::MockDatabase,
     };
     use std::path::PathBuf;
@@ -197,6 +196,47 @@ mod tests {
             .any(|window| window == search_string));
 
         package_folder.close()?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn yank_package() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server()?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/package", put().to(add_package::<MockDatabase>))
+                .route(
+                    "/package/{package_name}/{version}/yank/{set_yank}",
+                    put().to(yank_version::<MockDatabase>),
+                ),
+        )
+        .await;
+
+        let archive = TempArchive::builder().build()?;
+        let test_package: Package = (&archive).try_into()?;
+        let package_name = test_package.metadata.name.clone();
+        let package_version = test_package.metadata.version.clone();
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::put().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
+        let response = test::call_service(&app, request).await;
+        assert!(response.status().is_success());
+        assert!(PathBuf::from(package_folder.path())
+            .join(package_name.clone())
+            .exists());
+        package_folder.close()?;
+
+        let uri = format!("/package/{}/{}/yank/true", package_name, package_version);
+        let request = test::TestRequest::put().uri(uri.as_str()).to_request();
+        let response = test::call_service(&app, request).await;
+        assert!(response.status().is_success());
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let search_string = b"is_yanked\":true";
+        assert!(body
+            .windows(search_string.len())
+            .any(|window| window == search_string));
+
         Ok(())
     }
 }

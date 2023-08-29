@@ -38,9 +38,6 @@ const PackageVersions = ({ packageName }: { packageName: string }) => {
               <span className={styles.yanked} hidden={!deputyPackage.is_yanked}>
                 {t('yanked')}
               </span>
-              {/* <div className={styles.description}>
-                {deputyPackage.description}
-              </div> */}
             </Card>
           </li>
         ))}

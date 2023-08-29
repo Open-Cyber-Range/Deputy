@@ -48,12 +48,6 @@ const PackageListView = () => {
                   <span className={styles.packageSize}>
                     {formatBytes(latestVersion.package_size)}
                   </span>
-                  <span
-                    className={styles.yanked}
-                    hidden={!latestVersion.is_yanked}
-                  >
-                    {t('yanked')}
-                  </span>
                   <div className={styles.description}>
                     {deputyPackage.description}
                   </div>

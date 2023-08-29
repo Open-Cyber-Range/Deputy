@@ -49,9 +49,6 @@ const PackageDetailView = () => {
         <span className={styles.packageSize}>
           {formatBytes(latestVersion.package_size)}
         </span>
-        <span className={styles.yanked} hidden={!latestVersion.is_yanked}>
-          {t('yanked')}
-        </span>
         <span className={styles.created_at}>
           Created at: {displayLocalTime(latestVersion.created_at)}
         </span>

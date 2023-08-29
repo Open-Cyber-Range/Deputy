@@ -270,10 +270,16 @@ impl Executor {
                 set_yank,
             )
             .await?;
-        println!(
-            "version: {}, is_yanked: {}",
-            version_rest.version, version_rest.is_yanked
-        );
+        match version_rest.is_yanked {
+            true => println!(
+                "{} version {} yank successful",
+                &options.package_name, version_rest.version
+            ),
+            false => println!(
+                "{} version {} yank successful undo",
+                &options.package_name, version_rest.version
+            ),
+        }
         Ok(())
     }
 }

@@ -232,6 +232,7 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
         let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
         assert!(PathBuf::from(package_folder.path())

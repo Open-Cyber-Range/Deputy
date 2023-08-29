@@ -6,7 +6,7 @@ use crate::{
         basic::{status, version},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
-            get_package_version,
+            get_package_version, yank_version,
         },
     },
     AppState,
@@ -141,6 +141,10 @@ impl TestPackageServer {
                                                         .route(
                                                             "/path/{tail:.*}",
                                                             get().to(download_file::<MockDatabase>),
+                                                        )
+                                                        .route(
+                                                            "/yank/{set_yank}",
+                                                            put().to(yank_version::<MockDatabase>),
                                                         )
                                                         .route(
                                                             "",

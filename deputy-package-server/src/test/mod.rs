@@ -140,16 +140,22 @@ impl TestPackageServer {
                                                             get()
                                                                 .to(get_all_owners::<MockDatabase>),
                                                         )
-                                                        .route(
-                                                            "",
-                                                            post().to(add_owner::<MockDatabase>),
-                                                        )
-                                                        .route(
-                                                            "/{owner_email}",
-                                                            delete()
-                                                                .to(delete_owner::<MockDatabase>),
-                                                        )
-                                                        .wrap(MockTokenMiddlewareFactory),
+                                                        .service(
+                                                            scope("")
+                                                                .route(
+                                                                    "",
+                                                                    post().to(add_owner::<
+                                                                        MockDatabase,
+                                                                    >),
+                                                                )
+                                                                .route(
+                                                                    "/{owner_email}",
+                                                                    delete().to(delete_owner::<
+                                                                        MockDatabase,
+                                                                    >),
+                                                                )
+                                                                .wrap(MockTokenMiddlewareFactory),
+                                                        ),
                                                 )
                                                 .service(
                                                     scope("/{version}")

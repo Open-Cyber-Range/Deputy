@@ -59,12 +59,17 @@ async fn real_main() -> Result<()> {
                                         .service(
                                             scope("/owner")
                                                 .route("", get().to(get_all_owners::<Database>))
-                                                .route("", post().to(add_owner::<Database>))
-                                                .route(
-                                                    "/{owner_email}",
-                                                    delete().to(delete_owner::<Database>),
+                                                .service(
+                                                    scope("")
+                                                        .route("", post().to(add_owner::<Database>))
+                                                        .route(
+                                                            "/{owner_email}",
+                                                            delete().to(delete_owner::<Database>)
+                                                        )
+                                                        .wrap(
+                                                            LocalTokenAuthenticationMiddlewareFactory
+                                                        )
                                                 )
-                                                .wrap(LocalTokenAuthenticationMiddlewareFactory),
                                         )
                                         .service(
                                             scope("/{version}")

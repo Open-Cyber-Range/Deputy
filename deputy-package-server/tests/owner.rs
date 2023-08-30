@@ -55,23 +55,19 @@ mod tests {
         let (package_folder, app_state) = setup_package_server()?;
         let package_name = upload_test_package(&app_state).await.unwrap();
 
-        let app = test::init_service(
-            App::new().app_data(app_state).service(
+        let app =
+            test::init_service(App::new().app_data(app_state).service(
                 scope("/package").service(
                     scope("/{package_name}").service(
-                        scope("/owner")
-                            .route("", get().to(get_all_owners::<MockDatabase>))
-                            .wrap(MockTokenMiddlewareFactory),
+                        scope("/owner").route("", get().to(get_all_owners::<MockDatabase>)),
                     ),
                 ),
-            ),
-        )
-        .await;
+            ))
+            .await;
 
         let request = test::TestRequest::get()
             .uri(&format!("/package/{}/owner", package_name,))
             .to_request();
-        set_mock_user_token(&request);
 
         let response = test::call_service(&app, request).await;
         let response_status = response.status();

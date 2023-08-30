@@ -1,5 +1,6 @@
 use crate::middleware::authentication::local_token::UserTokenInfo;
-use crate::models::{helpers::uuid::Uuid, OwnerQuery, Owners};
+use crate::models::Owner;
+use crate::models::{OwnerQuery, Owners};
 use crate::services::database::owner::{AddOwner, DeleteOwner, GetOwners};
 use crate::{
     errors::{PackageServerError, ServerResponseError},
@@ -18,7 +19,7 @@ pub async fn add_owner<T>(
     app_state: Data<AppState<T>>,
     user_info: UserTokenInfo,
     query: Query<OwnerQuery>,
-) -> Result<Json<Uuid>, Error>
+) -> Result<Json<Owner>, Error>
 where
     T: Actor + Handler<AddOwner>,
     T: Actor + Handler<GetOwners>,
@@ -60,7 +61,7 @@ where
             "Added owner: {owner_email} to package: {package_name}",
             owner_email = query.email
         );
-        Ok(Json(owner.id))
+        Ok(Json(owner))
     } else {
         error!("Requester not authorized to add owner to package");
         Err(ServerResponseError(PackageServerError::NotAuthorized.into()).into())

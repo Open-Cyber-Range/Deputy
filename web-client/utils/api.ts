@@ -11,6 +11,11 @@ import {
   TokenRest,
 } from '../interfaces/Token';
 
+export const packageFetcher: Fetcher<Package[], string> = async (...url) => {
+  const response = await fetch(...url);
+  return response.json();
+};
+
 export const packagesWithVersionsFetcher: Fetcher<
   PackageWithVersions[],
   string

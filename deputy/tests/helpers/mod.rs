@@ -3,7 +3,8 @@
 use anyhow::Result;
 use assert_cmd::Command;
 use deputy::constants::DEFAULT_REGISTRY_NAME;
-use deputy_library::constants::CONFIGURATION_FOLDER_PATH_ENV_KEY;
+use deputy_library::{constants::CONFIGURATION_FOLDER_PATH_ENV_KEY, test::TempArchive};
+use deputy_package_server::test::TestPackageServerBuilder;
 use std::{io::Write, path::Path};
 use tempfile::{tempdir, Builder, NamedTempFile, TempDir};
 
@@ -74,4 +75,26 @@ impl DeployerCLIConfigurationBuilder {
             configuration_file,
         })
     }
+}
+
+pub async fn setup_test_backend() -> Result<String> {
+    let test_backend = TestPackageServerBuilder::try_new()?;
+    let host = test_backend.get_host();
+    let test_backend = test_backend.build();
+    test_backend.start().await?;
+
+    return Ok(host.to_string());
+}
+pub async fn upload_test_package(cli_configuration: &DeployerCLIConfiguration) -> Result<()> {
+    let temp_project = TempArchive::builder()
+        .set_package_name("some-package-name")
+        .build()?;
+    let root_dir = temp_project.root_dir.as_ref();
+
+    login(
+        cli_configuration.configuration_folder.path(),
+        "some-token-value",
+    )?;
+    publish_package(root_dir, cli_configuration.configuration_folder.path())?;
+    return Ok(());
 }

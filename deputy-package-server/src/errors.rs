@@ -49,6 +49,8 @@ pub enum PackageServerError {
     OwnersList,
     #[error("Failed to remove owner from package")]
     OwnerRemove,
+    #[error("Can not remove the last owner of a package")]
+    OwnerRemoveLast,
     #[error("Not authorized")]
     NotAuthorized,
 }

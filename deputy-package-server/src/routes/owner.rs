@@ -129,6 +129,10 @@ where
                 ServerResponseError(PackageServerError::OwnerRemove.into())
             })?
             .map_err(|error| {
+                if error.to_string().contains("last owner") {
+                    error!("Failed to delete owner: {error}");
+                    return ServerResponseError(PackageServerError::OwnerRemoveLast.into());
+                }
                 error!("Failed to delete owner: {error}");
                 ServerResponseError(PackageServerError::OwnerRemove.into())
             })?;

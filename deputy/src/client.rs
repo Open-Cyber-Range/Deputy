@@ -253,7 +253,7 @@ impl Client {
         let mut response = client_request
             .send()
             .await
-            .map_err(|error| anyhow!("Failed to delete owner: {:?}", error))?;
+            .map_err(|error| anyhow!("{:?}", error))?;
 
         if response.status().is_success() {
             return Ok(());
@@ -278,12 +278,11 @@ impl Client {
         let mut response = client_request
             .send()
             .await
-            .map_err(|error| anyhow!("Failed to list owners: {:?}", error))?;
+            .map_err(|error| anyhow!("{:?}", error))?;
 
         if response.status().is_success() {
             let body = response.body().await?;
             let owners: Vec<OwnerRest> = serde_json::from_slice(&body)?;
-
             let owner_emails: Vec<String> =
                 owners.iter().map(|owner| owner.email.clone()).collect();
 

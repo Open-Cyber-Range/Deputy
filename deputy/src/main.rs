@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use deputy::{
     commands::{
         ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-        PublishOptions, YankOptions,
+        OwnerOptions, OwnerSubcommands, PublishOptions, YankOptions,
     },
     executor::Executor,
     helpers::print_error_message,
@@ -26,6 +26,7 @@ enum Commands {
     NormalizeVersion(NormalizeVersionOptions),
     Login(LoginOptions),
     Yank(YankOptions),
+    Owner(OwnerOptions),
 }
 
 #[actix_rt::main]
@@ -41,6 +42,23 @@ async fn main() -> Result<()> {
         Commands::NormalizeVersion(options) => executor.normalize_version(options).await,
         Commands::Login(options) => executor.login(options).await,
         Commands::Yank(options) => executor.yank(options).await,
+        Commands::Owner(options) => match options.subcommands.clone() {
+            OwnerSubcommands::Add {
+                user_email,
+                package_name,
+            } => executor.add_owner(options, user_email, package_name).await,
+            OwnerSubcommands::Remove {
+                user_email,
+                package_name,
+            } => {
+                executor
+                    .remove_owner(options, user_email, package_name)
+                    .await
+            }
+            OwnerSubcommands::List { package_name } => {
+                executor.list_owners(options, package_name).await
+            }
+        },
     };
     if let Err(error) = result {
         print_error_message(error);

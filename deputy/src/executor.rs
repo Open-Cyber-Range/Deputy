@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::commands::{
     ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-    PublishOptions, YankOptions,
+    OwnerOptions, PublishOptions, YankOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
@@ -280,6 +280,42 @@ impl Executor {
                 &options.package_name, version_rest.version
             ),
         }
+        Ok(())
+    }
+
+    pub async fn add_owner(
+        &self,
+        owner_options: OwnerOptions,
+        user_email: String,
+        package_name: String,
+    ) -> Result<()> {
+        let client = self.try_create_client(owner_options.registry_name)?;
+        client.add_owner(&package_name, &user_email).await?;
+
+        Ok(())
+    }
+
+    pub async fn remove_owner(
+        &self,
+        owner_options: OwnerOptions,
+        user_email: String,
+        package_name: String,
+    ) -> Result<()> {
+        let client = self.try_create_client(owner_options.registry_name)?;
+        client.delete_owner(&package_name, &user_email).await?;
+
+        Ok(())
+    }
+
+    pub async fn list_owners(
+        &self,
+        owner_options: OwnerOptions,
+        package_name: String,
+    ) -> Result<()> {
+        let client = self.try_create_client(owner_options.registry_name)?;
+        let owners = client.list_owners(&package_name).await?;
+
+        println!("{}", owners.join("\n"));
         Ok(())
     }
 }

@@ -1,7 +1,10 @@
 use crate::{constants::endpoints::PACKAGE_UPLOAD_PATH, helpers::create_file_from_stream};
 use anyhow::{anyhow, Error, Ok, Result};
 use awc::{http::header, Client as ActixWebClient};
-use deputy_library::{package::PackageStream, rest::VersionRest};
+use deputy_library::{
+    package::PackageStream,
+    rest::{OwnerRest, VersionRest},
+};
 use log::error;
 use qstring::QString;
 use std::str::from_utf8;
@@ -23,6 +26,20 @@ impl Client {
         })
     }
 
+    fn add_token_to_request(&self, request: &mut awc::ClientRequest) -> Result<()> {
+        let token = self
+            .token
+            .clone()
+            .ok_or_else(|| anyhow!("No login token found"))?;
+
+        let headers = request.headers_mut();
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&token)?,
+        );
+        Ok(())
+    }
+
     fn response_to_error(message: &str, payload: Vec<u8>) -> Result<Error> {
         let error_message = format!("{message}: {}", from_utf8(&payload)?);
         error!("{error_message}");
@@ -32,16 +49,7 @@ impl Client {
     pub async fn upload_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
         let put_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
         let mut client_request = self.client.put(put_uri.to_string());
-        let token = self
-            .token
-            .clone()
-            .ok_or_else(|| anyhow!("No login token found"))?;
-
-        let headers = client_request.headers_mut();
-        headers.insert(
-            header::AUTHORIZATION,
-            header::HeaderValue::from_str(&token)?,
-        );
+        self.add_token_to_request(&mut client_request)?;
 
         let mut response = client_request
             .timeout(std::time::Duration::from_secs(timeout))
@@ -201,6 +209,89 @@ impl Client {
 
         Err(Client::response_to_error(
             "Failed to yank version",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn add_owner(&self, package_name: &str, owner_email: &str) -> Result<()> {
+        let uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(format!("{package_name}/owner?email={owner_email}").as_str())?;
+        let mut client_request = self
+            .client
+            .post(uri.to_string())
+            .timeout(std::time::Duration::from_secs(100));
+        self.add_token_to_request(&mut client_request)?;
+
+        let mut response = client_request
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to add owner: {:?}", error))?;
+
+        if response.status().is_success() {
+            return Ok(());
+        }
+
+        Err(Client::response_to_error(
+            "Failed to add owner",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn delete_owner(&self, package_name: &str, owner_email: &str) -> Result<()> {
+        let uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(format!("{package_name}/owner/{owner_email}").as_str())?;
+        let mut client_request = self
+            .client
+            .delete(uri.to_string())
+            .timeout(std::time::Duration::from_secs(100));
+        self.add_token_to_request(&mut client_request)?;
+
+        let mut response = client_request
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to delete owner: {:?}", error))?;
+
+        if response.status().is_success() {
+            return Ok(());
+        }
+
+        Err(Client::response_to_error(
+            "Failed to delete owner",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn list_owners(&self, package_name: &str) -> Result<Vec<String>> {
+        let uri = self
+            .api_base_url
+            .join("api/v1/package/")?
+            .join(format!("{package_name}/owner").as_str())?;
+        let client_request = self
+            .client
+            .get(uri.to_string())
+            .timeout(std::time::Duration::from_secs(100));
+
+        let mut response = client_request
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to list owners: {:?}", error))?;
+
+        if response.status().is_success() {
+            let body = response.body().await?;
+            let owners: Vec<OwnerRest> = serde_json::from_slice(&body)?;
+
+            let owner_emails: Vec<String> =
+                owners.iter().map(|owner| owner.email.clone()).collect();
+
+            return Ok(owner_emails);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to delete owner",
             response.body().await?.to_vec(),
         )?)
     }

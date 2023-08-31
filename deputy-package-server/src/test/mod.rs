@@ -1,19 +1,22 @@
 pub mod database;
+pub mod middleware;
 
 use self::database::MockDatabase;
 use crate::{
     routes::{
         basic::{status, version},
+        owner::{add_owner, delete_owner, get_all_owners},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
             get_package_version, yank_version,
         },
     },
+    test::middleware::MockTokenMiddlewareFactory,
     AppState,
 };
 use actix::Actor;
 use actix_web::{
-    web::{get, put, scope, Data},
+    web::{delete, get, post, put, scope, Data},
     App, HttpServer,
 };
 use anyhow::{anyhow, Error, Result};
@@ -131,6 +134,30 @@ impl TestPackageServer {
                                                     get().to(get_all_versions::<MockDatabase>),
                                                 )
                                                 .service(
+                                                    scope("/owner")
+                                                        .route(
+                                                            "",
+                                                            get()
+                                                                .to(get_all_owners::<MockDatabase>),
+                                                        )
+                                                        .service(
+                                                            scope("")
+                                                                .route(
+                                                                    "",
+                                                                    post().to(add_owner::<
+                                                                        MockDatabase,
+                                                                    >),
+                                                                )
+                                                                .route(
+                                                                    "/{owner_email}",
+                                                                    delete().to(delete_owner::<
+                                                                        MockDatabase,
+                                                                    >),
+                                                                )
+                                                                .wrap(MockTokenMiddlewareFactory),
+                                                        ),
+                                                )
+                                                .service(
                                                     scope("/{version}")
                                                         .route(
                                                             "/download",
@@ -154,7 +181,14 @@ impl TestPackageServer {
                                                         ),
                                                 ),
                                         )
-                                        .route("", put().to(add_package::<MockDatabase>))
+                                        .service(
+                                            scope("")
+                                                .service(scope("").route(
+                                                    "",
+                                                    put().to(add_package::<MockDatabase>),
+                                                ))
+                                                .wrap(MockTokenMiddlewareFactory),
+                                        )
                                         .route("", get().to(get_all_packages::<MockDatabase>)),
                                 ),
                             ),

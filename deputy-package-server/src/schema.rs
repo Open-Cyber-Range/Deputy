@@ -12,6 +12,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    owners (id) {
+        #[max_length = 16]
+        id -> Binary,
+        email -> Tinytext,
+        #[max_length = 16]
+        package_id -> Binary,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        deleted_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     package_categories (package_id, category_id) {
         #[max_length = 16]
         package_id -> Binary,
@@ -67,12 +80,14 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(owners -> packages (package_id));
 diesel::joinable!(package_categories -> categories (category_id));
 diesel::joinable!(package_categories -> packages (package_id));
 diesel::joinable!(versions -> packages (package_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     categories,
+    owners,
     package_categories,
     packages,
     tokens,

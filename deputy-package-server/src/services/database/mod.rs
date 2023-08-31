@@ -1,4 +1,5 @@
 pub(crate) mod apitoken;
+pub(crate) mod owner;
 pub(crate) mod package;
 
 use crate::models::helpers::uuid::Uuid;

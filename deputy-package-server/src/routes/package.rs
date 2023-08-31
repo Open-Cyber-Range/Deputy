@@ -1,3 +1,4 @@
+use crate::middleware::authentication::local_token::UserTokenInfo;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
@@ -45,6 +46,7 @@ async fn drain_stream(
 pub async fn add_package<T>(
     body: Payload,
     app_state: Data<AppState<T>>,
+    user_info: UserTokenInfo,
 ) -> Result<HttpResponse, Error>
 where
     T: Actor
@@ -97,7 +99,10 @@ where
         .unwrap_or_default();
     let response = app_state
         .database_address
-        .send(CreatePackage((package_metadata, readme_html).into()))
+        .send(CreatePackage(
+            (package_metadata, readme_html).into(),
+            user_info.email.clone(),
+        ))
         .await
         .map_err(|error| {
             error!("Failed to add package: {error}");

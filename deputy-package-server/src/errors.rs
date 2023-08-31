@@ -43,6 +43,14 @@ pub enum PackageServerError {
     AppStateMissing,
     #[error("Database query failed")]
     DatabaseQueryFailed,
+    #[error("Failed to add owner to package")]
+    OwnerAdd,
+    #[error("Failed to get package owners")]
+    OwnersList,
+    #[error("Failed to remove owner from package")]
+    OwnerRemove,
+    #[error("Not authorized")]
+    NotAuthorized,
 }
 
 #[derive(Debug)]
@@ -70,6 +78,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
+                PackageServerError::NotAuthorized => StatusCode::UNAUTHORIZED,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

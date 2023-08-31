@@ -2,7 +2,8 @@ mod common;
 
 #[cfg(test)]
 mod tests {
-    use crate::common::{setup_package_server, BodyTest};
+
+    use crate::common::{set_mock_user_token, setup_package_server, BodyTest};
     use actix_http::Payload;
     use actix_web::{
         body::to_bytes,
@@ -38,8 +39,9 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
-        let response = test::call_service(&app, request).await;
+        set_mock_user_token(&request);
 
+        let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
         assert!(PathBuf::from(package_folder.path())
             .join(package_name)
@@ -65,6 +67,8 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
         let response = test::call_service(&app, request).await;
 
         assert!(response.status().is_client_error());
@@ -91,6 +95,8 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
         test::call_service(&app, request).await;
 
         let second_archive = TempArchive::builder().build()?;
@@ -98,6 +104,8 @@ mod tests {
         let second_stream: PackageStream = second_test_package.to_stream().await?;
         let second_request = test::TestRequest::put().uri("/package").to_request();
         let (second_request, _) = second_request.replace_payload(Payload::from(second_stream));
+        set_mock_user_token(&second_request);
+
         let second_response = test::call_service(&app, second_request).await;
 
         assert!(second_response.status().is_client_error());
@@ -136,6 +144,8 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
         test::call_service(&app, request).await;
 
         let request = test::TestRequest::get()
@@ -180,6 +190,8 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
         test::call_service(&app, request).await;
 
         let request = test::TestRequest::get()
@@ -220,6 +232,7 @@ mod tests {
         let stream: PackageStream = test_package.to_stream().await?;
         let request = test::TestRequest::put().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
         let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
         assert!(PathBuf::from(package_folder.path())

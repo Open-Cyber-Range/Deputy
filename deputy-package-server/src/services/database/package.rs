@@ -2,23 +2,24 @@ use super::Database;
 use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
 use crate::models::{
-    Category, NewCategory, NewPackageCategory, NewPackageVersion, Package, PackageCategory,
-    PackageVersion, Version,
+    Category, NewCategory, NewOwner, NewPackageCategory, NewPackageVersion, Owner, Owners, Package,
+    PackageCategory, PackageVersion, Version,
 };
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
-use anyhow::{Ok, Result};
+use anyhow::{anyhow, Ok, Result};
 use diesel::{OptionalExtension, RunQueryDsl};
 
 #[derive(Message)]
 #[rtype(result = "Result<PackageVersion>")]
-pub struct CreatePackage(pub NewPackageVersion);
+pub struct CreatePackage(pub NewPackageVersion, pub String);
 
 impl Handler<CreatePackage> for Database {
     type Result = ResponseActFuture<Self, Result<PackageVersion>>;
 
     fn handle(&mut self, msg: CreatePackage, _ctx: &mut Self::Context) -> Self::Result {
         let NewPackageVersion(new_package, mut new_version) = msg.0;
+        let requester_email = msg.1;
         let connection_result = self.get_connection();
 
         Box::pin(
@@ -29,10 +30,20 @@ impl Handler<CreatePackage> for Database {
                         .first(&mut connection)
                         .optional()?;
                     let existing_package = match optional_package {
-                        Some(package) => package,
+                        Some(package) => {
+                            let owners =
+                                Owners(Owner::by_package_id(package.id).load(&mut connection)?);
+                            if !owners.contains_email(&requester_email) {
+                                return Err(anyhow!("Requester is not an owner of this package"));
+                            }
+                            package
+                        }
                         None => {
                             new_package.create_insert().execute(&mut connection)?;
-                            Package::by_id(new_package.id).first(&mut connection)?
+                            let package = Package::by_id(new_package.id).first(&mut connection)?;
+                            let package_owner = NewOwner::new(requester_email, package.id);
+                            package_owner.create_insert().execute(&mut connection)?;
+                            package
                         }
                     };
                     new_version.package_id = existing_package.id;

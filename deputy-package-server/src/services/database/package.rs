@@ -3,7 +3,7 @@ use crate::models::helpers::pagination::*;
 use crate::models::helpers::uuid::Uuid;
 use crate::models::{
     Category, NewCategory, NewOwner, NewPackageCategory, NewPackageVersion, Owner, Owners, Package,
-    PackageCategory, PackageVersion, Version,
+    PackageCategory, PackageVersion, PackageWithVersions, PackagesWithVersionsAndPages, Version,
 };
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
@@ -60,14 +60,14 @@ impl Handler<CreatePackage> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<Package>>")]
+#[rtype(result = "Result<PackagesWithVersionsAndPages>")]
 pub struct GetPackages {
     pub page: i64,
     pub per_page: i64,
 }
 
 impl Handler<GetPackages> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+    type Result = ResponseActFuture<Self, Result<PackagesWithVersionsAndPages>>;
 
     fn handle(&mut self, get_packages: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
         let connection_result = self.get_connection();
@@ -75,15 +75,32 @@ impl Handler<GetPackages> for Database {
         Box::pin(
             async move {
                 let mut connection = connection_result?;
-                let package = block(move || {
-                    let packages = Package::all()
+                let packages_with_versions_and_pages = block(move || {
+                    let packages_query_result = Package::all()
                         .paginate(get_packages.page)
                         .per_page(get_packages.per_page)
                         .load_and_count_pages(&mut connection)?;
-                    Ok(packages.0)
+
+                    let packages_with_versions_query_result = packages_query_result
+                        .0
+                        .iter()
+                        .map(|package| {
+                            let package_versions = package.versions().load(&mut connection)?;
+                            Ok(PackageWithVersions::from((
+                                package.clone(),
+                                package_versions,
+                            )))
+                        })
+                        .collect::<Result<Vec<PackageWithVersions>>>()?;
+
+                    Ok(PackagesWithVersionsAndPages::from((
+                        packages_with_versions_query_result,
+                        packages_query_result.1,
+                    )))
                 })
                 .await??;
-                Ok(package)
+
+                Ok(packages_with_versions_and_pages)
             }
             .into_actor(self),
         )

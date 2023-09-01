@@ -1,8 +1,11 @@
 import { Fetcher } from 'swr';
 import TOML from '@iarna/toml';
 import { getSession } from 'next-auth/react';
-import { Package, PackageWithVersions, Version } from '../interfaces/Package';
-import { compareVersions } from './sort';
+import {
+  Package,
+  PackagesWithVersionsAndPages,
+  Version,
+} from '../interfaces/Package';
 import { Project } from '../interfaces/Project';
 import {
   ModifiedSession,
@@ -11,30 +14,27 @@ import {
   TokenRest,
 } from '../interfaces/Token';
 
+import { compareVersions, sortPackagesByName } from './sort';
+
 export const packageFetcher: Fetcher<Package[], string> = async (...url) => {
   const response = await fetch(...url);
   return response.json();
 };
 
 export const packagesWithVersionsFetcher: Fetcher<
-  PackageWithVersions[],
+  PackagesWithVersionsAndPages,
   string
 > = async (...url) => {
-  const packages: Package[] = await fetch(...url).then(async (res) =>
-    res.json()
-  );
+  const packagesWithVersionsAndPages: PackagesWithVersionsAndPages =
+    await fetch(...url).then(async (res) => res.json());
 
-  return Promise.all(
-    packages.map(async (pkg) => {
-      const response = await fetch(`${url}/${pkg.name}/`);
+  packagesWithVersionsAndPages.packages.map((pkg) => {
+    return pkg.versions.sort(compareVersions);
+  });
 
-      const packageWithVersions: PackageWithVersions = {
-        ...pkg,
-        versions: (await response.json()).sort(compareVersions),
-      };
-      return packageWithVersions;
-    })
-  );
+  sortPackagesByName(packagesWithVersionsAndPages.packages);
+
+  return packagesWithVersionsAndPages;
 };
 
 export const packageVersionsFethcer: Fetcher<Version[], string> = async (

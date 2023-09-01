@@ -1,7 +1,9 @@
+/* eslint-disable react/button-has-type */
 import useSWR from 'swr';
 import { Card, Elevation } from '@blueprintjs/core';
 import Link from 'next/link';
 import useTranslation from 'next-translate/useTranslation';
+import { useState } from 'react';
 import { packagesWithVersionsFetcher } from '../utils/api';
 import { formatBytes, getLatestVersion } from '../utils';
 import styles from '../styles/PackageList.module.css';
@@ -9,11 +11,13 @@ import styles from '../styles/PackageList.module.css';
 const PackageListView = () => {
   const { t } = useTranslation('common');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLimit, setSelectedLimit] = useState(20);
+
   const { data: packageList, error } = useSWR(
-    '/api/v1/package',
+    `/api/v1/package?page=${currentPage}&limit=${selectedLimit}`,
     packagesWithVersionsFetcher
   );
-
   if (error) {
     return <div>{t('failedLoading')} </div>;
   }
@@ -25,7 +29,7 @@ const PackageListView = () => {
   return (
     <div className={styles.packageContainer}>
       <ul className={styles.noBullets}>
-        {packageList.map((deputyPackage) => {
+        {packageList.packages.map((deputyPackage) => {
           const latestVersion = getLatestVersion(deputyPackage);
           return (
             latestVersion && (
@@ -57,6 +61,47 @@ const PackageListView = () => {
           );
         })}
       </ul>
+
+      <div>
+        <label htmlFor="limit">
+          Items per page:
+          <select
+            id="limit"
+            value={selectedLimit}
+            onChange={(e) => {
+              setSelectedLimit(parseInt(e.target.value, 10));
+              setCurrentPage(1);
+            }}
+          >
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+
+        <button
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {currentPage} of {packageList.total_pages}
+        </span>
+
+        <button
+          onClick={() =>
+            setCurrentPage((prev) =>
+              Math.min(prev + 1, packageList.total_pages)
+            )
+          }
+          disabled={currentPage === packageList.total_pages}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

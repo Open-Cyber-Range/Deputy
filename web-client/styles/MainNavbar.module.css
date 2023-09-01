@@ -16,4 +16,33 @@
   flex-grow: 1;
   flex-direction: column;
   margin: 1rem;
+  position: relative;
+}
+
+.searchResults {
+  position: absolute;
+  top: 100%;
+  margin-left: 5rem;
+  max-width: 30rem;
+  width: 100%;
+  background-color: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.searchResults ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.searchResults li {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.searchResults li:hover {
+  background-color: #f4f4f4;
 }

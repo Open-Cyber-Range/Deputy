@@ -24,3 +24,28 @@ export function formatBytes(bytes: number, decimals = 2): string {
 
   return `${(bytes / k ** i).toFixed(dm)} ${sizes[i]}`;
 }
+
+export function extractAndRemoveTypeAndCategory(inputString: string): {
+  type: string | null;
+  categories: string | null;
+  remainingString: string;
+} {
+  const typeRegex = /type:(\w+)/;
+  const categoryRegex = /categories:([^ ]+)/;
+  let remainingString = inputString;
+  let type: string | null = null;
+  let categories: string | null = null;
+
+  const matchType = inputString.match(typeRegex);
+  if (matchType) {
+    [, type] = matchType;
+    remainingString = remainingString.replace(typeRegex, '').trim();
+  }
+
+  const matchCategory = inputString.match(categoryRegex);
+  if (matchCategory) {
+    [, categories] = matchCategory;
+    remainingString = remainingString.replace(categoryRegex, '').trim();
+  }
+  return { type, categories, remainingString };
+}

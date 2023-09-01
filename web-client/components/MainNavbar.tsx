@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import styles from '../styles/MainNavbar.module.css';
+import SearchBar from './SearchBar';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');
@@ -94,12 +95,7 @@ const MainNavbar = () => {
           </NavbarHeading>
           <NavbarDivider />
         </NavbarGroup>
-        <input
-          className={`bp4-input ${styles.searchbox}`}
-          type="search"
-          placeholder={t('searchbox')}
-          dir="auto"
-        />
+        <SearchBar />
         <NavbarGroup align="right">
           <Link href="/packages">{t('browseAllPackages')}</Link>
           <NavbarDivider />

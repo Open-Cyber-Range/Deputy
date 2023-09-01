@@ -42,3 +42,8 @@ impl VersionRest {
         }
     }
 }
+
+#[derive(Deserialize)]
+pub struct OwnerRest {
+    pub email: String,
+}

@@ -3,7 +3,7 @@ use crate::constants::{
     inspecting::DEFAULT_PACKAGE_PATH,
     DEFAULT_REGISTRY_NAME,
 };
-use clap::{ArgEnum, Args};
+use clap::{ArgEnum, Args, Subcommand};
 
 #[derive(ArgEnum, Clone, Debug)]
 pub enum UnpackLevel {
@@ -116,4 +116,32 @@ pub struct YankOptions {
     pub registry_name: String,
     #[clap(short, long, help = "Undo yank")]
     pub undo: bool,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum OwnerSubcommands {
+    Add {
+        user_email: String,
+        package_name: String,
+    },
+    Remove {
+        user_email: String,
+        package_name: String,
+    },
+    List {
+        package_name: String,
+    },
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct OwnerOptions {
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for versioning"
+    )]
+    pub registry_name: String,
+    #[clap(subcommand)]
+    pub subcommands: OwnerSubcommands,
 }

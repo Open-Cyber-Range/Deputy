@@ -1,5 +1,5 @@
 import useTranslation from 'next-translate/useTranslation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { packageFetcher, packagesWithVersionsFetcher } from '../utils/api';
@@ -9,13 +9,15 @@ import styles from '../styles/MainNavbar.module.css';
 const SearchBar = () => {
   const { t } = useTranslation('common');
   const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearchInput, setDebouncedSearchInput] = useState('');
   const { data: packageList } = useSWR(
     '/api/v1/package',
     packagesWithVersionsFetcher
   );
 
-  const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
-  let searchUrl = searchInput
+  const parsedSearchInput =
+    extractAndRemoveTypeAndCategory(debouncedSearchInput);
+  let searchUrl = debouncedSearchInput
     ? `/api/v1/search?search_term=${encodeURIComponent(
         parsedSearchInput.remainingString
       )}`
@@ -34,6 +36,16 @@ const SearchBar = () => {
   }
   const { data: searchResults } = useSWR(searchUrl, packageFetcher);
 
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setDebouncedSearchInput(searchInput);
+    }, 100);
+
+    return () => {
+      clearTimeout(debounceTimer);
+    };
+  }, [searchInput]);
+
   return (
     <>
       <input
@@ -44,7 +56,7 @@ const SearchBar = () => {
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
       />
-      {searchResults && searchInput && (
+      {searchResults && debouncedSearchInput && (
         <div className={styles.searchResults}>
           <ul>
             {searchResults.map((result) => {

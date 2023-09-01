@@ -17,7 +17,7 @@ import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import styles from '../styles/MainNavbar.module.css';
 import { packageFetcher, packagesWithVersionsFetcher } from '../utils/api';
-import { getLatestVersion } from '../utils';
+import { extractAndRemoveTypeAndCategory, getLatestVersion } from '../utils';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');
@@ -43,9 +43,25 @@ const MainNavbar = () => {
     '/api/v1/package',
     packagesWithVersionsFetcher
   );
-  const searchUrl = searchInput
-    ? `/api/v1/search?search_term=${encodeURIComponent(searchInput)}`
+
+  const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
+  let searchUrl = searchInput
+    ? `/api/v1/search?search_term=${encodeURIComponent(
+        parsedSearchInput.remainingString
+      )}`
     : null;
+  if (parsedSearchInput.type) {
+    if (searchUrl) {
+      searchUrl += `&type=${encodeURIComponent(parsedSearchInput.type)}`;
+    }
+  }
+  if (parsedSearchInput.categories) {
+    if (searchUrl) {
+      searchUrl += `&categories=${encodeURIComponent(
+        parsedSearchInput.categories
+      )}`;
+    }
+  }
   const { data: searchResults } = useSWR(searchUrl, packageFetcher);
 
   useEffect(() => {

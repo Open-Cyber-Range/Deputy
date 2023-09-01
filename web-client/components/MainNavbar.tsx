@@ -1,4 +1,3 @@
-import useSWR from 'swr';
 import {
   Navbar,
   NavbarGroup,
@@ -12,12 +11,11 @@ import {
 } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import styles from '../styles/MainNavbar.module.css';
-import { packageFetcher, packagesWithVersionsFetcher } from '../utils/api';
-import { extractAndRemoveTypeAndCategory, getLatestVersion } from '../utils';
+import SearchBar from './SearchBar';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');
@@ -38,31 +36,6 @@ const UserMenu = () => {
 const MainNavbar = () => {
   const { t } = useTranslation('common');
   const { data: session, update } = useSession();
-  const [searchInput, setSearchInput] = useState('');
-  const { data: packageList } = useSWR(
-    '/api/v1/package',
-    packagesWithVersionsFetcher
-  );
-
-  const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
-  let searchUrl = searchInput
-    ? `/api/v1/search?search_term=${encodeURIComponent(
-        parsedSearchInput.remainingString
-      )}`
-    : null;
-  if (parsedSearchInput.type) {
-    if (searchUrl) {
-      searchUrl += `&type=${encodeURIComponent(parsedSearchInput.type)}`;
-    }
-  }
-  if (parsedSearchInput.categories) {
-    if (searchUrl) {
-      searchUrl += `&categories=${encodeURIComponent(
-        parsedSearchInput.categories
-      )}`;
-    }
-  }
-  const { data: searchResults } = useSWR(searchUrl, packageFetcher);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -113,10 +86,6 @@ const MainNavbar = () => {
     </Button>
   );
 
-  if (!packageList) {
-    return null;
-  }
-
   return (
     <Navbar className={styles.navbar}>
       <div className={styles.navbar_container}>
@@ -126,38 +95,7 @@ const MainNavbar = () => {
           </NavbarHeading>
           <NavbarDivider />
         </NavbarGroup>
-        <input
-          className={`bp4-input ${styles.searchbox}`}
-          type="search"
-          placeholder={t('searchbox')}
-          dir="auto"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-        {searchResults && searchInput && (
-          <div className={styles.searchResults}>
-            <ul>
-              {searchResults.map((result) => {
-                const matchedPackage = packageList.find(
-                  (pkg) => pkg.name === result.name
-                );
-                if (matchedPackage) {
-                  const latestVersion = getLatestVersion(matchedPackage);
-                  return (
-                    <li key={result.id}>
-                      <Link
-                        href={`/packages/${result.name}/${latestVersion?.version}`}
-                      >
-                        {result.name}
-                      </Link>
-                    </li>
-                  );
-                }
-                return null;
-              })}
-            </ul>
-          </div>
-        )}
+        <SearchBar />
         <NavbarGroup align="right">
           <Link href="/packages">{t('browseAllPackages')}</Link>
           <NavbarDivider />

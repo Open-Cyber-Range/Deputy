@@ -1,6 +1,5 @@
-/* eslint-disable react/button-has-type */
 import useSWR from 'swr';
-import { Card, Elevation } from '@blueprintjs/core';
+import { Button, Card, Elevation, HTMLSelect } from '@blueprintjs/core';
 import Link from 'next/link';
 import useTranslation from 'next-translate/useTranslation';
 import { useState } from 'react';
@@ -28,6 +27,23 @@ const PackageListView = () => {
 
   return (
     <div className={styles.packageContainer}>
+      <div>
+        <HTMLSelect
+          id="limit"
+          value={selectedLimit}
+          iconName="caret-down"
+          onChange={(e) => {
+            setSelectedLimit(parseInt(e.target.value, 10));
+            setCurrentPage(1);
+          }}
+        >
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </HTMLSelect>
+      </div>
+
       <ul className={styles.noBullets}>
         {packageList.packages.map((deputyPackage) => {
           const latestVersion = getLatestVersion(deputyPackage);
@@ -62,45 +78,26 @@ const PackageListView = () => {
         })}
       </ul>
 
-      <div>
-        <label htmlFor="limit">
-          Items per page:
-          <select
-            id="limit"
-            value={selectedLimit}
-            onChange={(e) => {
-              setSelectedLimit(parseInt(e.target.value, 10));
-              setCurrentPage(1);
-            }}
-          >
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </select>
-        </label>
-
-        <button
+      <div className="flex flex-row justify-center gap-[1rem] mt-6">
+        <Button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
-        >
-          Previous
-        </button>
+          icon="chevron-left"
+        />
 
         <span>
-          Page {currentPage} of {packageList.total_pages}
+          {currentPage} / {packageList.total_pages}
         </span>
 
-        <button
+        <Button
           onClick={() =>
             setCurrentPage((prev) =>
               Math.min(prev + 1, packageList.total_pages)
             )
           }
           disabled={currentPage === packageList.total_pages}
-        >
-          Next
-        </button>
+          icon="chevron-right"
+        />
       </div>
     </div>
   );

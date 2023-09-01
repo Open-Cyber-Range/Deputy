@@ -371,21 +371,6 @@ impl From<String> for NewCategory {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PackagesWithPages {
-    pub packages: Vec<Package>,
-    pub total_pages: i64,
-}
-
-impl From<(Vec<Package>, i64)> for PackagesWithPages {
-    fn from((packages, total_pages): (Vec<Package>, i64)) -> Self {
-        Self {
-            packages,
-            total_pages,
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize)]
 pub struct PackageWithVersions {
     pub id: Uuid,

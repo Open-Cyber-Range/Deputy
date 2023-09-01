@@ -28,11 +28,6 @@ export type PackageWithVersions = {
   versions: Version[];
 };
 
-export type PackagesWithPages = {
-  packages: Package[];
-  total_pages: number;
-};
-
 export type PackagesWithVersionsAndPages = {
   packages: PackageWithVersions[];
   total_pages: number;

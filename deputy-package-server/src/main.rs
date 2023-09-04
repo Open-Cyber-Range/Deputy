@@ -82,13 +82,19 @@ async fn real_main() -> Result<()> {
                                                     get().to(download_file::<Database>),
                                                 )
                                                 .route(
-                                                    "/yank/{set_yank}",
-                                                    put().to(yank_version::<Database>),
-                                                )
-                                                .route(
                                                     "",
                                                     get().to(get_package_version::<Database>),
-                                                ),
+                                                )
+                                                .service(
+                                                    scope("")
+                                                    .route(
+                                                        "/yank/{set_yank}",
+                                                        put().to(yank_version::<Database>),
+                                                    )
+                                                        .wrap(
+                                                            LocalTokenAuthenticationMiddlewareFactory
+                                                        )
+                                                )
                                         ),
                                 )
                                 .route("", get().to(get_all_packages::<Database>))

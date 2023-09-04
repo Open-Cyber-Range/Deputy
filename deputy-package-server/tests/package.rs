@@ -18,7 +18,7 @@ mod tests {
     };
     use deputy_package_server::{
         routes::package::{add_package, download_file, download_package, yank_version},
-        test::database::MockDatabase,
+        test::{database::MockDatabase, middleware::MockTokenMiddlewareFactory},
     };
     use std::path::PathBuf;
 
@@ -221,7 +221,8 @@ mod tests {
                 .route(
                     "/package/{package_name}/{version}/yank/{set_yank}",
                     put().to(yank_version::<MockDatabase>),
-                ),
+                )
+                .wrap(MockTokenMiddlewareFactory),
         )
         .await;
 
@@ -242,6 +243,7 @@ mod tests {
 
         let uri = format!("/package/{}/{}/yank/true", package_name, package_version);
         let request = test::TestRequest::put().uri(uri.as_str()).to_request();
+        set_mock_user_token(&request);
         let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
         let body = to_bytes(response.into_body()).await.unwrap();

@@ -193,10 +193,12 @@ impl Client {
             .api_base_url
             .join("api/v1/package/")?
             .join(format!("{name}/{version}/yank/{set_yank}").as_str())?;
-        let mut response = self
+        let mut client_request = self
             .client
             .put(put_uri.to_string())
-            .timeout(std::time::Duration::from_secs(100))
+            .timeout(std::time::Duration::from_secs(100));
+        self.add_token_to_request(&mut client_request)?;
+        let mut response = client_request
             .send()
             .await
             .map_err(|error| anyhow!("Failed to yank version: {:?}", error))?;

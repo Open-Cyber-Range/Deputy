@@ -170,14 +170,20 @@ impl TestPackageServer {
                                                             get().to(download_file::<MockDatabase>),
                                                         )
                                                         .route(
-                                                            "/yank/{set_yank}",
-                                                            put().to(yank_version::<MockDatabase>),
-                                                        )
-                                                        .route(
                                                             "",
                                                             get().to(get_package_version::<
                                                                 MockDatabase,
                                                             >),
+                                                        )
+                                                        .service(
+                                                            scope("")
+                                                                .route(
+                                                                    "/yank/{set_yank}",
+                                                                    put().to(yank_version::<
+                                                                        MockDatabase,
+                                                                    >),
+                                                                )
+                                                                .wrap(MockTokenMiddlewareFactory),
                                                         ),
                                                 ),
                                         )

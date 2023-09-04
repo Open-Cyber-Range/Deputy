@@ -60,7 +60,7 @@ const SearchBar = () => {
         <div className={styles.searchResults}>
           <ul>
             {searchResults.map((result) => {
-              const matchedPackage = packageList?.find(
+              const matchedPackage = packageList?.packages?.find(
                 (pkg) => pkg.name === result.name
               );
               if (matchedPackage) {

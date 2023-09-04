@@ -67,7 +67,7 @@ where
     fn walk_ast<'b>(&'b self, mut out: AstPass<'_, 'b, Mysql>) -> QueryResult<()> {
         out.push_sql("SELECT *, COUNT(*) OVER () FROM (");
         self.query.walk_ast(out.reborrow())?;
-        out.push_sql(") t LIMIT ");
+        out.push_sql(") t ORDER BY name ASC LIMIT ");
         out.push_bind_param::<BigInt, _>(&self.per_page)?;
         out.push_sql(" OFFSET ");
         out.push_bind_param::<BigInt, _>(&self.offset)?;

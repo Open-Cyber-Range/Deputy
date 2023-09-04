@@ -19,6 +19,16 @@ export type Version = {
   updated_at: string;
 };
 
-export type PackageWithVersions = Package & {
+export type PackageWithVersions = {
+  id: string;
+  name: string;
+  description: string;
+  readme_html: string;
+  created_at: string;
   versions: Version[];
+};
+
+export type PackagesWithVersionsAndPages = {
+  packages: PackageWithVersions[];
+  total_pages: number;
 };

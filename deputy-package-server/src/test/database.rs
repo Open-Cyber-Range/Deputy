@@ -1,7 +1,7 @@
 use crate::models::helpers::uuid::Uuid;
 use crate::models::{
     Category, NewCategory, NewOwner, NewPackageVersion, Owner, Owners, Package, PackageVersion,
-    Version,
+    PackageWithVersions, PackagesWithVersionsAndPages, Version,
 };
 use crate::services::database::owner::{AddOwner, DeleteOwner, GetOwners};
 use crate::services::database::package::{
@@ -111,15 +111,33 @@ impl Handler<CreatePackage> for MockDatabase {
 }
 
 impl Handler<GetPackages> for MockDatabase {
-    type Result = ResponseActFuture<Self, Result<Vec<Package>>>;
+    type Result = ResponseActFuture<Self, Result<PackagesWithVersionsAndPages>>;
 
     fn handle(&mut self, _msg: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
         Box::pin(
             async move {}
                 .into_actor(self)
                 .map(move |_, mock_database, _| {
-                    let packages = mock_database.packages.values().cloned().collect();
-                    Ok(packages)
+                    let packages: Vec<Package> = mock_database.packages.values().cloned().collect();
+
+                    let packages_with_versions: Vec<PackageWithVersions> = packages
+                        .into_iter()
+                        .map(|package| {
+                            let versions = mock_database
+                                .package_versions
+                                .get(&package.id)
+                                .ok_or(anyhow::anyhow!("Package not found"))?
+                                .to_owned();
+                            Ok(PackageWithVersions::from((package, versions)))
+                        })
+                        .collect::<Result<Vec<PackageWithVersions>>>()?;
+
+                    let packages_with_versions_and_pages = PackagesWithVersionsAndPages::from((
+                        packages_with_versions,
+                        rand::random::<i64>(),
+                    ));
+
+                    Ok(packages_with_versions_and_pages)
                 }),
         )
     }

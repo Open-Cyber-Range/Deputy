@@ -1,4 +1,4 @@
-## Deputy
+# Deputy
 
 Deputy is a Digital Library for cybersecurity exercise artifacts. Deputy functionality is
 divided into 3 categories:
@@ -56,7 +56,7 @@ Deputy package server uses a MySQL database for saving metadata of packages. Def
 
 For local testing, change the URL of the database in `deputy-package-server/example-config.yml` from `mariadb` to `127.0.0.1`, remove previous containers, if necessary.
 
-Get deputy-package-server running with 
+Get deputy-package-server running with
 `cargo run -p deputy-package-server --  deputy-package-server/example-config.yml`
 
 For front end, run

@@ -9,7 +9,7 @@ use crate::services::database::package::{
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::Category,
+    models::{Category, PackagesWithVersionsAndPages},
     AppState,
 };
 use actix::{Actor, Handler};
@@ -171,12 +171,12 @@ pub struct PackageQuery {
 pub async fn get_all_packages<T>(
     app_state: Data<AppState<T>>,
     query: Query<PackageQuery>,
-) -> Result<Json<Vec<crate::models::Package>>, Error>
+) -> Result<Json<PackagesWithVersionsAndPages>, Error>
 where
     T: Actor + Handler<GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
 {
-    let packages = app_state
+    let packages_with_pages = app_state
         .database_address
         .send(GetPackages {
             page: query.page as i64,
@@ -191,8 +191,9 @@ where
             error!("Failed to get all packages: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    Ok(Json(packages))
+    Ok(Json(packages_with_pages))
 }
+
 #[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Debug, Default)]

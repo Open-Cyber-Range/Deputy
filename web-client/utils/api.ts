@@ -14,7 +14,7 @@ import {
   TokenRest,
 } from '../interfaces/Token';
 
-import { compareVersions, sortPackagesByName } from './sort';
+import { compareVersions } from './sort';
 
 export const packageFetcher: Fetcher<Package[], string> = async (...url) => {
   const response = await fetch(...url);
@@ -31,8 +31,6 @@ export const packagesWithVersionsFetcher: Fetcher<
   packagesWithVersionsAndPages.packages.map((pkg) => {
     return pkg.versions.sort(compareVersions);
   });
-
-  sortPackagesByName(packagesWithVersionsAndPages.packages);
 
   return packagesWithVersionsAndPages;
 };

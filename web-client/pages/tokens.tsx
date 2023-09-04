@@ -10,7 +10,6 @@ import {
   H3,
   H5,
   HTMLTable,
-  Icon,
   InputGroup,
   OverlayToaster,
   Position,
@@ -125,8 +124,10 @@ const Tokens: NextPage = () => {
                     elevation={Elevation.TWO}
                   >
                     <div className="flex items-center text-danger">
-                      <Icon icon="warning-sign" className="mr-2" />
-                      <p>{t('apiTokenCopyWarning')}</p>
+                      <Callout
+                        intent="warning"
+                        title={t('apiTokenCopyWarning')}
+                      />
                     </div>
                     <div className="mt-5 flex flex-row justify-between items-center w-full">
                       <H5 className="m-0 text-ellipsis">{token.name}</H5>

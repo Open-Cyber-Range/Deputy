@@ -217,7 +217,7 @@ impl Package {
         let package_content = Content::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
         Ok(PackageMetadata {
-            name: package_body.name,
+            name: package_body.name.to_lowercase(),
             package_type: package_content.content_type,
             version: package_body.version,
             description: package_body.description,

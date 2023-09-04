@@ -35,7 +35,7 @@ impl From<NewPackageVersion> for PackageVersion {
             created_at: NaiveDateTime::MAX,
             updated_at: NaiveDateTime::MAX,
             deleted_at: None,
-            name: new_package.name,
+            name: new_package.name.to_lowercase(),
         };
         let version = Version {
             id: Uuid::random().to_owned(),
@@ -133,7 +133,7 @@ impl Handler<GetPackageByNameAndVersion> for MockDatabase {
         msg: GetPackageByNameAndVersion,
         _ctx: &mut Self::Context,
     ) -> Self::Result {
-        let name = msg.name;
+        let name = msg.name.to_lowercase();
         let version_value = msg.version;
         Box::pin(async move { (name, version_value) }.into_actor(self).map(
             move |(name, version_value), mock_database, _| {
@@ -162,7 +162,7 @@ impl Handler<GetVersionsByPackageName> for MockDatabase {
     type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
 
     fn handle(&mut self, msg: GetVersionsByPackageName, _ctx: &mut Self::Context) -> Self::Result {
-        let name = msg.0;
+        let name = msg.0.to_lowercase();
         Box::pin(
             async move { name }
                 .into_actor(self)
@@ -197,7 +197,7 @@ impl Handler<CreateCategory> for MockDatabase {
             move |new_category, mock_database, _| {
                 let category = Category {
                     id: new_category.id,
-                    name: new_category.name,
+                    name: new_category.name.to_lowercase(),
                     created_at: Default::default(),
                     updated_at: Default::default(),
                     deleted_at: None,
@@ -229,9 +229,10 @@ impl Handler<AddOwner> for MockDatabase {
 
     fn handle(&mut self, msg: AddOwner, _ctx: &mut Self::Context) -> Self::Result {
         let AddOwner {
-            package_name,
+            mut package_name,
             email,
         } = msg;
+        package_name = package_name.to_lowercase();
 
         Box::pin(
             async move { email }
@@ -261,7 +262,7 @@ impl Handler<GetOwners> for MockDatabase {
                 let package = mock_database
                     .packages
                     .values()
-                    .find(|package| package.name == package_name)
+                    .find(|package| package.name == package_name.to_lowercase())
                     .ok_or(anyhow::anyhow!("Mock Package not found"))?;
 
                 let owners = mock_database
@@ -286,7 +287,8 @@ impl Handler<DeleteOwner> for MockDatabase {
     type Result = ResponseActFuture<Self, Result<String>>;
 
     fn handle(&mut self, delete_owners: DeleteOwner, _ctx: &mut Self::Context) -> Self::Result {
-        let DeleteOwner(package_name, owner_email) = delete_owners;
+        let DeleteOwner(mut package_name, owner_email) = delete_owners;
+        package_name = package_name.to_lowercase();
 
         Box::pin(
             async move {}

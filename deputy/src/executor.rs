@@ -49,13 +49,20 @@ impl Executor {
         std::fs::read_to_string(token_file).ok()
     }
 
-    fn try_create_client(&self, registry_name: String) -> Result<Client> {
+    fn try_create_client(
+        &self,
+        registry_name: String,
+        override_token: Option<String>,
+    ) -> Result<Client> {
         let api_url = if let Some(registry) = self.configuration.registries.get(&registry_name) {
             registry.api.clone()
         } else {
             return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
-        let token = self.get_token_value(&registry_name);
+        let token = match override_token {
+            Some(token) => Some(token),
+            None => self.get_token_value(&registry_name),
+        };
 
         Client::try_new(api_url, token)
     }
@@ -70,6 +77,15 @@ impl Executor {
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
+        let override_token: Option<String> = match options.token {
+            true => Some(
+                Input::<String>::new()
+                    .with_prompt("Token")
+                    .interact_text()?,
+            ),
+            false => None,
+        };
+
         let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -95,7 +111,7 @@ impl Executor {
                 "Creating client".to_string(),
             )))
             .await??;
-        let client = self.try_create_client(options.registry_name)?;
+        let client = self.try_create_client(options.registry_name, override_token)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -136,7 +152,7 @@ impl Executor {
                 "Registering the repository".to_string(),
             )))
             .await??;
-        let client = self.try_create_client(options.registry_name.clone())?;
+        let client = self.try_create_client(options.registry_name.clone(), None)?;
 
         let version = client
             .get_latest_matching_package(&options.package_name, &options.version_requirement)
@@ -178,7 +194,7 @@ impl Executor {
     }
 
     pub async fn checksum(&self, options: ChecksumOptions) -> Result<()> {
-        let client = self.try_create_client(options.registry_name.clone())?;
+        let client = self.try_create_client(options.registry_name.clone(), None)?;
         let version = client
             .get_latest_matching_package(&options.package_name, &options.version_requirement)
             .await?
@@ -238,7 +254,7 @@ impl Executor {
     }
 
     pub async fn normalize_version(&self, options: NormalizeVersionOptions) -> Result<()> {
-        let client = self.try_create_client(options.registry_name.clone())?;
+        let client = self.try_create_client(options.registry_name.clone(), None)?;
         let version = client
             .get_latest_matching_package(&options.package_name, &options.version_requirement)
             .await?
@@ -258,7 +274,15 @@ impl Executor {
     }
 
     pub async fn yank(&self, options: YankOptions) -> Result<()> {
-        let client = self.try_create_client(options.registry_name.clone())?;
+        let override_token: Option<String> = match options.token {
+            true => Some(
+                Input::<String>::new()
+                    .with_prompt("Token")
+                    .interact_text()?,
+            ),
+            false => None,
+        };
+        let client = self.try_create_client(options.registry_name.clone(), override_token)?;
         let set_yank = match &options.undo {
             true => "false",
             false => "true",
@@ -289,7 +313,7 @@ impl Executor {
         user_email: String,
         package_name: String,
     ) -> Result<()> {
-        let client = self.try_create_client(owner_options.registry_name)?;
+        let client = self.try_create_client(owner_options.registry_name, None)?;
         client.add_owner(&package_name, &user_email).await?;
 
         Ok(())
@@ -301,7 +325,7 @@ impl Executor {
         user_email: String,
         package_name: String,
     ) -> Result<()> {
-        let client = self.try_create_client(owner_options.registry_name)?;
+        let client = self.try_create_client(owner_options.registry_name, None)?;
         client.delete_owner(&package_name, &user_email).await?;
 
         Ok(())
@@ -312,7 +336,7 @@ impl Executor {
         owner_options: OwnerOptions,
         package_name: String,
     ) -> Result<()> {
-        let client = self.try_create_client(owner_options.registry_name)?;
+        let client = self.try_create_client(owner_options.registry_name, None)?;
         let owners = client.list_owners(&package_name).await?;
 
         println!("{}", owners.join("\n"));

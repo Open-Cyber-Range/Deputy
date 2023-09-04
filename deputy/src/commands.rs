@@ -67,6 +67,8 @@ pub struct PublishOptions {
         help = "Registry to use for publishing"
     )]
     pub registry_name: String,
+    #[clap(short = 'T', long, help = "Override the login token")]
+    pub token: bool,
 }
 
 #[derive(Debug, Args)]
@@ -116,6 +118,8 @@ pub struct YankOptions {
     pub registry_name: String,
     #[clap(short, long, help = "Undo yank")]
     pub undo: bool,
+    #[clap(short = 'T', long, help = "Override the login token")]
+    pub token: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]

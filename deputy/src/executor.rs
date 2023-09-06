@@ -92,7 +92,17 @@ impl Executor {
                 "Finding toml".to_string(),
             )))
             .await??;
-        let toml_path = find_toml(current_dir()?)?;
+
+        let toml_path = match options.path {
+            Some(path) => {
+                let path = PathBuf::from(path).join("package.toml");
+                if !path.is_file() {
+                    return Err(anyhow!("Could not find package.toml"));
+                }
+                path
+            }
+            None => find_toml(current_dir()?)?,
+        };
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(

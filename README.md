@@ -62,4 +62,5 @@ Get deputy-package-server running with
 For front end, run
 `yarn dev`
 
-If there are no test packages showing, you need to first upload them with `deputy publish` inside the test package folder.
+If there are no test packages showing, you need to first upload them with `deputy publish` inside the test package folder or use `deputy publish -p <package_path>` to specify the package path.
+

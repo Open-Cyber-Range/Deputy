@@ -69,6 +69,8 @@ pub struct PublishOptions {
     pub registry_name: String,
     #[clap(short = 'T', long, help = "Override the login token")]
     pub token: bool,
+    #[clap(short, long, help = "Path to the package to publish")]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Args)]

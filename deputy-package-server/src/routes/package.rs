@@ -27,7 +27,7 @@ use deputy_library::{
     validation::{validate_name, validate_version_semantic},
 };
 use futures::{Stream, StreamExt};
-use log::error;
+use log::{debug, error};
 use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_with::{formats::CommaSeparator, StringWithSeparator};
@@ -382,6 +382,7 @@ where
 pub async fn yank_version<T>(
     path_variables: Path<(String, String, String)>,
     app_state: Data<AppState<T>>,
+    user_info: UserTokenInfo,
 ) -> Result<Json<crate::models::Version>, Error>
 where
     T: Actor + Handler<UpdateVersionMsg> + Handler<GetPackageByNameAndVersion>,
@@ -418,5 +419,9 @@ where
             error!("Failed to update version: {error}");
             ServerResponseError(PackageServerError::VersionUpdate.into())
         })?;
+    debug!(
+        "Package {package_name} was yanked by {owner_email}",
+        owner_email = user_info.email
+    );
     Ok(Json(response))
 }

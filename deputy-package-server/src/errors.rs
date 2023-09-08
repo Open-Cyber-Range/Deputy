@@ -51,6 +51,8 @@ pub enum PackageServerError {
     OwnerRemove,
     #[error("Can not remove the last owner of a package")]
     OwnerRemoveLast,
+    #[error("Failed to get path parameters")]
+    PathParameters,
     #[error("Not authorized")]
     NotAuthorized,
 }

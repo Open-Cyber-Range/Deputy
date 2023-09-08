@@ -37,7 +37,8 @@ pub struct PackageMetadata {
 impl PackageMetadata {
     pub async fn readme_html(&self, package_base_path: PathBuf) -> Result<Option<String>> {
         let readme_path = self.readme_path.clone();
-        let package_path = package_base_path.join(&self.name).join(&self.version);
+        let package_path_end = Package::normalize_file_path(&self.name, &self.version);
+        let package_path = package_base_path.join(package_path_end);
 
         if let Some(mut archive_stream) =
             ArchiveStreamer::try_new(package_path, readme_path.into())?
@@ -102,17 +103,18 @@ impl PackageMetadata {
 pub struct PackageFile(pub File, pub Option<TempPath>);
 
 impl PackageFile {
-    fn save(&self, package_folder: &str, name: &str, version: &str) -> Result<()> {
-        let package_folder_path: PathBuf = [&package_folder, &name].iter().collect();
-        fs::create_dir_all(&package_folder_path)?;
-        let final_file_path: PathBuf = package_folder_path.join(version);
+    fn save(&self, save_path: &PathBuf) -> Result<()> {
+        let package_folder_path = save_path
+            .parent()
+            .ok_or_else(|| anyhow!("Could not get parent path from save path: {:?}", save_path))?;
+        fs::create_dir_all(package_folder_path)?;
         let original_path: PathBuf = self
             .1
             .as_ref()
             .ok_or_else(|| anyhow!("Temporary file path not found"))?
             .to_path_buf();
 
-        fs::copy(original_path, final_file_path)?;
+        fs::copy(original_path, save_path)?;
         Ok(())
     }
 
@@ -184,9 +186,16 @@ impl Package {
         Self { metadata, file }
     }
 
+    pub fn normalize_file_path(name: &str, version: &str) -> PathBuf {
+        PathBuf::from(name.to_lowercase()).join(version.to_lowercase())
+    }
+
     pub fn save(&self, package_folder: &str) -> Result<()> {
-        self.file
-            .save(package_folder, &self.metadata.name, &self.metadata.version)?;
+        let path = PathBuf::from(package_folder).join(Package::normalize_file_path(
+            &self.metadata.name,
+            &self.metadata.version,
+        ));
+        self.file.save(&path)?;
 
         Ok(())
     }
@@ -208,7 +217,7 @@ impl Package {
         let package_content = Content::create_from_toml(toml_path)?;
         let archive_file = File::open(archive_path)?;
         Ok(PackageMetadata {
-            name: package_body.name,
+            name: package_body.name.to_lowercase(),
             package_type: package_content.content_type,
             version: package_body.version,
             description: package_body.description,
@@ -360,9 +369,7 @@ mod tests {
         ]
         .iter()
         .collect();
-        package
-            .file
-            .save(&package_folder, test_name, test_version)?;
+        package.file.save(&expected_file_path)?;
 
         let mut created_file = File::open(expected_file_path)?;
         assert!(created_file.metadata().unwrap().is_file());

@@ -18,7 +18,8 @@ impl Handler<CreatePackage> for Database {
     type Result = ResponseActFuture<Self, Result<PackageVersion>>;
 
     fn handle(&mut self, msg: CreatePackage, _ctx: &mut Self::Context) -> Self::Result {
-        let NewPackageVersion(new_package, mut new_version) = msg.0;
+        let NewPackageVersion(mut new_package, mut new_version) = msg.0;
+        new_package.name = new_package.name.to_lowercase();
         let requester_email = msg.1;
         let connection_result = self.get_connection();
 
@@ -164,8 +165,8 @@ impl Handler<GetPackageByNameAndVersion> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let package: Package =
-                        Package::by_name(query_params.name).first(&mut connection)?;
+                    let package: Package = Package::by_name(query_params.name.to_lowercase())
+                        .first(&mut connection)?;
                     let package_version = package
                         .exact_version(query_params.version)
                         .first(&mut connection)?;
@@ -197,7 +198,7 @@ impl Handler<GetVersionsByPackageName> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let package = Package::by_name(query_params.0)
+                    let package = Package::by_name(query_params.0.to_lowercase())
                         .first(&mut connection)
                         .optional()?;
                     if let Some(package) = package {
@@ -222,7 +223,8 @@ impl Handler<CreateCategory> for Database {
     type Result = ResponseActFuture<Self, Result<Category>>;
 
     fn handle(&mut self, msg: CreateCategory, _ctx: &mut Self::Context) -> Self::Result {
-        let new_category: NewCategory = msg.0;
+        let mut new_category: NewCategory = msg.0;
+        new_category.name = new_category.name.to_lowercase();
         let package_id: Uuid = msg.1;
         let connection_result = self.get_connection();
 

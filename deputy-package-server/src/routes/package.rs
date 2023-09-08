@@ -152,8 +152,7 @@ where
     })?;
 
     let package_path = PathBuf::from(app_state.package_folder.clone())
-        .join(package_name)
-        .join(package_version);
+        .join(Package::normalize_file_path(package_name, package_version));
     NamedFile::open(package_path).map_err(|error| {
         error!("Failed to open the package: {error}");
         Error::from(error)
@@ -342,8 +341,7 @@ where
     let file_path_in_package = &path_variables.2;
 
     let package_path = PathBuf::from(&app_state.package_folder)
-        .join(package_name)
-        .join(package_version);
+        .join(Package::normalize_file_path(package_name, package_version));
 
     let archive_stream = ArchiveStreamer::try_new(package_path, file_path_in_package.into())
         .map_err(|error| {

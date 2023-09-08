@@ -9,6 +9,7 @@ use deputy_package_server::{
     middleware::authentication::{
         jwt::AuthenticationMiddlewareFactory,
         local_token::LocalTokenAuthenticationMiddlewareFactory,
+        owner::OwnerAuthenticationMiddlewareFactory,
     },
     routes::{
         apitoken::{create_api_token, delete_api_token, get_all_api_tokens},
@@ -61,6 +62,7 @@ async fn real_main() -> Result<()> {
                                                 .route("", get().to(get_all_owners::<Database>))
                                                 .service(
                                                     scope("")
+                                                        .wrap(OwnerAuthenticationMiddlewareFactory)
                                                         .route("", post().to(add_owner::<Database>))
                                                         .route(
                                                             "/{owner_email}",
@@ -91,7 +93,8 @@ async fn real_main() -> Result<()> {
                                                         "/yank/{set_yank}",
                                                         put().to(yank_version::<Database>),
                                                     )
-                                                        .wrap(
+                                                    .wrap(OwnerAuthenticationMiddlewareFactory)
+                                                    .wrap(
                                                             LocalTokenAuthenticationMiddlewareFactory
                                                         )
                                                 )

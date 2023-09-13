@@ -151,3 +151,21 @@ pub struct OwnerOptions {
     #[clap(subcommand)]
     pub subcommands: OwnerSubcommands,
 }
+
+#[derive(Debug, Args)]
+pub struct CreateOptions {
+    #[clap(
+        short = 'p',
+        long,
+        default_value = DEFAULT_PACKAGE_PATH,
+        help = "Path for the package"
+    )]
+    pub package_path: String,
+    #[clap(
+        short,
+        long,
+        default_value = "0.1.0",
+        help = "Initial version for the package.toml"
+    )]
+    pub version: String,
+}

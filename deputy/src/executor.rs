@@ -1,19 +1,22 @@
 use crate::client::Client;
 use crate::commands::{
-    ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-    OwnerOptions, PublishOptions, YankOptions,
+    ChecksumOptions, CreateOptions, FetchOptions, InspectOptions, LoginOptions,
+    NormalizeVersionOptions, OwnerOptions, PublishOptions, YankOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
-    create_temporary_package_download_path, find_toml, get_download_target_name,
-    print_error_message, unpack_package_file,
+    condition_fields, create_default_readme, create_temporary_package_download_path,
+    exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
+    malware_fields, print_error_message, unpack_package_file, virtual_machine_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
 use anyhow::{anyhow, Ok, Result};
+use deputy_library::project::ContentType;
 use deputy_library::{package::Package, project::create_project_from_toml_path};
-use dialoguer::Input;
+use dialoguer::{Input, Select};
 use std::env::current_dir;
+use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::fs::rename;
 
@@ -350,6 +353,93 @@ impl Executor {
         let owners = client.list_owners(&package_name).await?;
 
         println!("{}", owners.join("\n"));
+        Ok(())
+    }
+    pub async fn create(&self, options: CreateOptions) -> Result<()> {
+        let package_path = options.package_path;
+        let package_name: String = Input::new()
+            .with_prompt("Name of the package")
+            .default("deputy_package".to_string())
+            .interact_text()?;
+        let package_dir = if package_path.is_empty() {
+            package_name
+        } else {
+            fs::create_dir(&package_name)?;
+            format!("{}/{}", package_path, package_name)
+        };
+
+        let src_dir = PathBuf::from(&package_dir).join("src");
+        fs::create_dir(src_dir)?;
+
+        let description: String = Input::new()
+            .with_prompt("Describe your package")
+            .default("".to_string())
+            .interact_text()?;
+
+        let author_name: String = Input::new()
+            .with_prompt("Author name")
+            .default("".to_string())
+            .interact_text()?;
+
+        let author_email: String = Input::new()
+            .with_prompt("Author email")
+            .default("your-email@example.com".to_string())
+            .interact_text()?;
+
+        let licenses = &["MIT", "Apache-2.0"];
+        let license_selection = Select::new()
+            .with_prompt("Choose a license")
+            .default(0)
+            .items(&licenses[..])
+            .interact()?;
+        let chosen_license = licenses[license_selection];
+
+        let content_type_strings = ContentType::all_variants();
+        let content_type_selection = Select::new()
+            .with_prompt("Select package content type")
+            .default(0)
+            .items(&content_type_strings)
+            .interact()
+            .unwrap();
+
+        let chosen_content_type = content_type_strings[content_type_selection];
+
+        let type_content = match chosen_content_type {
+            "vm" => virtual_machine_fields(),
+            "exercise" => exercise_fields(),
+            "condition" => condition_fields(),
+            "event" => inject_fields(),
+            "feature" => feature_fields(),
+            "malware" => malware_fields(),
+            "inject" => inject_fields(),
+            "other" => String::new(),
+            _ => Err(anyhow::anyhow!("Invalid content type"))?,
+        };
+
+        let content = format!(
+            r#"[package]
+name = "{{&package_name}}"
+description = "{description}"
+version = "{version}"
+authors = ["{author_name} <{author_email}>"]
+license = "{chosen_license}"
+readme  = "README.md"
+category = ""
+assets = [
+    []
+]
+
+[content]
+type = "{chosen_content_type}"
+{type_content}
+"#,
+            version = options.version,
+        );
+
+        fs::write(format!("{}/package.toml", package_dir), content)?;
+        println!("Initialized deputy package in {}", package_dir);
+        create_default_readme(&package_dir)?;
+
         Ok(())
     }
 }

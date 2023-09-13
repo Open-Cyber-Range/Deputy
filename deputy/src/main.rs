@@ -2,8 +2,8 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use deputy::{
     commands::{
-        ChecksumOptions, FetchOptions, InspectOptions, LoginOptions, NormalizeVersionOptions,
-        OwnerOptions, OwnerSubcommands, PublishOptions, YankOptions,
+        ChecksumOptions, CreateOptions, FetchOptions, InspectOptions, LoginOptions,
+        NormalizeVersionOptions, OwnerOptions, OwnerSubcommands, PublishOptions, YankOptions,
     },
     executor::Executor,
     helpers::print_error_message,
@@ -27,6 +27,7 @@ enum Commands {
     Login(LoginOptions),
     Yank(YankOptions),
     Owner(OwnerOptions),
+    Create(CreateOptions),
 }
 
 #[actix_rt::main]
@@ -59,6 +60,7 @@ async fn main() -> Result<()> {
                 executor.list_owners(options, package_name).await
             }
         },
+        Commands::Create(options) => executor.create(options).await,
     };
     if let Err(error) = result {
         print_error_message(error);

@@ -286,6 +286,42 @@ impl fmt::Display for ContentType {
     }
 }
 
+impl FeatureType {
+    pub fn all_variants() -> Vec<&'static str> {
+        vec!["service", "configuration", "artifact"]
+    }
+}
+
+impl ContentType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ContentType::VM => "VM",
+            ContentType::Feature => "Feature",
+            ContentType::Condition => "Condition",
+            ContentType::Inject => "Inject",
+            ContentType::Event => "Event",
+            ContentType::Malware => "Malware",
+            ContentType::Exercise => "Exercise",
+            ContentType::Other => "Other",
+        }
+    }
+}
+
+impl ContentType {
+    pub fn all_variants() -> Vec<&'static str> {
+        vec![
+            "feature",
+            "vm",
+            "condition",
+            "inject",
+            "event",
+            "malware",
+            "exercise",
+            "other",
+        ]
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
 #[serde(tag = "type", content = "value")]
 pub enum Preview {

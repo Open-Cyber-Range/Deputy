@@ -1,10 +1,13 @@
 use crate::{commands::UnpackLevel, constants::PACKAGE_TOML};
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Error, Ok, Result};
 use awc::error::PayloadError;
 use bytes::Bytes;
 use colored::Colorize;
 use deputy_library::archiver::{decompress_archive, unpack_archive};
+use deputy_library::project::FeatureType;
+use dialoguer::{Input, Select};
 use futures::{Stream, StreamExt};
+use std::fs;
 use std::path::Path;
 use std::{io::Write, path::PathBuf};
 use tempfile::TempDir;
@@ -100,6 +103,135 @@ pub async fn create_file_from_stream(
         file.write_all(&chunk?)?;
         file.flush()?;
     }
+
+    Ok(())
+}
+
+pub fn virtual_machine_fields() -> String {
+    let default_account: String = Input::new()
+        .with_prompt("Default Account Name")
+        .interact_text()
+        .unwrap();
+
+    format!(
+        r#"
+[virtual-machine]
+accounts = [{{ name = "{default_account}", password = "" }}]
+default_account = "{default_account}"
+operating_system = ""
+architecture = ""
+type = "OVA"
+file_path = ""
+readme_path = "README.md"
+"#,
+    )
+}
+
+pub fn feature_fields() -> String {
+    let feature_types = FeatureType::all_variants();
+    let feature_type_selection = Select::new()
+        .with_prompt("Select feature type")
+        .default(0)
+        .items(&feature_types)
+        .interact()
+        .unwrap();
+
+    let chosen_feature_type = feature_types[feature_type_selection];
+    set_feature_type(chosen_feature_type)
+}
+
+pub fn set_feature_type(feature_type: &str) -> String {
+    let action = if feature_type == "service" {
+        let action_input: String = Input::new()
+            .with_prompt("action")
+            .default("".to_string())
+            .interact_text()
+            .unwrap();
+        format!(
+            r#"action = "{}"
+"#,
+            action_input
+        )
+    } else {
+        "".to_string()
+    };
+
+    format!(
+        r#"
+[feature]
+type = "{}"
+{}"#,
+        feature_type, action
+    )
+}
+
+pub fn exercise_fields() -> String {
+    let file_path: String = Input::new()
+        .with_prompt("Exercise File Path")
+        .interact_text()
+        .unwrap();
+
+    format!(
+        r#"
+[exercise]
+file_path = "{path}"
+"#,
+        path = file_path
+    )
+}
+
+pub fn condition_fields() -> String {
+    let action_path: &str = "path to executable";
+
+    format!(
+        r#"[condition]
+action = "{action_path}"
+interval = "30"
+
+"#,
+        action_path = action_path,
+    )
+}
+
+pub fn inject_fields() -> String {
+    r#"[inject]
+action = "path to executable"
+
+"#
+    .to_string()
+}
+
+pub fn event_fields() -> String {
+    r#"[event]
+action = "path to executable"
+
+"#
+    .to_string()
+}
+
+pub fn malware_fields() -> String {
+    r#"[malware]
+action = "path to executable"
+
+"#
+    .to_string()
+}
+
+pub fn create_default_readme(package_dir: &str) -> Result<()> {
+    let readme_content = r#"# My Package
+
+This is the README file for my package.
+
+## Installation
+
+Provide installation instructions here.
+
+## Usage
+
+Provide usage instructions here.
+"#;
+
+    fs::write(format!("{}/README.md", package_dir), readme_content)?;
 
     Ok(())
 }

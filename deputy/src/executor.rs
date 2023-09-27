@@ -13,6 +13,7 @@ use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar}
 use actix::Actor;
 use anyhow::{anyhow, Ok, Result};
 use deputy_library::project::ContentType;
+use deputy_library::validation::validate_license;
 use deputy_library::{package::Package, project::create_project_from_toml_path};
 use dialoguer::{Input, Select};
 use std::env::current_dir;
@@ -386,13 +387,25 @@ impl Executor {
             .default("your-email@example.com".to_string())
             .interact_text()?;
 
-        let licenses = &["MIT", "Apache-2.0"];
+        let licenses = vec!["Custom SPDX Identifier", "MIT", "Apache-2.0"];
         let license_selection = Select::new()
             .with_prompt("Choose a license")
-            .default(0)
-            .items(&licenses[..])
+            .default(1)
+            .items(&licenses)
             .interact()?;
-        let chosen_license = licenses[license_selection];
+        let chosen_license = if licenses[license_selection] == "Custom SPDX Identifier" {
+            let user_input_license: String = Input::new()
+                .with_prompt("Type your license identifier (SPDX ID)")
+                .interact_text()?;
+            if user_input_license.trim().is_empty() {
+                String::from("MIT")
+            } else {
+                validate_license(user_input_license.clone())?;
+                user_input_license
+            }
+        } else {
+            String::from(licenses[license_selection])
+        };
 
         let content_type_strings = ContentType::all_variants();
         let content_type_selection = Select::new()

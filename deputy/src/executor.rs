@@ -362,7 +362,7 @@ impl Executor {
             .default("deputy_package".to_string())
             .interact_text()?;
         let package_dir = if package_path.is_empty() {
-            package_name
+            package_name.clone()
         } else {
             fs::create_dir(&package_name)?;
             format!("{}/{}", package_path, package_name)
@@ -378,7 +378,7 @@ impl Executor {
 
         let author_name: String = Input::new()
             .with_prompt("Author name")
-            .default("".to_string())
+            .default("John Doe".to_string())
             .interact_text()?;
 
         let author_email: String = Input::new()
@@ -418,15 +418,15 @@ impl Executor {
 
         let content = format!(
             r#"[package]
-name = "{{&package_name}}"
+name = "{package_name}"
 description = "{description}"
 version = "{version}"
-authors = ["{author_name} <{author_email}>"]
+authors = ["{author_name} {author_email}"]
 license = "{chosen_license}"
 readme  = "README.md"
 category = ""
 assets = [
-    []
+
 ]
 
 [content]

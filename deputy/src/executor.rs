@@ -7,7 +7,7 @@ use crate::configuration::Configuration;
 use crate::helpers::{
     condition_fields, create_default_readme, create_temporary_package_download_path,
     exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
-    malware_fields, print_error_message, unpack_package_file, virtual_machine_fields,
+    malware_fields, print_error_message, unpack_package_file, virtual_machine_fields, other_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
@@ -425,7 +425,7 @@ impl Executor {
             "feature" => feature_fields(),
             "malware" => malware_fields(),
             "inject" => inject_fields(),
-            "other" => String::new(),
+            "other" => other_fields(),
             _ => Err(anyhow::anyhow!("Invalid content type"))?,
         };
 

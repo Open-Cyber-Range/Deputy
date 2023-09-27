@@ -110,6 +110,7 @@ pub async fn create_file_from_stream(
 pub fn virtual_machine_fields() -> String {
     let default_account: String = Input::new()
         .with_prompt("Default Account Name")
+        .default("root".to_string())
         .interact_text()
         .unwrap();
 
@@ -217,19 +218,14 @@ action = "path to executable"
     .to_string()
 }
 
+pub fn other_fields() -> String {
+    r#"[other]"#
+        .to_string()
+}
+
+
 pub fn create_default_readme(package_dir: &str) -> Result<()> {
-    let readme_content = r#"# My Package
-
-This is the README file for my package.
-
-## Installation
-
-Provide installation instructions here.
-
-## Usage
-
-Provide usage instructions here.
-"#;
+    let readme_content = r#"This is readme file"#;
 
     fs::write(format!("{}/README.md", package_dir), readme_content)?;
 

@@ -365,8 +365,15 @@ impl Executor {
         let package_dir = if package_path.is_empty() {
             package_name.clone()
         } else {
-            fs::create_dir(&package_name)?;
-            format!("{}/{}", package_path, package_name)
+            let package_dir = format!("{}/{}", package_path, package_name);
+            if fs::metadata(&package_dir).is_ok() {
+                return Err(anyhow!(
+                    "A folder with the name '{}' already exists.",
+                    package_name
+                ));
+            }
+            fs::create_dir(&package_dir)?;
+            package_dir
         };
 
         let src_dir = PathBuf::from(&package_dir).join("src");

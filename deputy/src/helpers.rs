@@ -219,10 +219,8 @@ action = "path to executable"
 }
 
 pub fn other_fields() -> String {
-    r#"[other]"#
-        .to_string()
+    r#"[other]"#.to_string()
 }
-
 
 pub fn create_default_readme(package_dir: &str) -> Result<()> {
     let readme_content = r#"This is readme file"#;

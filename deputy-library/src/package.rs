@@ -40,8 +40,9 @@ impl PackageMetadata {
         let package_path_end = Package::normalize_file_path(&self.name, &self.version);
         let package_path = package_base_path.join(package_path_end);
 
+        let mut archive = ArchiveStreamer::prepare_archive(package_path)?;
         if let Some(mut archive_stream) =
-            ArchiveStreamer::try_new(package_path, readme_path.into())?
+            ArchiveStreamer::try_new(&mut archive, readme_path.into())?
         {
             let mut readme_markdown_string = String::new();
             while let Some(bytes) = archive_stream.next().await {

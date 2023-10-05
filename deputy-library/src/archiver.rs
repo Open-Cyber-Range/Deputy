@@ -25,7 +25,6 @@ use std::{
     iter::Iterator,
     path::{Path, PathBuf},
     pin::Pin,
-    ptr::NonNull,
     task::{Context, Poll},
 };
 use tar::{Archive, Builder, Entry};
@@ -116,16 +115,20 @@ fn create_archive(
 
 pub struct ArchiveStreamer<'a> {
     pub file: Entry<'a, MultiGzDecoder<File>>,
-    _archiver: Archive<MultiGzDecoder<File>>,
     _search_path: PathBuf,
 }
 
 impl<'a> ArchiveStreamer<'a> {
+    pub fn prepare_archive(package_path: PathBuf) -> Result<Archive<MultiGzDecoder<File>>> {
+        let archive_file = File::open(package_path)?;
+        let parallel_decompressor = MultiGzDecoder::new(archive_file);
+        Ok(Archive::new(parallel_decompressor))
+    }
+
     pub fn populate_file(
-        mut archiver: NonNull<Archive<MultiGzDecoder<File>>>,
+        archiver: &'a mut Archive<MultiGzDecoder<File>>,
         search_path: &Path,
     ) -> Result<Option<Entry<'a, MultiGzDecoder<File>>>> {
-        let archiver = unsafe { archiver.as_mut() };
         for file in archiver.entries()? {
             let file = file?;
             if file.path()?.to_str() == search_path.as_os_str().to_str() {
@@ -136,20 +139,14 @@ impl<'a> ArchiveStreamer<'a> {
     }
 
     pub fn try_new(
-        package_path: PathBuf,
+        archiver: &'a mut Archive<MultiGzDecoder<File>>,
         search_path: PathBuf,
     ) -> Result<Option<Pin<Box<ArchiveStreamer<'a>>>>> {
-        let archive_file = File::open(package_path)?;
-
-        let parallel_decompressor = MultiGzDecoder::new(archive_file);
-        let archiver = Archive::new(parallel_decompressor);
-
-        if let Some(file) = ArchiveStreamer::populate_file(NonNull::from(&archiver), &search_path)?
-        {
+        if let Some(file) = ArchiveStreamer::populate_file(archiver, &search_path)? {
             let streamer = Self {
                 file,
                 // SAFETY Cannot be dropped until the stream is dropped
-                _archiver: archiver,
+                //_archiver: archiver,
                 _search_path: search_path,
             };
             return Ok(Some(Box::pin(streamer)));

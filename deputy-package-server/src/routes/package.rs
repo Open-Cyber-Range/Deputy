@@ -20,6 +20,7 @@ use actix_web::{
     Error, HttpResponse,
 };
 use anyhow::Result;
+use async_stream::try_stream;
 use deputy_library::archiver::ArchiveStreamer;
 use deputy_library::rest::VersionRest;
 use deputy_library::{
@@ -336,24 +337,31 @@ pub async fn download_file<T>(
 where
     T: Actor,
 {
-    let package_name = &path_variables.0;
+    let package_name = &path_variables.clone().0;
     let package_version = &path_variables.1;
-    let file_path_in_package = &path_variables.2;
+    let file_path_in_package = path_variables.clone().2;
 
     let package_path = PathBuf::from(&app_state.package_folder)
         .join(Package::normalize_file_path(package_name, package_version));
 
-    let archive_stream = ArchiveStreamer::try_new(package_path, file_path_in_package.into())
-        .map_err(|error| {
-            error!("Failed to open the package: {error}");
-            ServerResponseError(PackageServerError::FileNotFound.into())
-        })?
-        .ok_or_else(|| {
-            error!("File not found from the archive");
-            ServerResponseError(PackageServerError::FileNotFound.into())
-        })?;
+    let stream = try_stream! {
+        let mut archive = ArchiveStreamer::prepare_archive(package_path).unwrap();
+        let mut archive_stream = ArchiveStreamer::try_new(&mut archive, file_path_in_package.into())
+            .map_err(|error| {
+                error!("Failed to open the package: {error}");
+                ServerResponseError(PackageServerError::FileNotFound.into())
+            })?
+            .ok_or_else(|| {
+                error!("File not found from the archive");
+                ServerResponseError(PackageServerError::FileNotFound.into())
+            })?;
+        while let Some(row) = archive_stream.next().await {
+            yield row?;
+        }
+    };
+    let _: &dyn Stream<Item = Result<_, Error>> = &stream;
 
-    Ok(HttpResponse::Ok().streaming(archive_stream))
+    Ok(HttpResponse::Ok().streaming(Box::pin(stream)))
 }
 
 pub async fn get_package_version<T>(

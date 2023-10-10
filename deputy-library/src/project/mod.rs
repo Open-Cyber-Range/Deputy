@@ -45,7 +45,7 @@ impl Project {
                     return Err(anyhow!(
                         "Package.assets[{index}] is invalid.
                         Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
-                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", 755] or [\"files/file.sh\", \"/usr/local/bin/\"]"
+                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", \"755\"] or [\"files/file.sh\", \"/usr/local/bin/\"]"
                     ));
                 }
             }

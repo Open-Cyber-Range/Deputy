@@ -561,10 +561,7 @@ mod tests {
         let (file, project) = create_temp_file(toml_content)?;
 
         assert!(validate_package_toml(file.path()).is_ok());
-        assert_eq!(
-            project.clone().feature.unwrap().restarts,
-            default_restarts()
-        );
+        assert_eq!(project.clone().feature.unwrap().restarts, false);
 
         file.close()?;
         Ok(())

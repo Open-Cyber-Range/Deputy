@@ -153,18 +153,14 @@ pub enum FeatureType {
     Artifact,
 }
 
-pub(crate) fn default_restarts() -> Option<bool> {
-    Some(false)
-}
-
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Feature {
     #[serde(rename = "type", alias = "Type", alias = "TYPE")]
     pub feature_type: FeatureType,
     #[serde(alias = "Action", alias = "ACTION")]
     pub action: Option<String>,
-    #[serde(alias = "Restarts", alias = "RESTARTS", default = "default_restarts")]
-    pub restarts: Option<bool>,
+    #[serde(alias = "Restarts", alias = "RESTARTS", default)]
+    pub restarts: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
@@ -185,8 +181,8 @@ pub struct Condition {
 pub struct Inject {
     #[serde(alias = "Action", alias = "ACTION")]
     pub action: Option<String>,
-    #[serde(alias = "Restarts", alias = "RESTARTS", default = "default_restarts")]
-    pub restarts: Option<bool>,
+    #[serde(alias = "Restarts", alias = "RESTARTS", default)]
+    pub restarts: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

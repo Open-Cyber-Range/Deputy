@@ -45,7 +45,7 @@ impl Project {
                     return Err(anyhow!(
                         "Package.assets[{index}] is invalid.
                         Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
-                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", 755] or [\"files/file.sh\", \"/usr/local/bin/\"]"
+                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", \"755\"] or [\"files/file.sh\", \"/usr/local/bin/\"]"
                     ));
                 }
             }
@@ -153,12 +153,18 @@ pub enum FeatureType {
     Artifact,
 }
 
+pub(crate) fn default_restarts() -> Option<bool> {
+    Some(false)
+}
+
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Feature {
     #[serde(rename = "type", alias = "Type", alias = "TYPE")]
     pub feature_type: FeatureType,
     #[serde(alias = "Action", alias = "ACTION")]
     pub action: Option<String>,
+    #[serde(alias = "Restarts", alias = "RESTARTS", default = "default_restarts")]
+    pub restarts: Option<bool>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
@@ -179,6 +185,8 @@ pub struct Condition {
 pub struct Inject {
     #[serde(alias = "Action", alias = "ACTION")]
     pub action: Option<String>,
+    #[serde(alias = "Restarts", alias = "RESTARTS", default = "default_restarts")]
+    pub restarts: Option<bool>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

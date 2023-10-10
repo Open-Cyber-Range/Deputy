@@ -539,4 +539,34 @@ mod tests {
         validate_package_toml(file.path()).unwrap();
         file.close().unwrap();
     }
+
+    #[test]
+    fn restarts_field_is_assigned_default_value() -> Result<()> {
+        let toml_content = br#"
+            [package]
+            name = "my-restarting-feature"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+                ]
+            [content]
+            type = "feature"
+            [feature]
+            type = "service"
+            action = "installer/install_something.sh"
+            "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(file.path()).is_ok());
+        assert_eq!(
+            project.clone().feature.unwrap().restarts,
+            default_restarts()
+        );
+
+        file.close()?;
+        Ok(())
+    }
 }

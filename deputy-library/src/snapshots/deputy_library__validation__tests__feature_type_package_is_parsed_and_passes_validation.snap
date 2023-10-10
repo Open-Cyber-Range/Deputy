@@ -31,3 +31,4 @@ type = 'Feature'
 [feature]
 type = 'Configuration'
 action = 'ping 8.8.8.8'
+restarts = false

@@ -68,7 +68,7 @@ pub struct PublishOptions {
     )]
     pub registry_name: String,
     #[clap(short = 'T', long, help = "Override the login token")]
-    pub token: bool,
+    pub token: Option<String>,
     #[clap(short, long, help = "Path to the package to publish")]
     pub path: Option<String>,
 }
@@ -104,6 +104,8 @@ pub struct LoginOptions {
         help = "Registry to use for publishing"
     )]
     pub registry_name: String,
+    #[clap(short = 'T', long, help = "Set the login token as parameter")]
+    pub token: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -121,7 +123,7 @@ pub struct YankOptions {
     #[clap(short, long, help = "Undo yank")]
     pub undo: bool,
     #[clap(short = 'T', long, help = "Override the login token")]
-    pub token: bool,
+    pub token: Option<String>,
 }
 
 #[derive(Subcommand, Debug, Clone)]

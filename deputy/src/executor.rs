@@ -63,10 +63,7 @@ impl Executor {
         } else {
             return Err(anyhow::anyhow!("Registry not found in configuration"));
         };
-        let token = match override_token {
-            Some(token) => Some(token),
-            None => self.get_token_value(&registry_name),
-        };
+        let token = override_token.or_else(|| self.get_token_value(&registry_name));
 
         Client::try_new(api_url, token)
     }
@@ -81,15 +78,6 @@ impl Executor {
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
-        let override_token: Option<String> = match options.token {
-            true => Some(
-                Input::<String>::new()
-                    .with_prompt("Token")
-                    .interact_text()?,
-            ),
-            false => None,
-        };
-
         let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -125,7 +113,7 @@ impl Executor {
                 "Creating client".to_string(),
             )))
             .await??;
-        let client = self.try_create_client(options.registry_name, override_token)?;
+        let client = self.try_create_client(options.registry_name, options.token)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -278,25 +266,21 @@ impl Executor {
     }
 
     pub async fn login(&self, options: LoginOptions) -> Result<()> {
+        let token_value = match options.token {
+            Some(token) => token,
+            None => Input::<String>::new()
+                .report(false)
+                .with_prompt("Token")
+                .interact_text()?,
+        };
         let token_path = self.get_token_file(&options.registry_name)?;
-        let token_value = Input::<String>::new()
-            .with_prompt("Token")
-            .interact_text()?;
 
         std::fs::write(token_path, token_value)?;
         Ok(())
     }
 
     pub async fn yank(&self, options: YankOptions) -> Result<()> {
-        let override_token: Option<String> = match options.token {
-            true => Some(
-                Input::<String>::new()
-                    .with_prompt("Token")
-                    .interact_text()?,
-            ),
-            false => None,
-        };
-        let client = self.try_create_client(options.registry_name.clone(), override_token)?;
+        let client = self.try_create_client(options.registry_name.clone(), options.token)?;
         let set_yank = match &options.undo {
             true => "false",
             false => "true",

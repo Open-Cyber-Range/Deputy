@@ -55,6 +55,7 @@ impl Validate for Project {
         validate_version_semantic(self.package.version.clone())?;
         validate_vm_accounts(self.virtual_machine.clone())?;
         validate_license(self.package.license.clone())?;
+        self.validate_assets()?;
         Ok(())
     }
 }

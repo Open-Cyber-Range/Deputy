@@ -1,5 +1,6 @@
 pub(crate) mod enums;
 
+use crate::constants::ASSETS_REQUIRED_PACKAGE_TYPES;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{anyhow, Ok, Result};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -33,7 +34,12 @@ pub struct Project {
 
 impl Project {
     pub fn validate_assets(&self) -> Result<()> {
-        let package_type: String = self.content.content_type.to_string();
+        let package_type = &self.content.content_type;
+
+        if !ASSETS_REQUIRED_PACKAGE_TYPES.contains(package_type) {
+            return Ok(());
+        }
+
         if let Some(assets) = &self.package.assets {
             if assets.is_empty() {
                 return Err(anyhow!(
@@ -43,10 +49,10 @@ impl Project {
             for (index, asset) in assets.iter().enumerate() {
                 if asset.len() < 2 {
                     return Err(anyhow!(
-                        "Package.assets[{index}] is invalid.
-                        Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
-                        E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", \"755\"] or [\"files/file.sh\", \"/usr/local/bin/\"]"
-                    ));
+                            "Package.assets[{index}] is invalid.
+                            Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
+                            E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", \"755\"] or [\"files/file.sh\", \"/usr/local/bin/\"]"
+                        ));
                 }
             }
         } else {
@@ -54,6 +60,9 @@ impl Project {
                 "Assets are required for '{package_type}' package type"
             ));
         }
+
+        Ok(())
+    }
         Ok(())
     }
 
@@ -82,31 +91,26 @@ impl Project {
                 if self.feature.is_none() {
                     return Err(anyhow!("Feature package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Condition => {
                 if self.condition.is_none() {
                     return Err(anyhow!("Condition package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Inject => {
                 if self.inject.is_none() {
                     return Err(anyhow!("Inject package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Event => {
                 if self.event.is_none() {
                     return Err(anyhow!("Event package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Malware => {
                 if self.malware.is_none() {
                     return Err(anyhow!("Malware package info not found"));
                 }
-                self.validate_assets()?;
             }
             ContentType::Exercise => {
                 if self.exercise.is_none() {

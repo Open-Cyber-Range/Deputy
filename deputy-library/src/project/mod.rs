@@ -63,6 +63,22 @@ impl Project {
 
         Ok(())
     }
+
+    pub fn validate_asset_files(&self, package_path: &Path) -> Result<()> {
+        if let Some(assets) = &self.package.assets {
+            for asset in assets {
+                let asset_path = package_path.join(&asset[0]);
+                if !asset_path.exists() {
+                    return Err(anyhow!(
+                        "Asset '{}' not found in package files",
+                        asset_path.display()
+                    ));
+                }
+            }
+        } else {
+            return Err(anyhow!("Package has no assets"));
+        }
+
         Ok(())
     }
 
@@ -122,6 +138,34 @@ impl Project {
                     return Err(anyhow!("Other package info not found"));
                 }
             }
+        }
+        Ok(())
+    }
+
+    pub fn validate_files(&self, package_path: &Path) -> Result<()> {
+        let readme_path = package_path.join(&self.package.readme);
+        if !readme_path.exists() {
+            return Err(anyhow!("Readme not found"));
+        }
+
+        if let Some(vm) = &self.virtual_machine {
+            let file_path = package_path.join(&vm.file_path);
+            if !file_path.exists() {
+                return Err(anyhow!("Virtual machine file not found"));
+            }
+        }
+
+        if ASSETS_REQUIRED_PACKAGE_TYPES.contains(&self.content.content_type) {
+            self.validate_asset_files(package_path)?;
+        }
+        Ok(())
+    }
+
+    pub fn print_inspect_message(&self, pretty: bool) -> Result<()> {
+        if pretty {
+            println!("{}", serde_json::to_string_pretty(&self)?);
+        } else {
+            println!("{}", serde_json::to_string(&self)?);
         }
         Ok(())
     }

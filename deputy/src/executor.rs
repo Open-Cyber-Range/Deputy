@@ -7,13 +7,13 @@ use crate::configuration::Configuration;
 use crate::helpers::{
     condition_fields, create_default_readme, create_temporary_package_download_path,
     exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
-    malware_fields, other_fields, print_error_message, unpack_package_file, virtual_machine_fields,
+    malware_fields, other_fields, unpack_package_file, virtual_machine_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
 use anyhow::{anyhow, Ok, Result};
 use deputy_library::project::ContentType;
-use deputy_library::validation::validate_license;
+use deputy_library::validation::{validate_license, Validate};
 use deputy_library::{package::Package, project::create_project_from_toml_path};
 use dialoguer::{Input, Select};
 use std::env::current_dir;
@@ -215,43 +215,12 @@ impl Executor {
             path => Path::new(path),
         };
         let toml_path = find_toml(package_path.to_path_buf())?;
-        let project = create_project_from_toml_path(&toml_path)?;
-        let readme_path = package_path.join(&project.package.readme);
-        if !readme_path.exists() {
-            print_error_message(anyhow!("Readme not found"));
-        } else if options.pretty {
-            println!("{}", serde_json::to_string_pretty(&project)?);
-        } else if let Some(vm) = &project.virtual_machine {
-            let file_path = package_path.join(&vm.file_path);
-            if !file_path.exists() {
-                print_error_message(anyhow!("Virtual machine file not found"));
-            } else {
-                println!("{}", serde_json::to_string(&project)?);
-            }
-        } else if project.feature.is_some()
-            || project.condition.is_some()
-            || project.event.is_some()
-            || project.inject.is_some()
-        {
-            if let Some(assets) = &project.package.assets {
-                let mut asset_paths: Vec<PathBuf> = Vec::new();
-                for asset in assets {
-                    let asset_path = package_path.join(&asset[0]);
-                    if !asset_path.exists() {
-                        print_error_message(anyhow!("Asset '{}' not found", asset_path.display()));
-                    } else {
-                        asset_paths.push(asset_path);
-                        println!("{}", serde_json::to_string(&project)?);
-                    }
-                }
-            } else {
-                print_error_message(anyhow!(
-                    "Package.Assets field is required for this Package Type"
-                ));
-            }
-        } else {
-            println!("{}", serde_json::to_string(&project)?);
-        }
+        let mut project = create_project_from_toml_path(&toml_path)?;
+
+        project.validate()?;
+        project.validate_files(package_path)?;
+
+        project.print_inspect_message(options.pretty)?;
         Ok(())
     }
 

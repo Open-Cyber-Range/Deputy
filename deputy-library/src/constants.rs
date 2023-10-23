@@ -1,3 +1,4 @@
+use crate::project::ContentType;
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
 use parse_duration::parse;
@@ -26,3 +27,11 @@ pub const PAYLOAD_CHUNK_SIZE: u64 = 8192;
 pub const INDEX_REPOSITORY_BRANCH: &str = "master";
 pub const INDEX_REPOSITORY_REMOTE: &str = "origin";
 pub const CONFIGURATION_FOLDER_PATH_ENV_KEY: &str = "DEPUTY_CONFIG_FOLDER";
+
+pub const ASSETS_REQUIRED_PACKAGE_TYPES: [ContentType; 5] = [
+    ContentType::Feature,
+    ContentType::Condition,
+    ContentType::Inject,
+    ContentType::Event,
+    ContentType::Malware,
+];

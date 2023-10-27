@@ -247,7 +247,7 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert!(response.status().is_success());
         let body = to_bytes(response.into_body()).await.unwrap();
-        let search_string = b"is_yanked\":true";
+        let search_string = b"isYanked\":true";
         assert!(body
             .windows(search_string.len())
             .any(|window| window == search_string));

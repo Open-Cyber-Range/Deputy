@@ -2,33 +2,33 @@ export type Package = {
   id: string;
   name: string;
   description: string;
-  readme_html: string;
-  created_at: string;
+  readmeHtml: string;
+  createdAt: string;
 };
 
 export type Version = {
   id: string;
   version: string;
   license: string;
-  is_yanked: boolean;
-  readme_path: string;
-  readme_html: string;
-  package_size: number;
+  isYanked: boolean;
+  readmePath: string;
+  readmeHtml: string;
+  packageSize: number;
   checksum: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type PackageWithVersions = {
   id: string;
   name: string;
   description: string;
-  readme_html: string;
-  created_at: string;
+  readmeHtml: string;
+  createdAt: string;
   versions: Version[];
 };
 
 export type PackagesWithVersionsAndPages = {
   packages: PackageWithVersions[];
-  total_pages: number;
+  totalPages: number;
 };

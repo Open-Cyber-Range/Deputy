@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VersionRest {
     pub id: Uuid,
     pub version: String,
@@ -44,6 +45,7 @@ impl VersionRest {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OwnerRest {
     pub email: String,
 }

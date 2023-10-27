@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
     Serialize,
 )]
 #[diesel(table_name = categories)]
+#[serde(rename_all = "camelCase")]
 pub struct Category {
     pub id: Uuid,
     pub name: String,
@@ -74,6 +75,7 @@ impl Category {
     Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
 )]
 #[diesel(table_name = categories)]
+#[serde(rename_all = "camelCase")]
 pub struct NewCategory {
     pub id: Uuid,
     pub name: String,
@@ -91,6 +93,7 @@ impl NewCategory {
 #[diesel(belongs_to(Package, foreign_key = package_id))]
 #[diesel(belongs_to(Category, foreign_key = category_id))]
 #[diesel(table_name = package_categories)]
+#[serde(rename_all = "camelCase")]
 pub struct NewPackageCategory {
     pub package_id: Uuid,
     pub category_id: Uuid,
@@ -108,6 +111,7 @@ impl NewPackageCategory {
 #[diesel(belongs_to(Package, foreign_key = package_id))]
 #[diesel(belongs_to(Category, foreign_key = category_id))]
 #[diesel(table_name = package_categories)]
+#[serde(rename_all = "camelCase")]
 pub struct PackageCategory {
     pub package_id: Uuid,
     pub category_id: Uuid,
@@ -170,6 +174,7 @@ impl PackageCategory {
 )]
 #[diesel(belongs_to(Package, foreign_key = package_id))]
 #[diesel(table_name = versions)]
+#[serde(rename_all = "camelCase")]
 pub struct Version {
     pub id: Uuid,
     pub package_id: Uuid,
@@ -222,6 +227,7 @@ impl Version {
     Serialize,
 )]
 #[diesel(table_name = packages)]
+#[serde(rename_all = "camelCase")]
 pub struct Package {
     pub id: Uuid,
     pub name: String,
@@ -286,6 +292,7 @@ pub struct PackageVersion(pub Package, pub Version);
     Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
 )]
 #[diesel(table_name = packages)]
+#[serde(rename_all = "camelCase")]
 pub struct NewPackage {
     pub id: Uuid,
     pub name: String,
@@ -302,6 +309,7 @@ impl NewPackage {
     Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
 )]
 #[diesel(table_name = versions)]
+#[serde(rename_all = "camelCase")]
 pub struct NewVersion {
     pub id: Uuid,
     pub version: String,
@@ -372,6 +380,7 @@ impl From<String> for NewCategory {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PackageWithVersions {
     pub id: Uuid,
     pub name: String,
@@ -395,6 +404,7 @@ impl From<(Package, Vec<Version>)> for PackageWithVersions {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PackagesWithVersionsAndPages {
     pub packages: Vec<PackageWithVersions>,
     pub total_pages: i64,

@@ -66,7 +66,7 @@ const PackageListView = () => {
                     {latestVersion.version}
                   </span>
                   <span className={styles.packageSize}>
-                    {formatBytes(latestVersion.package_size)}
+                    {formatBytes(latestVersion.packageSize)}
                   </span>
                   <div className={styles.description}>
                     {deputyPackage.description}
@@ -86,16 +86,14 @@ const PackageListView = () => {
         />
 
         <span>
-          {currentPage} / {packageList.total_pages}
+          {currentPage} / {packageList.totalPages}
         </span>
 
         <Button
           onClick={() =>
-            setCurrentPage((prev) =>
-              Math.min(prev + 1, packageList.total_pages)
-            )
+            setCurrentPage((prev) => Math.min(prev + 1, packageList.totalPages))
           }
-          disabled={currentPage === packageList.total_pages}
+          disabled={currentPage === packageList.totalPages}
           icon="chevron-right"
         />
       </div>

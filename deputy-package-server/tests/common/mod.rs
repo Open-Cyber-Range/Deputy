@@ -4,7 +4,7 @@ use actix::Actor;
 use actix_http::Payload;
 use actix_http::{HttpMessage, Request};
 use actix_web::web::{Bytes, Data};
-use actix_web::{test, web::put, App};
+use actix_web::{test, web::post, App};
 use anyhow::Result;
 use deputy_library::{
     package::{Package, PackageStream},
@@ -52,7 +52,7 @@ pub async fn upload_test_package(app_state: &Data<AppState<MockDatabase>>) -> Re
     let app = test::init_service(
         App::new()
             .app_data(app_state.clone())
-            .route("/package", put().to(add_package::<MockDatabase>)),
+            .route("/package", post().to(add_package::<MockDatabase>)),
     )
     .await;
 
@@ -61,7 +61,7 @@ pub async fn upload_test_package(app_state: &Data<AppState<MockDatabase>>) -> Re
     let package_name = test_package.metadata.name.clone();
 
     let stream: PackageStream = test_package.to_stream().await?;
-    let request = test::TestRequest::put().uri("/package").to_request();
+    let request = test::TestRequest::post().uri("/package").to_request();
     let (request, _) = request.replace_payload(Payload::from(stream));
     set_mock_user_token(&request);
     test::call_service(&app, request).await;

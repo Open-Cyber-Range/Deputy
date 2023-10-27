@@ -47,8 +47,8 @@ impl Client {
     }
 
     pub async fn upload_package(&self, stream: PackageStream, timeout: u64) -> Result<()> {
-        let put_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
-        let mut client_request = self.client.put(put_uri.to_string());
+        let post_uri = self.api_base_url.join(PACKAGE_UPLOAD_PATH)?;
+        let mut client_request = self.client.post(post_uri.to_string());
         self.add_token_to_request(&mut client_request)?;
 
         let mut response = client_request

@@ -8,7 +8,7 @@ mod tests {
     use actix_web::{
         body::to_bytes,
         test,
-        web::{get, put, scope},
+        web::{get, post, put, scope},
         App,
     };
     use anyhow::Result;
@@ -28,7 +28,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .route("/package", put().to(add_package::<MockDatabase>)),
+                .route("/package", post().to(add_package::<MockDatabase>)),
         )
         .await;
 
@@ -37,7 +37,7 @@ mod tests {
         let package_name = test_package.metadata.name.clone();
 
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
 
@@ -56,7 +56,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .route("/package", put().to(add_package::<MockDatabase>)),
+                .route("/package", post().to(add_package::<MockDatabase>)),
         )
         .await;
 
@@ -65,7 +65,7 @@ mod tests {
 
         test_package.metadata.checksum = "invalid".to_string();
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
 
@@ -85,7 +85,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .route("/package", put().to(add_package::<MockDatabase>)),
+                .route("/package", post().to(add_package::<MockDatabase>)),
         )
         .await;
 
@@ -93,7 +93,7 @@ mod tests {
         let test_package: Package = (&archive).try_into()?;
 
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
 
@@ -102,7 +102,7 @@ mod tests {
         let second_archive = TempArchive::builder().build()?;
         let second_test_package: Package = (&second_archive).try_into()?;
         let second_stream: PackageStream = second_test_package.to_stream().await?;
-        let second_request = test::TestRequest::put().uri("/package").to_request();
+        let second_request = test::TestRequest::post().uri("/package").to_request();
         let (second_request, _) = second_request.replace_payload(Payload::from(second_stream));
         set_mock_user_token(&second_request);
 
@@ -137,12 +137,12 @@ mod tests {
                                 .route("/download", get().to(download_package::<MockDatabase>)),
                         ),
                     )
-                    .route("", put().to(add_package::<MockDatabase>)),
+                    .route("", post().to(add_package::<MockDatabase>)),
             ),
         )
         .await;
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
 
@@ -183,12 +183,12 @@ mod tests {
                                 .route("/path/{tail:.*}", get().to(download_file::<MockDatabase>)),
                         ),
                     )
-                    .route("", put().to(add_package::<MockDatabase>)),
+                    .route("", post().to(add_package::<MockDatabase>)),
             ),
         )
         .await;
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
 
@@ -217,7 +217,7 @@ mod tests {
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .route("/package", put().to(add_package::<MockDatabase>))
+                .route("/package", post().to(add_package::<MockDatabase>))
                 .route(
                     "/package/{package_name}/{version}/yank/{set_yank}",
                     put().to(yank_version::<MockDatabase>),
@@ -231,7 +231,7 @@ mod tests {
         let package_name = test_package.metadata.name.clone();
         let package_version = test_package.metadata.version.clone();
         let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::put().uri("/package").to_request();
+        let request = test::TestRequest::post().uri("/package").to_request();
         let (request, _) = request.replace_payload(Payload::from(stream));
         set_mock_user_token(&request);
         let response = test::call_service(&app, request).await;

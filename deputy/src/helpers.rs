@@ -150,6 +150,7 @@ pub fn set_feature_type(feature_type: &str) -> String {
             .unwrap();
         format!(
             r#"action = "{}"
+            delete_action = ""
 "#,
             action_input
         )

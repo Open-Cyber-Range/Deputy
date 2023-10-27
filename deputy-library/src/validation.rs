@@ -567,4 +567,61 @@ mod tests {
         file.close()?;
         Ok(())
     }
+
+    #[test]
+    fn delete_action_is_assigned_default_value() -> Result<()> {
+        let toml_content = br#"
+        [package]
+        name = "my-restarting-feature"
+        description = "description"
+        version = "1.0.0"
+        license = "Apache-2.0"
+        readme = "readme.md"
+        assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ]
+        [content]
+        type = "feature"
+        [feature]
+        type = "service"
+        action = "installer/install_something.sh"
+        "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(file.path()).is_ok());
+        assert_eq!(project.clone().feature.unwrap().delete_action, None);
+
+        file.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn delete_action_is_assigned_value() -> Result<()> {
+        let toml_content = br#"
+        [package]
+        name = "my-restarting-feature"
+        description = "description"
+        version = "1.0.0"
+        license = "Apache-2.0"
+        readme = "readme.md"
+        assets = [
+            ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "744"],
+            ]
+        [content]
+        type = "feature"
+        [feature]
+        type = "service"
+        delete = "delete.sh"
+        "#;
+        let (file, project) = create_temp_file(toml_content)?;
+
+        assert!(validate_package_toml(file.path()).is_ok());
+        assert_eq!(
+            project.clone().feature.unwrap().delete_action,
+            Some("delete.sh".to_string())
+        );
+
+        file.close()?;
+        Ok(())
+    }
 }

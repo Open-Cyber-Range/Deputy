@@ -104,7 +104,7 @@ async fn real_main() -> Result<()> {
                                 .service(
                                     scope("")
                                         .service(
-                                            scope("").route("", put().to(add_package::<Database>)),
+                                            scope("").route("", post().to(add_package::<Database>)),
                                         )
                                         .wrap(LocalTokenAuthenticationMiddlewareFactory),
                                 ),

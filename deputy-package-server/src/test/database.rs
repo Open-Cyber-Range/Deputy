@@ -5,8 +5,8 @@ use crate::models::{
 };
 use crate::services::database::owner::{AddOwner, DeleteOwner, GetOwners};
 use crate::services::database::package::{
-    CreateCategory, CreatePackage, GetPackageByNameAndVersion, GetPackages,
-    GetVersionsByPackageName, UpdateVersionMsg,
+    CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
+    GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
 };
 use actix::Actor;
 use actix::ActorFutureExt;
@@ -20,6 +20,7 @@ pub struct MockDatabase {
     packages: HashMap<Uuid, Package>,
     package_versions: HashMap<Uuid, Vec<Version>>,
     categories: HashMap<Uuid, Category>,
+    package_categories: HashMap<Uuid, Vec<Category>>,
     owners: HashMap<Uuid, Owner>,
 }
 
@@ -370,5 +371,36 @@ impl Handler<UpdateVersionMsg> for MockDatabase {
                     Ok(version)
                 }),
         )
+    }
+}
+
+impl Handler<GetCategoriesForPackage> for MockDatabase {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(
+        &mut self,
+        query_params: GetCategoriesForPackage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result {
+        let db_categories = self.categories.clone();
+        let db_package_categories = self.package_categories.clone();
+        Box::pin(async move { query_params }.into_actor(self).map(
+            move |query_params, _mock_database, _| {
+                let package_categories = db_package_categories
+                    .get(&query_params.id)
+                    .ok_or(anyhow!("Package with id {} not found", query_params.id))?;
+                let category_ids: Vec<Uuid> = package_categories
+                    .iter()
+                    .map(|category| category.id)
+                    .collect();
+                let categories = db_categories
+                    .values()
+                    .filter(|category| category_ids.contains(&category.id))
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                Ok(categories)
+            },
+        ))
     }
 }

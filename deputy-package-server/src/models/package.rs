@@ -252,9 +252,7 @@ impl Package {
         FilterExisting<All<packages::table, Self>, packages::deleted_at>,
         Like<packages::name, String>,
     > {
-        Self::all_with_deleted()
-            .filter(packages::deleted_at.is_null())
-            .filter(packages::name.like(format!("%{}%", search_term)))
+        Self::all().filter(packages::name.like(format!("%{}%", search_term)))
     }
 
     pub fn by_id(
@@ -379,7 +377,7 @@ impl From<String> for NewCategory {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageWithVersions {
     pub id: Uuid,

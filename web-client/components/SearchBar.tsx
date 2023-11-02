@@ -2,7 +2,7 @@ import useTranslation from 'next-translate/useTranslation';
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
-import { packageFetcher, packagesWithVersionsFetcher } from '../utils/api';
+import { packagesWithVersionsFetcher } from '../utils/api';
 import { extractAndRemoveTypeAndCategory, getLatestVersion } from '../utils';
 import styles from '../styles/MainNavbar.module.css';
 
@@ -10,15 +10,11 @@ const SearchBar = () => {
   const { t } = useTranslation('common');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearchInput, setDebouncedSearchInput] = useState('');
-  const { data: packageList } = useSWR(
-    '/api/v1/package',
-    packagesWithVersionsFetcher
-  );
 
   const parsedSearchInput =
     extractAndRemoveTypeAndCategory(debouncedSearchInput);
   let searchUrl = debouncedSearchInput
-    ? `/api/v1/search?search_term=${encodeURIComponent(
+    ? `/api/v1/package?search_term=${encodeURIComponent(
         parsedSearchInput.remainingString
       )}`
     : null;
@@ -34,12 +30,15 @@ const SearchBar = () => {
       )}`;
     }
   }
-  const { data: searchResults } = useSWR(searchUrl, packageFetcher);
+  const { data: searchResults } = useSWR(
+    searchUrl,
+    packagesWithVersionsFetcher
+  );
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       setDebouncedSearchInput(searchInput);
-    }, 100);
+    }, 200);
 
     return () => {
       clearTimeout(debounceTimer);
@@ -59,22 +58,17 @@ const SearchBar = () => {
       {searchResults && debouncedSearchInput && (
         <div className={styles.searchResults}>
           <ul>
-            {searchResults.map((result) => {
-              const matchedPackage = packageList?.packages?.find(
-                (pkg) => pkg.name === result.name
+            {searchResults.packages.map((result) => {
+              const latestVersion = getLatestVersion(result);
+              return (
+                <li key={result.id}>
+                  <Link
+                    href={`/packages/${result.name}/${latestVersion?.version}`}
+                  >
+                    {result.name}
+                  </Link>
+                </li>
               );
-              if (matchedPackage) {
-                const latestVersion = getLatestVersion(matchedPackage);
-                return (
-                  <li key={result.id}>
-                    <Link
-                      href={`/packages/${result.name}/${latestVersion?.version}`}
-                    >
-                      {result.name}
-                    </Link>
-                  </li>
-                );
-              }
               return null;
             })}
           </ul>

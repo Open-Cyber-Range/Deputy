@@ -397,7 +397,7 @@ version = "{version}"
 authors = ["{author_name} {author_email}"]
 license = "{chosen_license}"
 readme  = "README.md"
-category = ""
+categories = [""]
 assets = [
 
 ]

@@ -50,7 +50,7 @@ const PackageDetailView = () => {
           {formatBytes(latestVersion.packageSize)}
         </span>
         <span className={styles.createdAt}>
-          Created at: {displayLocalTime(latestVersion.createdAt)}
+          {t('createdAt')}: {displayLocalTime(latestVersion.createdAt)}
         </span>
 
         <Tabs className="pt-[2rem] pb-[2rem]">

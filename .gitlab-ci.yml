@@ -120,3 +120,18 @@ publish-deputy-cli-to-docker-images:
     - /^deputy-cli-.*$/
   except:
     - branches
+
+sync-to-github:
+  stage: publish
+  image: $DOCKER_REGISTRY_PULL/ocr-base-deployment-image
+  before_script:
+    - apt update && apt install -y git
+  script:
+    - git remote remove github || echo "No repo found"
+    - git remote add github https://mannyfred:$MANFRED_GITHUB_TOKEN@github.com/Open-Cyber-Range/Deputy.git
+    - git checkout master
+    - git pull --rebase origin master
+    - git push github master:main --force
+  only:
+    - master
+

@@ -171,3 +171,44 @@ pub struct CreateOptions {
     )]
     pub version: String,
 }
+
+#[derive(Debug, Args)]
+pub struct ListOptions {
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for versioning"
+    )]
+    pub registry_name: String,
+    #[clap(
+        help = "List packages matching the search term. If no search term is provided, all packages are listed."
+    )]
+    pub search_term: Option<String>,
+    #[clap(short = 't', long = "type", help = "Filter packages by type")]
+    pub package_type: Option<String>,
+    #[clap(
+        short = 'c',
+        long = "category",
+        help = "Filter packages by category. Supports multiple categories separated by commas. "
+    )]
+    pub category: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct InfoOptions {
+    #[clap(
+        short,
+        long,
+        default_value = DEFAULT_REGISTRY_NAME,
+        help = "Registry to use for versioning"
+    )]
+    pub registry_name: String,
+    #[clap(help = "Show package details.")]
+    pub search_term: String,
+    #[clap(
+        short = 'a',
+        help = "Show all versions of the package. By default, only the latest version is shown."
+    )]
+    pub all_versions: bool,
+}

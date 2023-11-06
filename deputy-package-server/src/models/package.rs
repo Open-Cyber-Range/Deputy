@@ -5,7 +5,7 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
-use deputy_library::rest::VersionRest;
+use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
 use diesel::helper_types::{Filter, FindBy, Like};
 use diesel::insert_into;
 use diesel::mysql::Mysql;
@@ -397,6 +397,23 @@ impl From<(Package, Vec<Version>)> for PackageWithVersions {
             created_at: package.created_at,
             updated_at: package.updated_at,
             versions,
+        }
+    }
+}
+
+impl From<PackageWithVersions> for PackageWithVersionsRest {
+    fn from(package: PackageWithVersions) -> Self {
+        Self {
+            id: package.id.into(),
+            name: package.name,
+            package_type: package.package_type,
+            created_at: package.created_at,
+            updated_at: package.updated_at,
+            versions: package
+                .versions
+                .into_iter()
+                .map(VersionRest::from)
+                .collect(),
         }
     }
 }

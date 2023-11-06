@@ -1,9 +1,13 @@
-use crate::{constants::endpoints::PACKAGE_UPLOAD_PATH, helpers::create_file_from_stream};
+use crate::{
+    commands::{InfoOptions, ListOptions},
+    constants::endpoints::PACKAGE_UPLOAD_PATH,
+    helpers::create_file_from_stream,
+};
 use anyhow::{anyhow, Error, Ok, Result};
 use awc::{http::header, Client as ActixWebClient};
 use deputy_library::{
     package::PackageStream,
-    rest::{OwnerRest, VersionRest},
+    rest::{OwnerRest, PackageWithVersionsRest, PackagesWithVersionsAndPagesRest, VersionRest},
 };
 use log::error;
 use qstring::QString;
@@ -293,6 +297,78 @@ impl Client {
 
         Err(Client::response_to_error(
             "Failed to delete owner",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn list_packages(
+        &self,
+        options: &ListOptions,
+    ) -> Result<Vec<PackageWithVersionsRest>> {
+        let mut base_get_uri = self.api_base_url.join("api/v1/package")?;
+
+        if let Some(search_term) = &options.search_term {
+            base_get_uri
+                .query_pairs_mut()
+                .append_pair("search_term", search_term);
+        }
+        if let Some(package_type) = &options.package_type {
+            base_get_uri
+                .query_pairs_mut()
+                .append_pair("type", package_type);
+        }
+        if let Some(category) = &options.category {
+            base_get_uri
+                .query_pairs_mut()
+                .append_pair("categories", category);
+        }
+
+        let mut response = self
+            .client
+            .get(base_get_uri.to_string())
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
+
+        if response.status().is_success() {
+            let body = response.body().await?;
+            let packages_with_versions_and_pages: PackagesWithVersionsAndPagesRest =
+                serde_json::from_slice(&body)?;
+            return Ok(packages_with_versions_and_pages.packages);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to fetch package metadata",
+            response.body().await?.to_vec(),
+        )?)
+    }
+
+    pub async fn package_info(
+        &self,
+        options: &InfoOptions,
+    ) -> Result<Vec<PackageWithVersionsRest>> {
+        let mut base_get_uri = self.api_base_url.join("api/v1/package")?;
+
+        base_get_uri
+            .query_pairs_mut()
+            .append_pair("search_term", &options.search_term);
+
+        let mut response = self
+            .client
+            .get(base_get_uri.to_string())
+            .send()
+            .await
+            .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
+
+        if response.status().is_success() {
+            let body = response.body().await?;
+            let packages_with_versions_and_pages: PackagesWithVersionsAndPagesRest =
+                serde_json::from_slice(&body)?;
+            return Ok(packages_with_versions_and_pages.packages);
+        }
+
+        Err(Client::response_to_error(
+            "Failed to fetch package metadata",
             response.body().await?.to_vec(),
         )?)
     }

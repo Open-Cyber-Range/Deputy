@@ -4,7 +4,8 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct VersionRest {
     pub id: Uuid,
     pub version: String,
@@ -44,6 +45,34 @@ impl VersionRest {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OwnerRest {
     pub email: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageWithVersionsRest {
+    pub id: Uuid,
+    pub name: String,
+    pub package_type: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub versions: Vec<VersionRest>,
+}
+
+impl PackageWithVersionsRest {
+    pub fn remove_yanked_versions(packages: &mut Vec<Self>) {
+        for package in packages.iter_mut() {
+            package.versions.retain(|version| !version.is_yanked);
+        }
+
+        packages.retain(|package| !package.versions.is_empty());
+    }
+}
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackagesWithVersionsAndPagesRest {
+    pub packages: Vec<PackageWithVersionsRest>,
+    pub total_pages: i64,
 }

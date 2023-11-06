@@ -47,10 +47,10 @@ const PackageDetailView = () => {
         <span className={styles.version}>{latestVersion.version}</span>
         <span className={styles.version}>{latestVersion.license}</span>
         <span className={styles.packageSize}>
-          {formatBytes(latestVersion.package_size)}
+          {formatBytes(latestVersion.packageSize)}
         </span>
-        <span className={styles.created_at}>
-          Created at: {displayLocalTime(latestVersion.created_at)}
+        <span className={styles.createdAt}>
+          {t('createdAt')}: {displayLocalTime(latestVersion.createdAt)}
         </span>
 
         <Tabs className="pt-[2rem] pb-[2rem]">
@@ -62,7 +62,7 @@ const PackageDetailView = () => {
 
           <TabPanel>
             <div className={styles.readme}>
-              {parse(latestVersion.readme_html)}
+              {parse(latestVersion.readmeHtml || '')}
             </div>
           </TabPanel>
           <TabPanel>

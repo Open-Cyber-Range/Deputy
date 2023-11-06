@@ -17,7 +17,7 @@ use deputy_package_server::{
         owner::{add_owner, delete_owner, get_all_owners},
         package::{
             add_package, download_file, download_package, get_all_packages, get_all_versions,
-            get_package_version, search_packages, yank_version,
+            get_package_version, yank_version,
         },
     },
     services::database::Database,
@@ -104,12 +104,11 @@ async fn real_main() -> Result<()> {
                                 .service(
                                     scope("")
                                         .service(
-                                            scope("").route("", put().to(add_package::<Database>)),
+                                            scope("").route("", post().to(add_package::<Database>)),
                                         )
                                         .wrap(LocalTokenAuthenticationMiddlewareFactory),
                                 ),
                         )
-                        .service(scope("/search").route("", get().to(search_packages::<Database>)))
                         .service(
                             scope("/token")
                                 .service(

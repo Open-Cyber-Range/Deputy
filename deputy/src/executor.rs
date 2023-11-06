@@ -1,18 +1,21 @@
 use crate::client::Client;
 use crate::commands::{
-    ChecksumOptions, CreateOptions, FetchOptions, InspectOptions, LoginOptions,
-    NormalizeVersionOptions, OwnerOptions, PublishOptions, YankOptions,
+    ChecksumOptions, CreateOptions, FetchOptions, InfoOptions, InspectOptions, ListOptions,
+    LoginOptions, NormalizeVersionOptions, OwnerOptions, PublishOptions, YankOptions,
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
     condition_fields, create_default_readme, create_temporary_package_download_path,
     exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
-    malware_fields, other_fields, unpack_package_file, virtual_machine_fields,
+    malware_fields, other_fields, print_package_info, print_package_list_entry,
+    unpack_package_file, virtual_machine_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
 use anyhow::{anyhow, Ok, Result};
+use colored::Colorize;
 use deputy_library::project::ContentType;
+use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
 use deputy_library::validation::{validate_license, Validate};
 use deputy_library::{package::Package, project::create_project_from_toml_path};
 use dialoguer::{Input, Select};
@@ -397,7 +400,7 @@ version = "{version}"
 authors = ["{author_name} {author_email}"]
 license = "{chosen_license}"
 readme  = "README.md"
-category = ""
+categories = [""]
 assets = [
 
 ]
@@ -412,6 +415,71 @@ type = "{chosen_content_type}"
         fs::write(format!("{}/package.toml", package_dir), content)?;
         println!("Initialized deputy package in {}", package_dir);
         create_default_readme(&package_dir)?;
+
+        Ok(())
+    }
+
+    pub async fn list_packages(&self, list_options: ListOptions) -> Result<()> {
+        let client = self.try_create_client(list_options.registry_name.clone(), None)?;
+        let mut packages = client.list_packages(&list_options).await?;
+        PackageWithVersionsRest::remove_yanked_versions(&mut packages);
+
+        if packages.is_empty() {
+            println!("{error} No packages found", error = "Error:".red());
+        }
+        packages.sort_by(|a, b| a.name.cmp(&b.name));
+
+        for package in &packages {
+            print_package_list_entry(package)?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn package_info(&self, info_options: InfoOptions) -> Result<()> {
+        let client = self.try_create_client(info_options.registry_name.clone(), None)?;
+        let mut packages = client.package_info(&info_options).await?;
+        PackageWithVersionsRest::remove_yanked_versions(&mut packages);
+
+        if packages.is_empty() {
+            println!("{error} Package not found", error = "Error:".red());
+        } else if packages.len() > 1 {
+            let package_names = packages
+                .iter()
+                .map(|package| package.name.clone())
+                .collect::<Vec<String>>()
+                .join(", ");
+
+            println!(
+                "{note} multiple packages found. Please specify a single package.",
+                note = "Note:".yellow()
+            );
+            println!("{package_names}");
+        } else {
+            let mut package = packages
+                .pop()
+                .ok_or_else(|| anyhow!("Failed to get package"))?;
+            package.versions.sort_by(|a, b| b.version.cmp(&a.version));
+
+            match info_options.all_versions {
+                true => {
+                    for package_version in package.versions.iter() {
+                        print_package_info(&package, package_version);
+                    }
+                }
+                false => {
+                    let package_version = VersionRest::get_latest_package(package.versions.clone())
+                        .ok_or_else(|| anyhow!("Failed to get latest package version"))?;
+
+                    print_package_info(&package, &package_version);
+
+                    let package_count = package.versions.len();
+                    if package_count > 1 {
+                        println!("{note} There are {package_count} other versions available. Please use the '-a' flag to see them.",  note = "Note:".yellow());
+                    }
+                }
+            }
+        }
 
         Ok(())
     }

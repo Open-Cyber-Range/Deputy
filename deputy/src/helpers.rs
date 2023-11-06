@@ -5,8 +5,10 @@ use bytes::Bytes;
 use colored::Colorize;
 use deputy_library::archiver::{decompress_archive, unpack_archive};
 use deputy_library::project::FeatureType;
+use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
 use dialoguer::{Input, Select};
 use futures::{Stream, StreamExt};
+use human_bytes::human_bytes;
 use std::fs;
 use std::path::Path;
 use std::{io::Write, path::PathBuf};
@@ -150,6 +152,7 @@ pub fn set_feature_type(feature_type: &str) -> String {
             .unwrap();
         format!(
             r#"action = "{}"
+            delete_action = ""
 "#,
             action_input
         )
@@ -228,6 +231,34 @@ pub fn create_default_readme(package_dir: &str) -> Result<()> {
     fs::write(format!("{}/README.md", package_dir), readme_content)?;
 
     Ok(())
+}
+
+pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
+    let latest_version = VersionRest::get_latest_package(package.versions.clone())
+        .map(|version_rest| version_rest.version.to_owned())
+        .ok_or_else(|| anyhow!("Package missing version"))?;
+
+    println!(
+        "{name}/{type}, {latest_version}",
+        name = package.name.green(),
+        type = package.package_type
+    );
+
+    Ok(())
+}
+
+pub fn print_package_info(package: &PackageWithVersionsRest, package_version: &VersionRest) {
+    println!("Name: {}", package.name);
+    println!("Version: {}", package_version.version);
+    println!("Type: {}", package.package_type);
+    println!("License: {}", package_version.license);
+    println!("Description: {}", package_version.description);
+    println!(
+        "Package Size: {}",
+        human_bytes(package_version.package_size as f64)
+    );
+    println!("Created at: {}", package_version.created_at);
+    println!()
 }
 
 #[cfg(test)]

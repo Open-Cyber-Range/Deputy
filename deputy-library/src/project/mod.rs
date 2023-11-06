@@ -209,6 +209,8 @@ pub struct Feature {
     pub action: Option<String>,
     #[serde(alias = "Restarts", alias = "RESTARTS", default)]
     pub restarts: bool,
+    #[serde(rename = "delete", alias = "Delete", alias = "DELETE", default)]
+    pub delete_action: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

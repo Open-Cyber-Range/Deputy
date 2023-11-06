@@ -1,10 +1,11 @@
 use crate::middleware::authentication::local_token::UserTokenInfo;
+use crate::models::helpers::uuid::Uuid;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
-    GetPackages, GetVersionsByPackageName, SearchPackages, UpdateVersionMsg,
+    GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -32,6 +33,7 @@ use log::{debug, error};
 use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_with::{formats::CommaSeparator, StringWithSeparator};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 async fn drain_stream(
@@ -160,40 +162,6 @@ where
     })
 }
 
-#[derive(Deserialize, Debug, Default)]
-pub struct PackageQuery {
-    #[serde(default = "default_page")]
-    page: u32,
-    #[serde(default = "default_limit")]
-    limit: u32,
-}
-
-pub async fn get_all_packages<T>(
-    app_state: Data<AppState<T>>,
-    query: Query<PackageQuery>,
-) -> Result<Json<PackagesWithVersionsAndPages>, Error>
-where
-    T: Actor + Handler<GetPackages>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
-{
-    let packages_with_pages = app_state
-        .database_address
-        .send(GetPackages {
-            page: query.page as i64,
-            per_page: query.limit as i64,
-        })
-        .await
-        .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?
-        .map_err(|error| {
-            error!("Failed to get all packages: {error}");
-            ServerResponseError(PackageServerError::Pagination.into())
-        })?;
-    Ok(Json(packages_with_pages))
-}
-
 #[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Debug, Default)]
@@ -203,7 +171,7 @@ pub struct SearchQuery {
     #[serde(default = "default_limit")]
     limit: u32,
     #[serde(default)]
-    search_term: String,
+    search_term: Option<String>,
     #[serde(rename = "type", default)]
     type_param: Option<String>,
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
@@ -211,21 +179,21 @@ pub struct SearchQuery {
     category_param: Option<Vec<String>>,
 }
 
-pub async fn search_packages<T>(
+pub async fn get_all_packages<T>(
     app_state: Data<AppState<T>>,
     query: Query<SearchQuery>,
-) -> Result<Json<Vec<crate::models::Package>>, Error>
+) -> Result<Json<PackagesWithVersionsAndPages>, Error>
 where
-    T: Actor + Handler<SearchPackages> + Handler<GetCategoriesForPackage>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, SearchPackages>,
+    T: Actor + Handler<GetPackages> + Handler<GetCategoriesForPackage>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let search_term = &query.search_term;
     let optional_package_type = &query.type_param;
     let optional_package_categories = &query.category_param;
-    let packages = app_state
+    let mut packages_with_versions_and_pages = app_state
         .database_address
-        .send(SearchPackages {
+        .send(GetPackages {
             search_term: search_term.clone(),
             page: query.page as i64,
             per_page: query.limit as i64,
@@ -239,18 +207,17 @@ where
             error!("Failed to get packages by name: {error}");
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
-    let mut _type_filtered_packages: Vec<crate::models::Package> = Default::default();
-    if let Some(package_type) = optional_package_type {
-        _type_filtered_packages = packages
-            .into_iter()
-            .filter(|package| package.package_type.to_lowercase() == package_type.to_lowercase())
-            .collect();
-    } else {
-        _type_filtered_packages = packages;
-    }
-    let mut filtered_packages: Vec<crate::models::Package> = Default::default();
+
+    packages_with_versions_and_pages.packages.retain(|package| {
+        optional_package_type.as_ref().map_or(true, |package_type| {
+            package.package_type.eq_ignore_ascii_case(package_type)
+        })
+    });
+
     if let Some(search_package_categories) = optional_package_categories {
-        for package in _type_filtered_packages.clone() {
+        let mut categories_by_package_id: HashMap<Uuid, Vec<String>> = HashMap::new();
+
+        for package in &packages_with_versions_and_pages.packages {
             let package_categories: Vec<Category> = app_state
                 .database_address
                 .send(GetCategoriesForPackage { id: package.id })
@@ -265,17 +232,20 @@ where
                 })?;
             let category_names: Vec<String> =
                 package_categories.into_iter().map(|p| p.name).collect();
-            if search_package_categories
-                .iter()
-                .all(|item| category_names.contains(item))
-            {
-                filtered_packages.push(package);
-            }
+            categories_by_package_id.insert(package.id, category_names);
         }
-    } else {
-        filtered_packages = _type_filtered_packages;
+
+        packages_with_versions_and_pages.packages.retain(|package| {
+            let package_categories = categories_by_package_id.get(&package.id);
+
+            package_categories.map_or(false, |package_categories| {
+                search_package_categories
+                    .iter()
+                    .all(|item| package_categories.contains(item))
+            })
+        });
     }
-    Ok(Json(filtered_packages))
+    Ok(Json(packages_with_versions_and_pages))
 }
 
 #[derive(Deserialize, Debug)]

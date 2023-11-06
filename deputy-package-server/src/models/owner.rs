@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
     Serialize,
 )]
 #[diesel(table_name = owners)]
+#[serde(rename_all = "camelCase")]
 pub struct Owner {
     pub id: Uuid,
     pub email: String,
@@ -35,6 +36,7 @@ pub struct Owner {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct OwnerQuery {
     pub email: String,
 }
@@ -85,6 +87,7 @@ impl Owner {
     Queryable, Selectable, Insertable, Clone, Debug, Eq, PartialEq, Deserialize, Serialize,
 )]
 #[diesel(table_name = owners)]
+#[serde(rename_all = "camelCase")]
 pub struct NewOwner {
     pub id: Uuid,
     pub email: String,
@@ -105,6 +108,7 @@ impl NewOwner {
     }
 }
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Owners(pub Vec<Owner>);
 
 impl Owners {

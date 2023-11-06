@@ -110,6 +110,7 @@ impl From<ApiToken> for FullApiTokenRest {
 
 #[derive(Insertable, Deserialize, Serialize)]
 #[diesel(table_name = tokens)]
+#[serde(rename_all = "camelCase")]
 pub struct NewApiToken {
     pub id: Uuid,
     pub name: String,
@@ -125,6 +126,7 @@ impl NewApiToken {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewApiTokenRest {
     pub name: String,
     pub email: String,

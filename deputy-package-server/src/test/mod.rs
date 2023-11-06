@@ -191,7 +191,7 @@ impl TestPackageServer {
                                             scope("")
                                                 .service(scope("").route(
                                                     "",
-                                                    put().to(add_package::<MockDatabase>),
+                                                    post().to(add_package::<MockDatabase>),
                                                 ))
                                                 .wrap(MockTokenMiddlewareFactory),
                                         )

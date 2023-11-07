@@ -29,4 +29,4 @@ assets = [
 type = 'Event'
 
 [event]
-action = 'ping 1.3.3.7'
+file_path = 'info.md'

@@ -393,7 +393,7 @@ mod tests {
             [content]
             type = "event"
             [event]
-            action = "ping 1.3.3.7"
+            file_path = "info.md"
             "#;
         let (file, project) = create_temp_file(toml_content)?;
 

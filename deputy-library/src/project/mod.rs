@@ -155,6 +155,13 @@ impl Project {
             }
         }
 
+        if let Some(event) = &self.event {
+            let file_path = package_path.join(&event.file_path);
+            if !file_path.exists() {
+                return Err(anyhow!("Event file not found"));
+            }
+        }
+
         if ASSETS_REQUIRED_PACKAGE_TYPES.contains(&self.content.content_type) {
             self.validate_asset_files(package_path)?;
         }
@@ -215,8 +222,7 @@ pub struct Feature {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
-    #[serde(alias = "Action", alias = "ACTION")]
-    pub action: String,
+    pub file_path: String,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

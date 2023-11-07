@@ -28,10 +28,9 @@ pub const INDEX_REPOSITORY_BRANCH: &str = "master";
 pub const INDEX_REPOSITORY_REMOTE: &str = "origin";
 pub const CONFIGURATION_FOLDER_PATH_ENV_KEY: &str = "DEPUTY_CONFIG_FOLDER";
 
-pub const ASSETS_REQUIRED_PACKAGE_TYPES: [ContentType; 5] = [
+pub const ASSETS_REQUIRED_PACKAGE_TYPES: [ContentType; 4] = [
     ContentType::Feature,
     ContentType::Condition,
     ContentType::Inject,
-    ContentType::Event,
     ContentType::Malware,
 ];

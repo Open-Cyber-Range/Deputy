@@ -7,7 +7,7 @@ import parse from 'html-react-parser';
 import { TabList, TabPanel, Tab, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import styles from '../styles/PackageList.module.css';
-import { packageTOMLFetcher, packageVersionFethcer } from '../utils/api';
+import { packageTOMLFetcher, packageVersionFetcher } from '../utils/api';
 import PackageVersions from './PackageVersions';
 import FilePreview from './FilePreview';
 import { displayLocalTime, formatBytes } from '../utils';
@@ -24,7 +24,7 @@ const PackageDetailView = () => {
 
   const { data: latestVersion, error: latestVersionError } = useSWR(
     `/api/v1/package/${name}/${version}`,
-    packageVersionFethcer
+    packageVersionFetcher
   );
 
   const { data: packageToml, error: packageTOMLError } = useSWR(

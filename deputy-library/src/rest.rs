@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::NaiveDateTime;
-use semver::Version;
+use semver::{Error, Version};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -20,17 +20,25 @@ pub struct VersionRest {
 }
 
 impl VersionRest {
-    pub fn get_latest_package(packages: Vec<Self>) -> Option<Self> {
-        packages
+    pub fn get_latest_package(packages: Vec<Self>) -> Result<Option<Self>> {
+        let versions_result = packages
             .into_iter()
-            .max_by(|a, b| a.version.cmp(&b.version))
+            .map(|package| {
+                let version = package.version.parse::<Version>()?;
+                Ok((version, package))
+            })
+            .collect::<Result<Vec<(Version, Self)>, Error>>()?;
+        Ok(versions_result
+            .into_iter()
+            .max_by(|a, b| a.0.cmp(&b.0))
+            .map(|(_, package)| package))
     }
 
     pub fn is_latest_version(
         uploadable_version: &str,
         packages: Vec<Self>,
     ) -> Result<Option<String>> {
-        let latest_package = Self::get_latest_package(packages);
+        let latest_package = Self::get_latest_package(packages)?;
         match latest_package {
             Some(package) => {
                 if uploadable_version.parse::<Version>()? > package.version.parse::<Version>()? {

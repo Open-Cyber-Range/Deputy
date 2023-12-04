@@ -140,7 +140,7 @@ impl Client {
         if response.status().is_success() {
             let body = response.body().await?;
             let packages: Vec<VersionRest> = serde_json::from_slice(&body)?;
-            if let Some(matching_package) = VersionRest::get_latest_package(packages) {
+            if let Some(matching_package) = VersionRest::get_latest_package(packages)? {
                 return Ok(matching_package);
             }
             return Err(anyhow!(

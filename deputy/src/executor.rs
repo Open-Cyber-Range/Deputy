@@ -468,8 +468,9 @@ type = "{chosen_content_type}"
                     }
                 }
                 false => {
-                    let package_version = VersionRest::get_latest_package(package.versions.clone())
-                        .ok_or_else(|| anyhow!("Failed to get latest package version"))?;
+                    let package_version =
+                        VersionRest::get_latest_package(package.versions.clone())?
+                            .ok_or_else(|| anyhow!("Failed to get latest package version"))?;
 
                     print_package_info(&package, &package_version);
 

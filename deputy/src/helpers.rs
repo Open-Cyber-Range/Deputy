@@ -234,7 +234,7 @@ pub fn create_default_readme(package_dir: &str) -> Result<()> {
 }
 
 pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
-    let latest_version = VersionRest::get_latest_package(package.versions.clone())
+    let latest_version = VersionRest::get_latest_package(package.versions.clone())?
         .map(|version_rest| version_rest.version.to_owned())
         .ok_or_else(|| anyhow!("Package missing version"))?;
 

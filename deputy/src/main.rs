@@ -20,16 +20,27 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[clap(about = "Upload package")]
     Publish(PublishOptions),
+    #[clap(about = "Download package")]
     Fetch(FetchOptions),
+    #[clap(about = "Download package checksum")]
     Checksum(ChecksumOptions),
+    #[clap(about = "Validate local package.toml file")]
     Inspect(InspectOptions),
+    #[clap(about = "Return latest version of package")]
     NormalizeVersion(NormalizeVersionOptions),
+    #[clap(about = "Log in to registry")]
     Login(LoginOptions),
+    #[clap(about = "Remove previously published version of package from registry")]
     Yank(YankOptions),
+    #[clap(about = "Manage the owners of package on the registry")]
     Owner(OwnerOptions),
+    #[clap(about = "Create new package")]
     Create(CreateOptions),
+    #[clap(about = "List all packages")]
     List(ListOptions),
+    #[clap(about = "Get detailed information of package")]
     Info(InfoOptions),
 }
 

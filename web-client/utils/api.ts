@@ -35,14 +35,15 @@ export const packagesWithVersionsFetcher: Fetcher<
   return packagesWithVersionsAndPages;
 };
 
-export const packageVersionsFethcer: Fetcher<Version[], string> = async (
+export const packageVersionsFetcher: Fetcher<Version[], string> = async (
   ...url
 ) => {
   const response = await fetch(...url);
-  return response.json();
+  const versions: Version[] = await response.json();
+  return versions.sort(compareVersions).reverse();
 };
 
-export const packageVersionFethcer: Fetcher<Version, string> = async (
+export const packageVersionFetcher: Fetcher<Version, string> = async (
   ...url
 ) => {
   const response = await fetch(...url);
@@ -81,8 +82,7 @@ export const createToken = async (postToken: PostToken) => {
     });
 
     if (response.ok) {
-      const token = (await response.json()) as unknown as Token;
-      return token;
+      return (await response.json()) as unknown as Token;
     }
 
     throw new Error('Failed to create token');

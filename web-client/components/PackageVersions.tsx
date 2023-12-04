@@ -3,13 +3,13 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
 import styles from '../styles/PackageList.module.css';
-import { packageVersionsFethcer } from '../utils/api';
+import { packageVersionsFetcher } from '../utils/api';
 
 const PackageVersions = ({ packageName }: { packageName: string }) => {
   const { t } = useTranslation('common');
   const { data: packageVersions, error: allPackageVersions } = useSWR(
     () => `/api/v1/package/${packageName}`,
-    packageVersionsFethcer
+    packageVersionsFetcher
   );
 
   if (!packageVersions) {

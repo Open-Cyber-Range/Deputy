@@ -195,7 +195,6 @@ pub struct VirtualMachine {
     #[serde(rename = "type")]
     pub virtual_machine_type: VirtualMachineType,
     pub file_path: String,
-    pub readme_path: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

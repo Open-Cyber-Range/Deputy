@@ -53,7 +53,7 @@ impl Executor {
 
     fn get_token_value(&self, registry_name: &str) -> Option<String> {
         let token_file = self.get_token_file(registry_name).ok()?;
-        std::fs::read_to_string(token_file).ok()
+        fs::read_to_string(token_file).ok()
     }
 
     fn try_create_client(
@@ -247,7 +247,7 @@ impl Executor {
         };
         let token_path = self.get_token_file(&options.registry_name)?;
 
-        std::fs::write(token_path, token_value)?;
+        fs::write(token_path, token_value)?;
         Ok(())
     }
 
@@ -443,45 +443,51 @@ type = "{chosen_content_type}"
 
         if packages.is_empty() {
             println!("{error} Package not found", error = "Error:".red());
-        } else if packages.len() > 1 {
-            let package_names = packages
-                .iter()
-                .map(|package| package.name.clone())
-                .collect::<Vec<String>>()
-                .join(", ");
+            return Ok(());
+        }
 
-            println!(
-                "{note} multiple packages found. Please specify a single package.",
-                note = "Note:".yellow()
-            );
-            println!("{package_names}");
-        } else {
-            let mut package = packages
-                .pop()
-                .ok_or_else(|| anyhow!("Failed to get package"))?;
-            package.versions.sort_by(|a, b| b.version.cmp(&a.version));
+        let exact_match = packages
+            .clone()
+            .into_iter()
+            .find(|package| package.name == info_options.search_term);
+        match exact_match {
+            Some(mut package) => {
+                package.versions.sort_by(|a, b| b.version.cmp(&a.version));
 
-            match info_options.all_versions {
-                true => {
-                    for package_version in package.versions.iter() {
-                        print_package_info(&package, package_version);
+                match info_options.all_versions {
+                    true => {
+                        for package_version in package.versions.iter() {
+                            print_package_info(&package, package_version);
+                        }
                     }
-                }
-                false => {
-                    let package_version =
-                        VersionRest::get_latest_package(package.versions.clone())?
-                            .ok_or_else(|| anyhow!("Failed to get latest package version"))?;
+                    false => {
+                        let package_version =
+                            VersionRest::get_latest_package(package.versions.clone())?
+                                .ok_or_else(|| anyhow!("Failed to get latest package version"))?;
 
-                    print_package_info(&package, &package_version);
+                        print_package_info(&package, &package_version);
 
-                    let package_count = package.versions.len();
-                    if package_count > 1 {
-                        println!("{note} There are {package_count} other versions available. Please use the '-a' flag to see them.",  note = "Note:".yellow());
+                        let package_count = package.versions.len();
+                        if package_count > 1 {
+                            println!("{note} There are {package_count} other versions available. Please use the '-a' flag to see them.",  note = "Note:".yellow());
+                        }
                     }
                 }
             }
-        }
+            None => {
+                let package_names = packages
+                    .into_iter()
+                    .map(|package| package.name)
+                    .collect::<Vec<String>>()
+                    .join(", ");
 
+                println!(
+                    "{note} multiple packages found. Please specify a single package.",
+                    note = "Note:".yellow()
+                );
+                println!("{package_names}");
+            }
+        }
         Ok(())
     }
 }

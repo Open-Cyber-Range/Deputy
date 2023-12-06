@@ -232,9 +232,7 @@ impl Handler<CreateCategory> for MockDatabase {
                 mock_database
                     .categories
                     .insert(category.id, category.clone());
-                mock_database
-                    .package_categories
-                    .insert(msg.1, category.id);
+                mock_database.package_categories.insert(msg.1, category.id);
 
                 Ok(category)
             },

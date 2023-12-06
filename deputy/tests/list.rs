@@ -75,7 +75,8 @@ mod tests {
             .host(&host)
             .build()?;
         upload_test_package(&cli_configuration).await?;
-        let info_response = execute_list_command(&cli_configuration, None, Some("category1")).await?;
+        let info_response =
+            execute_list_command(&cli_configuration, None, Some("category1")).await?;
         assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }
@@ -87,7 +88,8 @@ mod tests {
             .host(&host)
             .build()?;
         upload_test_package(&cli_configuration).await?;
-        let info_response = execute_list_command(&cli_configuration, None, Some("category1,category2")).await?;
+        let info_response =
+            execute_list_command(&cli_configuration, None, Some("category1,category2")).await?;
         assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }
@@ -99,7 +101,8 @@ mod tests {
             .host(&host)
             .build()?;
         upload_test_package(&cli_configuration).await?;
-        let info_response = execute_list_command(&cli_configuration, None, Some("category1")).await?;
+        let info_response =
+            execute_list_command(&cli_configuration, None, Some("category1")).await?;
         assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }

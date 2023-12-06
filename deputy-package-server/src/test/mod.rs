@@ -127,6 +127,7 @@ impl TestPackageServer {
                             scope("/api").service(
                                 scope("/v1").service(
                                     scope("/package")
+                                        .route("", get().to(get_all_packages::<MockDatabase>))
                                         .service(
                                             scope("/{package_name}")
                                                 .route(
@@ -194,8 +195,7 @@ impl TestPackageServer {
                                                     post().to(add_package::<MockDatabase>),
                                                 ))
                                                 .wrap(MockTokenMiddlewareFactory),
-                                        )
-                                        .route("", get().to(get_all_packages::<MockDatabase>)),
+                                        ),
                                 ),
                             ),
                         )

@@ -50,7 +50,7 @@ impl TestPackageServerBuilder {
         create_dir_all(&package_folder)?;
         let package_folder = package_folder.to_str().unwrap().to_string();
         let address = "127.0.0.1";
-        let sleep_duration = Duration::from_millis(rand::random::<u64>() % 5000);
+        let sleep_duration = Duration::from_millis(50 + rand::random::<u64>() % 5000);
         thread::sleep(sleep_duration);
 
         let port = TcpPort::in_range(

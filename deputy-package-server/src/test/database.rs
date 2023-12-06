@@ -20,7 +20,7 @@ pub struct MockDatabase {
     packages: HashMap<Uuid, Package>,
     package_versions: HashMap<Uuid, Vec<Version>>,
     categories: HashMap<Uuid, Category>,
-    package_categories: HashMap<Uuid, Vec<Category>>,
+    package_categories: HashMap<Uuid, Uuid>,
     owners: HashMap<Uuid, Owner>,
 }
 
@@ -114,12 +114,20 @@ impl Handler<CreatePackage> for MockDatabase {
 impl Handler<GetPackages> for MockDatabase {
     type Result = ResponseActFuture<Self, Result<PackagesWithVersionsAndPages>>;
 
-    fn handle(&mut self, _msg: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetPackages, _ctx: &mut Self::Context) -> Self::Result {
         Box::pin(
             async move {}
                 .into_actor(self)
                 .map(move |_, mock_database, _| {
-                    let packages: Vec<Package> = mock_database.packages.values().cloned().collect();
+                    let packages: Vec<Package> = match msg.search_term {
+                        Some(search_term) => mock_database
+                            .packages
+                            .values()
+                            .filter(|package| package.name.contains(&search_term))
+                            .cloned()
+                            .collect(),
+                        None => mock_database.packages.values().cloned().collect(),
+                    };
 
                     let packages_with_versions: Vec<PackageWithVersions> = packages
                         .into_iter()
@@ -224,6 +232,10 @@ impl Handler<CreateCategory> for MockDatabase {
                 mock_database
                     .categories
                     .insert(category.id, category.clone());
+                mock_database
+                    .package_categories
+                    .insert(msg.1, category.id);
+
                 Ok(category)
             },
         ))
@@ -387,17 +399,15 @@ impl Handler<GetCategoriesForPackage> for MockDatabase {
         Box::pin(async move { query_params }.into_actor(self).map(
             move |query_params, _mock_database, _| {
                 let package_categories = db_package_categories
-                    .get(&query_params.id)
-                    .ok_or(anyhow!("Package with id {} not found", query_params.id))?;
-                let category_ids: Vec<Uuid> = package_categories
-                    .iter()
-                    .map(|category| category.id)
-                    .collect();
+                    .values()
+                    .filter(|package_id| **package_id == query_params.id)
+                    .cloned()
+                    .collect::<Vec<Uuid>>();
                 let categories = db_categories
                     .values()
-                    .filter(|category| category_ids.contains(&category.id))
+                    .filter(|category| package_categories.contains(&category.id))
                     .cloned()
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<Category>>();
 
                 Ok(categories)
             },

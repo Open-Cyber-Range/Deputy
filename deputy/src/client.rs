@@ -328,7 +328,7 @@ impl Client {
             .get(base_get_uri.to_string())
             .send()
             .await
-            .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
+            .map_err(|error| anyhow!("Failed to list packages: {:?}", error))?;
 
         if response.status().is_success() {
             let body = response.body().await?;
@@ -338,7 +338,7 @@ impl Client {
         }
 
         Err(Client::response_to_error(
-            "Failed to fetch package metadata",
+            "Failed to list packages",
             response.body().await?.to_vec(),
         )?)
     }
@@ -358,7 +358,7 @@ impl Client {
             .get(base_get_uri.to_string())
             .send()
             .await
-            .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
+            .map_err(|error| anyhow!("Failed to get package info: {:?}", error))?;
 
         if response.status().is_success() {
             let body = response.body().await?;
@@ -368,7 +368,7 @@ impl Client {
         }
 
         Err(Client::response_to_error(
-            "Failed to fetch package metadata",
+            "Failed to get package info",
             response.body().await?.to_vec(),
         )?)
     }

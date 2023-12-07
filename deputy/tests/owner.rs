@@ -24,14 +24,14 @@ mod tests {
         command.assert().success();
         let output_string = String::from_utf8(command.output()?.stdout)?;
         let owners = output_string
-            .split("\n")
+            .split('\n')
             .filter_map(|entry| match entry.is_empty() {
                 true => None,
                 false => Some(entry.to_string()),
             })
             .collect::<Vec<String>>();
 
-        return Ok(owners);
+        Ok(owners)
     }
 
     #[actix_web::test]

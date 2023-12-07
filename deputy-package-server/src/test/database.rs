@@ -20,7 +20,7 @@ pub struct MockDatabase {
     packages: HashMap<Uuid, Package>,
     package_versions: HashMap<Uuid, Vec<Version>>,
     categories: HashMap<Uuid, Category>,
-    package_categories: HashMap<Uuid, Uuid>,
+    package_categories: HashMap<Uuid, Vec<Uuid>>,
     owners: HashMap<Uuid, Owner>,
 }
 
@@ -232,7 +232,11 @@ impl Handler<CreateCategory> for MockDatabase {
                 mock_database
                     .categories
                     .insert(category.id, category.clone());
-                mock_database.package_categories.insert(msg.1, category.id);
+                mock_database
+                    .package_categories
+                    .entry(msg.1)
+                    .or_default()
+                    .push(category.id);
 
                 Ok(category)
             },
@@ -396,17 +400,19 @@ impl Handler<GetCategoriesForPackage> for MockDatabase {
         let db_package_categories = self.package_categories.clone();
         Box::pin(async move { query_params }.into_actor(self).map(
             move |query_params, _mock_database, _| {
-                let package_categories = db_package_categories
+                let package_categories: HashMap<Uuid, Vec<Uuid>> = db_package_categories
+                    .into_iter()
+                    .filter(|(package_id, _category_ids)| *package_id == query_params.id)
+                    .collect();
+                let categories: Vec<Category> = db_categories
                     .values()
-                    .filter(|package_id| **package_id == query_params.id)
+                    .filter(|category| {
+                        package_categories
+                            .values()
+                            .any(|category_ids| category_ids.contains(&category.id))
+                    })
                     .cloned()
-                    .collect::<Vec<Uuid>>();
-                let categories = db_categories
-                    .values()
-                    .filter(|category| package_categories.contains(&category.id))
-                    .cloned()
-                    .collect::<Vec<Category>>();
-
+                    .collect();
                 Ok(categories)
             },
         ))

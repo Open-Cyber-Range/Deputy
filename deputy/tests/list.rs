@@ -77,7 +77,7 @@ mod tests {
         upload_test_package(&cli_configuration).await?;
         let info_response =
             execute_list_command(&cli_configuration, None, Some("category1")).await?;
-        assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
+        assert!(info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }
 
@@ -90,7 +90,7 @@ mod tests {
         upload_test_package(&cli_configuration).await?;
         let info_response =
             execute_list_command(&cli_configuration, None, Some("category1,category2")).await?;
-        assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
+        assert!(info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }
 
@@ -102,8 +102,21 @@ mod tests {
             .build()?;
         upload_test_package(&cli_configuration).await?;
         let info_response =
-            execute_list_command(&cli_configuration, None, Some("category1")).await?;
+            execute_list_command(&cli_configuration, None, Some("this-cat-does-not-exist")).await?;
         assert!(!info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn valid_get_package_list_by_type_and_category() -> Result<()> {
+        let host = setup_test_backend().await?;
+        let cli_configuration = DeployerCLIConfigurationBuilder::builder()
+            .host(&host)
+            .build()?;
+        upload_test_package(&cli_configuration).await?;
+        let info_response =
+            execute_list_command(&cli_configuration, Some("Vm"), Some("category2")).await?;
+        assert!(info_response.contains(&"some-package-name/VM, 1.0.4".to_string()));
         Ok(())
     }
 }

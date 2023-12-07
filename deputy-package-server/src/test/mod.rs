@@ -23,6 +23,7 @@ use anyhow::{anyhow, Error, Result};
 use deputy_library::test::generate_random_string;
 use futures::TryFutureExt;
 use get_port::{tcp::TcpPort, Ops, Range};
+use rand::Rng;
 use std::{
     env,
     fs::{create_dir_all, remove_dir_all},
@@ -54,17 +55,18 @@ impl TestPackageServerBuilder {
 
         let mut port = None;
         for _ in 0..5 {
-            thread::sleep(sleep_duration);
+            let random_port_number = rand::thread_rng().gen_range(1024..65535);
             port = TcpPort::in_range(
                 address,
                 Range {
-                    min: 1024,
-                    max: 65535,
+                    min: random_port_number,
+                    max: random_port_number,
                 },
             );
             if port.is_some() {
                 break;
             }
+            thread::sleep(sleep_duration);
         }
         let port = port.ok_or_else(|| anyhow!("Failed to find a free port for the test server"))?;
         let host = format!("{}:{}", address, port);

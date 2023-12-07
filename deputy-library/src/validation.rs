@@ -542,6 +542,31 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Package.assets[0][2] is invalid.")]
+    fn negative_result_on_invalid_asset_permissions() {
+        let toml_content = br#"
+            [package]
+            name = "my-cool-condition"
+            description = "description"
+            version = "1.0.0"
+            license = "Apache-2.0"
+            readme = "readme.md"
+            assets = [
+                ["src/configs/my-cool-config1.yml", "/var/opt/my-cool-service1", "999"],
+                ["src/configs/my-cool-config2.yml", "/var/opt/my-cool-service2", "hello"],
+                ["src/configs/my-cool-config3.yml", "/var/opt/my-cool-service3"],
+                ]
+            [content]
+            type = "malware"
+            [malware]
+            action = "installer/install_something.sh"
+            "#;
+        let (file, _) = create_temp_file(toml_content).unwrap();
+        println!("{:?}", validate_package_toml(file.path()).unwrap());
+        file.close().unwrap();
+    }
+
+    #[test]
     fn restarts_field_is_assigned_default_value() -> Result<()> {
         let toml_content = br#"
             [package]
@@ -562,7 +587,7 @@ mod tests {
         let (file, project) = create_temp_file(toml_content)?;
 
         assert!(validate_package_toml(file.path()).is_ok());
-        assert_eq!(project.clone().feature.unwrap().restarts, false);
+        assert_eq!(project.feature.unwrap().restarts, false);
 
         file.close()?;
         Ok(())
@@ -589,7 +614,7 @@ mod tests {
         let (file, project) = create_temp_file(toml_content)?;
 
         assert!(validate_package_toml(file.path()).is_ok());
-        assert_eq!(project.clone().feature.unwrap().delete_action, None);
+        assert_eq!(project.feature.unwrap().delete_action, None);
 
         file.close()?;
         Ok(())
@@ -617,7 +642,7 @@ mod tests {
 
         assert!(validate_package_toml(file.path()).is_ok());
         assert_eq!(
-            project.clone().feature.unwrap().delete_action,
+            project.feature.unwrap().delete_action,
             Some("delete.sh".to_string())
         );
 

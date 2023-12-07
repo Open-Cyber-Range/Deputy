@@ -3,6 +3,7 @@ pub(crate) mod enums;
 use crate::constants::ASSETS_REQUIRED_PACKAGE_TYPES;
 use crate::project::enums::{Architecture, OperatingSystem};
 use anyhow::{anyhow, Ok, Result};
+use fancy_regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Formatter;
 use std::{fmt, fs::File, io::Read, path::Path};
@@ -53,6 +54,16 @@ impl Project {
                             Expected format: [\"relative source path\", \"absolute destination path\", optional file permissions]
                             E.g. [\"files/file.sh\", \"/usr/local/bin/renamed_file.sh\", \"755\"] or [\"files/file.sh\", \"/usr/local/bin/\"]"
                         ));
+                }
+                if asset.len() > 2 {
+                    let re = Regex::new(r"^[0-7]{3,4}$").unwrap();
+                    if !(re.is_match(&asset[2])?) {
+                        return Err(anyhow!(
+                            "Package.assets[{index}][2] is invalid.
+                            Expected format: 3-4 octal values
+                            E.g. \"755\" or \"0777\""
+                        ));
+                    }
                 }
             }
         } else {

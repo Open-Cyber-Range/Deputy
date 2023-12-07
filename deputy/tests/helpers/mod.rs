@@ -12,13 +12,9 @@ pub fn login(configuration_folder: &Path, token_value: &str) -> Result<()> {
     let mut command = Command::cargo_bin("deputy")?;
     command.arg("login");
     command.env(CONFIGURATION_FOLDER_PATH_ENV_KEY, configuration_folder);
-    println!("token_value: {}", token_value);
     command.write_stdin(format!("{}\n", token_value));
-    println!("2s");
 
     command.assert().success();
-    println!("3s");
-
     Ok(())
 }
 

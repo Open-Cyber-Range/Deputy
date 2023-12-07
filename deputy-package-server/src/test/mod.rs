@@ -50,17 +50,23 @@ impl TestPackageServerBuilder {
         create_dir_all(&package_folder)?;
         let package_folder = package_folder.to_str().unwrap().to_string();
         let address = "127.0.0.1";
-        let sleep_duration = Duration::from_millis(50 + rand::random::<u64>() % 5000);
-        thread::sleep(sleep_duration);
+        let sleep_duration = Duration::from_millis(rand::random::<u64>() % 5000);
 
-        let port = TcpPort::in_range(
-            address,
-            Range {
-                min: 1024,
-                max: 65535,
-            },
-        )
-        .ok_or_else(|| anyhow!("Failed to find a free port for the test server"))?;
+        let mut port = None;
+        for _ in 0..5 {
+            thread::sleep(sleep_duration);
+            port = TcpPort::in_range(
+                address,
+                Range {
+                    min: 1024,
+                    max: 65535,
+                },
+            );
+            if port.is_some() {
+                break;
+            }
+        }
+        let port = port.ok_or_else(|| anyhow!("Failed to find a free port for the test server"))?;
         let host = format!("{}:{}", address, port);
 
         Ok(Self {

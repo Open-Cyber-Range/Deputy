@@ -58,7 +58,7 @@ pub struct OwnerRest {
     pub email: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageWithVersionsRest {
     pub id: Uuid,

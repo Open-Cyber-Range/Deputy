@@ -23,6 +23,7 @@ use anyhow::{anyhow, Error, Result};
 use deputy_library::test::generate_random_string;
 use futures::TryFutureExt;
 use get_port::{tcp::TcpPort, Ops, Range};
+use rand::Rng;
 use std::{
     env,
     fs::{create_dir_all, remove_dir_all},
@@ -51,16 +52,23 @@ impl TestPackageServerBuilder {
         let package_folder = package_folder.to_str().unwrap().to_string();
         let address = "127.0.0.1";
         let sleep_duration = Duration::from_millis(rand::random::<u64>() % 5000);
-        thread::sleep(sleep_duration);
 
-        let port = TcpPort::in_range(
-            address,
-            Range {
-                min: 1024,
-                max: 65535,
-            },
-        )
-        .ok_or_else(|| anyhow!("Failed to find a free port for the test server"))?;
+        let mut port = None;
+        for _ in 0..5 {
+            let random_port_number = rand::thread_rng().gen_range(1024..65535);
+            port = TcpPort::in_range(
+                address,
+                Range {
+                    min: random_port_number,
+                    max: random_port_number,
+                },
+            );
+            if port.is_some() {
+                break;
+            }
+            thread::sleep(sleep_duration);
+        }
+        let port = port.ok_or_else(|| anyhow!("Failed to find a free port for the test server"))?;
         let host = format!("{}:{}", address, port);
 
         Ok(Self {
@@ -127,6 +135,7 @@ impl TestPackageServer {
                             scope("/api").service(
                                 scope("/v1").service(
                                     scope("/package")
+                                        .route("", get().to(get_all_packages::<MockDatabase>))
                                         .service(
                                             scope("/{package_name}")
                                                 .route(
@@ -194,8 +203,7 @@ impl TestPackageServer {
                                                     post().to(add_package::<MockDatabase>),
                                                 ))
                                                 .wrap(MockTokenMiddlewareFactory),
-                                        )
-                                        .route("", get().to(get_all_packages::<MockDatabase>)),
+                                        ),
                                 ),
                             ),
                         )

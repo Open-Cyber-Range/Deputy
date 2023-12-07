@@ -82,9 +82,9 @@ pub async fn setup_test_backend() -> Result<String> {
     let host = test_backend.get_host();
     let test_backend = test_backend.build();
     test_backend.start().await?;
-
-    return Ok(host.to_string());
+    Ok(host.to_string())
 }
+
 pub async fn upload_test_package(cli_configuration: &DeployerCLIConfiguration) -> Result<()> {
     let temp_project = TempArchive::builder()
         .set_package_name("some-package-name")
@@ -96,5 +96,5 @@ pub async fn upload_test_package(cli_configuration: &DeployerCLIConfiguration) -
         "some-token-value",
     )?;
     publish_package(root_dir, cli_configuration.configuration_folder.path())?;
-    return Ok(());
+    Ok(())
 }

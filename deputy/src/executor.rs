@@ -312,44 +312,45 @@ impl Executor {
         println!("{}", owners.join("\n"));
         Ok(())
     }
+
     pub async fn create(&self, options: CreateOptions) -> Result<()> {
         let package_path = options.package_path;
-        let package_name: String = Input::new()
+        let mut package_name: String = Input::new()
             .with_prompt("Name of the package")
             .default("deputy_package".to_string())
             .interact_text()?;
-        let package_dir = if package_path.is_empty() {
+
+        let mut package_dir = if package_path.is_empty() {
             package_name.clone()
         } else {
-            let package_dir = format!("{}/{}", package_path, package_name);
-            if fs::metadata(&package_dir).is_ok() {
-                return Err(anyhow!(
-                    "A folder with the name '{}' already exists.",
-                    package_name
-                ));
-            }
-            fs::create_dir(&package_dir)?;
-            package_dir
+            format!("{}/{}", package_path, package_name)
         };
 
-        let src_dir = PathBuf::from(&package_dir).join("src");
-        fs::create_dir(src_dir)?;
+        while fs::metadata(&package_dir).is_ok() {
+            println!("A folder with the name '{}' already exists.", package_name);
+            package_name = Input::new()
+                .with_prompt("Please enter a different package name")
+                .interact_text()?;
+            package_dir = if package_path.is_empty() {
+                package_name.clone()
+            } else {
+                format!("{}/{}", package_path, package_name)
+            };
+        }
 
+        let src_dir = PathBuf::from(&package_dir).join("src");
         let description: String = Input::new()
             .with_prompt("Describe your package")
             .default("".to_string())
             .interact_text()?;
-
         let author_name: String = Input::new()
             .with_prompt("Author name")
             .default("John Doe".to_string())
             .interact_text()?;
-
         let author_email: String = Input::new()
             .with_prompt("Author email")
             .default("your-email@example.com".to_string())
             .interact_text()?;
-
         let licenses = vec!["Custom SPDX Identifier", "MIT", "Apache-2.0"];
         let license_selection = Select::new()
             .with_prompt("Choose a license")
@@ -357,15 +358,16 @@ impl Executor {
             .items(&licenses)
             .interact()?;
         let chosen_license = if licenses[license_selection] == "Custom SPDX Identifier" {
-            let user_input_license: String = Input::new()
+            let mut user_input_license: String = Input::new()
                 .with_prompt("Type your license identifier (SPDX ID)")
                 .interact_text()?;
-            if user_input_license.trim().is_empty() {
-                String::from("MIT")
-            } else {
-                validate_license(user_input_license.clone())?;
-                user_input_license
+            while validate_license(user_input_license.clone()).is_err() {
+                println!("Invalid license identifier. Please try again.");
+                user_input_license = Input::new()
+                    .with_prompt("Type your license identifier (SPDX ID)")
+                    .interact_text()?;
             }
+            user_input_license
         } else {
             String::from(licenses[license_selection])
         };
@@ -377,9 +379,7 @@ impl Executor {
             .items(&content_type_strings)
             .interact()
             .unwrap();
-
         let chosen_content_type = content_type_strings[content_type_selection];
-
         let type_content = match chosen_content_type {
             "vm" => virtual_machine_fields(),
             "exercise" => exercise_fields(),
@@ -391,7 +391,6 @@ impl Executor {
             "other" => other_fields(),
             _ => Err(anyhow::anyhow!("Invalid content type"))?,
         };
-
         let content = format!(
             r#"[package]
 name = "{package_name}"
@@ -412,9 +411,10 @@ type = "{chosen_content_type}"
             version = options.version,
         );
 
+        fs::create_dir_all(src_dir)?;
         fs::write(format!("{}/package.toml", package_dir), content)?;
-        println!("Initialized deputy package in {}", package_dir);
         create_default_readme(&package_dir)?;
+        println!("Initialized deputy package in {}", package_dir);
 
         Ok(())
     }

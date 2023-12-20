@@ -125,7 +125,6 @@ operating_system = ""
 architecture = ""
 type = "OVA"
 file_path = ""
-readme_path = "README.md"
 "#,
     )
 }
@@ -152,7 +151,7 @@ pub fn set_feature_type(feature_type: &str) -> String {
             .unwrap();
         format!(
             r#"action = "{}"
-            delete_action = ""
+delete_action = ""
 "#,
             action_input
         )

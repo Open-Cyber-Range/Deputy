@@ -65,9 +65,11 @@ const PackageListView = () => {
                   <span className={styles.version}>
                     {latestVersion.version}
                   </span>
-                  <span className={styles.packageSize}>
-                    {formatBytes(latestVersion.packageSize)}
-                  </span>
+                  {latestVersion.packageSize > 0 && (
+                    <span className={styles.packageSize}>
+                      {formatBytes(latestVersion.packageSize)}
+                    </span>
+                  )}
                   <div className={styles.description}>
                     {deputyPackage.description}
                   </div>

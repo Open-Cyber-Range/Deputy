@@ -189,13 +189,14 @@ mod tests {
         let mut login_command = Command::cargo_bin("deputy")?;
         login_command
             .arg("login")
+            .arg("--token")
+            .arg("some-token-value")
             .arg("--registry-name")
             .arg(&registry_name);
         login_command.env(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
             deputy_configuration.configuration_folder.path(),
         );
-        login_command.write_stdin("some-token-value\n");
         login_command.assert().success();
 
         let mut command = Command::cargo_bin("deputy")?;

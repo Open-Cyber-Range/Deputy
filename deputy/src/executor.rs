@@ -21,7 +21,7 @@ use deputy_library::{package::Package, project::create_project_from_toml_path};
 use dialoguer::{Input, Select};
 use std::env::current_dir;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::fs::rename;
 
 pub struct Executor {
@@ -88,23 +88,26 @@ impl Executor {
             )))
             .await??;
 
-        let toml_path = match options.path {
-            Some(path) => {
-                let path = PathBuf::from(path).join("package.toml");
-                if !path.is_file() {
-                    return Err(anyhow!("Could not find package.toml"));
-                }
-                path
-            }
-            None => find_toml(current_dir()?)?,
+        let package_path = match options.path {
+            Some(path) => match path.trim() {
+                "" => current_dir()?,
+                path => PathBuf::from(path),
+            },
+            None => current_dir()?,
         };
+        let toml_path = find_toml(&package_path)?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Creating package".to_string(),
             )))
             .await??;
-        let package = Package::from_file(toml_path, options.compression).map_err(|e| {
+
+        let mut project = create_project_from_toml_path(&toml_path)?;
+        project.validate()?;
+        project.validate_files(&package_path)?;
+
+        let package = Package::from_file(&toml_path, options.compression).map_err(|e| {
             anyhow::anyhow!(
                 "Failed to create package based on TOML file: {}",
                 e.to_string()
@@ -213,16 +216,19 @@ impl Executor {
     }
 
     pub async fn inspect(&self, options: InspectOptions) -> Result<()> {
-        let package_path: &Path = match options.package_path.trim() {
-            "" => Path::new("."),
-            path => Path::new(path),
+        let package_path = match options.package_path {
+            Some(path) => match path.trim() {
+                "" => current_dir()?,
+                path => PathBuf::from(path),
+            },
+            None => current_dir()?,
         };
-        let toml_path = find_toml(package_path.to_path_buf())?;
+
+        let toml_path = find_toml(&package_path)?;
         let mut project = create_project_from_toml_path(&toml_path)?;
 
         project.validate()?;
-        project.validate_files(package_path)?;
-
+        project.validate_files(&package_path)?;
         project.print_inspect_message(options.pretty)?;
         Ok(())
     }

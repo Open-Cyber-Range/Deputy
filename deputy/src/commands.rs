@@ -75,8 +75,8 @@ pub struct PublishOptions {
 
 #[derive(Debug, Args)]
 pub struct InspectOptions {
-    #[clap(short, long, default_value = DEFAULT_PACKAGE_PATH, help = "Path for the package")]
-    pub package_path: String,
+    #[clap(short, long, help = "Path to the package")]
+    pub package_path: Option<String>,
     #[clap(long, help = "Pretty print output")]
     pub pretty: bool,
 }

@@ -14,12 +14,12 @@ use std::path::Path;
 use std::{io::Write, path::PathBuf};
 use tempfile::TempDir;
 
-pub fn find_toml(current_path: PathBuf) -> Result<PathBuf> {
+pub fn find_toml(current_path: &Path) -> Result<PathBuf> {
     let mut toml_path = current_path.join(PACKAGE_TOML);
     if toml_path.is_file() {
         Ok(toml_path)
     } else if toml_path.pop() && toml_path.pop() {
-        Ok(find_toml(toml_path)?)
+        Ok(find_toml(&toml_path)?)
     } else {
         Err(anyhow!("Could not find package.toml"))
     }
@@ -275,7 +275,7 @@ mod tests {
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
 
-        assert!(find_toml(temp_dir.path().to_path_buf())?.is_file());
+        assert!(find_toml(temp_dir.path())?.is_file());
         package_toml.close()?;
         temp_dir.close()?;
         Ok(())

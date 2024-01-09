@@ -232,7 +232,7 @@ pub fn create_default_readme(package_dir: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
+pub fn print_latest_version_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
     let latest_version = VersionRest::get_latest_package(package.versions.clone())?
         .map(|version_rest| version_rest.version.to_owned())
         .ok_or_else(|| anyhow!("Package missing version"))?;
@@ -243,6 +243,20 @@ pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()>
         type = package.package_type
     );
 
+    Ok(())
+}
+
+pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
+    let mut versions = package.versions.clone();
+    versions.sort_by(|a, b| b.version.cmp(&a.version));
+    for version in versions {
+        println!(
+            "{name}/{type} {version}",
+            name = package.name.green(),
+            type = package.package_type,
+            version = version.version,
+        );
+    }
     Ok(())
 }
 

@@ -5,15 +5,16 @@ use crate::commands::{
 };
 use crate::configuration::Configuration;
 use crate::helpers::{
-    condition_fields, create_default_readme, create_temporary_package_download_path,
+    condition_fields, create_default_readme, create_temporary_package_download_path, event_fields,
     exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
     malware_fields, other_fields, print_latest_version_package_list_entry, print_package_info,
-    print_package_list_entry, unpack_package_file, virtual_machine_fields,
+    print_package_list_entry, set_assets_field, unpack_package_file, virtual_machine_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
 use anyhow::{anyhow, Ok, Result};
 use colored::Colorize;
+use deputy_library::constants::ASSETS_REQUIRED_PACKAGE_TYPES;
 use deputy_library::project::ContentType;
 use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
 use deputy_library::validation::{validate_license, Validate};
@@ -390,13 +391,18 @@ impl Executor {
             "vm" => virtual_machine_fields(),
             "exercise" => exercise_fields(),
             "condition" => condition_fields(),
-            "event" => inject_fields(),
+            "event" => event_fields(),
             "feature" => feature_fields(),
             "malware" => malware_fields(),
             "inject" => inject_fields(),
             "other" => other_fields(),
             _ => Err(anyhow::anyhow!("Invalid content type"))?,
         };
+        let assets_field: String = ASSETS_REQUIRED_PACKAGE_TYPES
+            .contains(&chosen_content_type.try_into()?)
+            .then(set_assets_field)
+            .unwrap_or_default();
+
         let content = format!(
             r#"[package]
 name = "{package_name}"
@@ -406,10 +412,7 @@ authors = ["{author_name} {author_email}"]
 license = "{chosen_license}"
 readme  = "README.md"
 categories = [""]
-assets = [
-
-]
-
+{assets_field}
 [content]
 type = "{chosen_content_type}"
 {type_content}

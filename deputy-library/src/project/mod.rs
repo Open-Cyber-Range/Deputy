@@ -392,6 +392,24 @@ impl ContentType {
     }
 }
 
+impl TryFrom<&str> for ContentType {
+    type Error = anyhow::Error;
+
+    fn try_from(str: &str) -> Result<Self> {
+        match str {
+            "vm" => Ok(ContentType::VM),
+            "feature" => Ok(ContentType::Feature),
+            "condition" => Ok(ContentType::Condition),
+            "inject" => Ok(ContentType::Inject),
+            "event" => Ok(ContentType::Event),
+            "malware" => Ok(ContentType::Malware),
+            "exercise" => Ok(ContentType::Exercise),
+            "other" => Ok(ContentType::Other),
+            _ => Err(anyhow!("Invalid content type")),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
 #[serde(tag = "type", content = "value")]
 pub enum Preview {

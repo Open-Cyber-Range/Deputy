@@ -142,90 +142,81 @@ pub fn feature_fields() -> String {
     set_feature_type(chosen_feature_type)
 }
 
+pub fn set_assets_field() -> String {
+    r#"assets = []
+"#
+    .to_string()
+}
+
 pub fn set_feature_type(feature_type: &str) -> String {
-    let action = if feature_type == "service" {
-        let action_input: String = Input::new()
-            .with_prompt("action")
-            .default("".to_string())
-            .interact_text()
-            .unwrap();
-        format!(
-            r#"action = "{}"
-delete_action = ""
-"#,
-            action_input
-        )
+    let action_field: &str = if feature_type != "artifact" {
+        r#"action = ""
+"#
     } else {
-        "".to_string()
+        r#""#
     };
 
     format!(
         r#"
 [feature]
 type = "{}"
-{}"#,
-        feature_type, action
+{action_field}restarts = false
+"#,
+        feature_type
     )
 }
 
 pub fn exercise_fields() -> String {
-    let file_path: String = Input::new()
-        .with_prompt("Exercise File Path")
-        .interact_text()
-        .unwrap();
-
-    format!(
-        r#"
+    r#"
 [exercise]
-file_path = "{path}"
-"#,
-        path = file_path
-    )
+file_path = ""
+"#
+    .to_string()
 }
 
 pub fn condition_fields() -> String {
-    let action_path: &str = "path to executable";
-
-    format!(
-        r#"[condition]
-action = "{action_path}"
-interval = "30"
-
-"#,
-        action_path = action_path,
-    )
+    r#"
+[condition]
+action = ""
+interval = 30
+"#
+    .to_string()
 }
 
 pub fn inject_fields() -> String {
-    r#"[inject]
-action = "path to executable"
-
+    r#"
+[inject]
+action = ""
+restarts = false
 "#
     .to_string()
 }
 
 pub fn event_fields() -> String {
-    r#"[event]
-action = "path to executable"
-
+    r#"
+[event]
+file_path = ""
 "#
     .to_string()
 }
 
 pub fn malware_fields() -> String {
-    r#"[malware]
-action = "path to executable"
-
+    r#"
+[malware]
+action = ""
 "#
     .to_string()
 }
 
 pub fn other_fields() -> String {
-    r#"[other]"#.to_string()
+    r#"
+[other]
+"#
+    .to_string()
 }
 
 pub fn create_default_readme(package_dir: &str) -> Result<()> {
-    let readme_content = r#"This is readme file"#;
+    let readme_content = r#"This is a readme file"#;
 
     fs::write(format!("{}/README.md", package_dir), readme_content)?;
 

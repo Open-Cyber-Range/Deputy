@@ -10,66 +10,70 @@ import { formatBytes, getLatestVersion } from '../../utils';
 const SearchPage = () => {
   const { t } = useTranslation('common');
   const { query } = useRouter();
-  const { q } = query as { q: string };
+  const { q, type, categories } = query as {
+    q: string;
+    type: string;
+    categories: string;
+  };
+
+  let apiSearchUrl = `/api/v1/package?search_term=${q}`;
+  let searchInput = `"${q}"`;
+  if (type) {
+    apiSearchUrl += `&type=${type}`;
+    searchInput += ` (type: ${type})`;
+  }
+  if (categories) {
+    apiSearchUrl += `&categories=${categories}`;
+    searchInput += ` (categories: ${categories})`;
+  }
 
   const { data: searchResults, error } = useSWR(
-    `/api/v1/package?search_term=${q}`,
+    `${apiSearchUrl}`,
     packagesWithVersionsFetcher
   );
-  if (error) {
-    return (
-      <div className={styles.packageContainer}>
-        <H4>{t('searchResultsFor', { q })}</H4>
-        {t('failedLoading')}
-      </div>
-    );
-  }
-
-  if (!searchResults || searchResults.packages.length === 0) {
-    return (
-      <div className={styles.packageContainer}>
-        <H4>{t('searchResultsFor', { q })}</H4>
-        {t('noResults')}
-      </div>
-    );
-  }
 
   return (
     <div className={styles.packageContainer}>
-      <H4>{t('searchResultsFor', { q })}</H4>
-      <ul className={styles.noBullets}>
-        {searchResults.packages.map((deputyPackage) => {
-          const latestVersion = getLatestVersion(deputyPackage);
-          return (
-            latestVersion && (
-              <li
-                className="mt-[2rem]"
-                key={`${deputyPackage.name}-${latestVersion.version}`}
-              >
-                <Card interactive={false} elevation={Elevation.ONE}>
-                  <span>
-                    <Link
-                      href={`/packages/${deputyPackage.name}/${latestVersion.version}`}
-                      className={styles.name}
-                    >
-                      {deputyPackage.name}
-                    </Link>
-                  </span>
-                  <span className={styles.version}>
-                    {latestVersion.version}
-                  </span>
-                  <span className={styles.packageSize}>
-                    {formatBytes(latestVersion.packageSize)}
-                  </span>
-                  <div className={styles.description}>
-                    {deputyPackage.description}
-                  </div>
-                </Card>
-              </li>
-            )
-          );
-        })}
-      </ul>
+      <H4>{t('searchResultsFor', { searchInput })}</H4>
+      {error && <div>{t('failedLoading')}</div>}
+      {(!searchResults || searchResults.packages.length === 0) && (
+        <div>{t('noResults')}</div>
+      )}
+      {searchResults && searchResults.packages.length > 0 && (
+        <ul className={styles.noBullets}>
+          {searchResults.packages.map((deputyPackage) => {
+            const latestVersion = getLatestVersion(deputyPackage);
+            return (
+              latestVersion && (
+                <li
+                  className="mt-[2rem]"
+                  key={`${deputyPackage.name}-${latestVersion.version}`}
+                >
+                  <Card interactive={false} elevation={Elevation.ONE}>
+                    <span>
+                      <Link
+                        href={`/packages/${deputyPackage.name}/${latestVersion.version}`}
+                        className={styles.name}
+                      >
+                        {deputyPackage.name}
+                      </Link>
+                    </span>
+                    <span className={styles.version}>
+                      {latestVersion.version}
+                    </span>
+                    <span className={styles.packageSize}>
+                      {formatBytes(latestVersion.packageSize)}
+                    </span>
+                    <div className={styles.description}>
+                      {deputyPackage.description}
+                    </div>
+                  </Card>
+                </li>
+              )
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 };

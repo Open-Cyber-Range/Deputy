@@ -15,12 +15,11 @@ const SearchBar = () => {
 
   return (
     <form onSubmit={handleSearchSubmit}>
-      <input
-        className={`bp4-input ${styles.searchbox}`}
+      <InputGroup
+        className="m-[1rem]"
+        leftIcon={<Icon icon="search" />}
         type="search"
         placeholder={t('searchbox')}
-        dir="auto"
-        value={searchInput}
         onChange={(event) => setSearchInput(event.target.value)}
       />
     </form>

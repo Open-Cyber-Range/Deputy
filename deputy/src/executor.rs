@@ -7,8 +7,8 @@ use crate::configuration::Configuration;
 use crate::helpers::{
     condition_fields, create_default_readme, create_temporary_package_download_path,
     exercise_fields, feature_fields, find_toml, get_download_target_name, inject_fields,
-    malware_fields, other_fields, print_package_info, print_package_list_entry,
-    unpack_package_file, virtual_machine_fields,
+    malware_fields, other_fields, print_latest_version_package_list_entry, print_package_info,
+    print_package_list_entry, unpack_package_file, virtual_machine_fields,
 };
 use crate::progressbar::{AdvanceProgressBar, ProgressStatus, SpinnerProgressBar};
 use actix::Actor;
@@ -435,8 +435,14 @@ type = "{chosen_content_type}"
         }
         packages.sort_by(|a, b| a.name.cmp(&b.name));
 
-        for package in &packages {
-            print_package_list_entry(package)?;
+        if list_options.all_versions {
+            for package in &packages {
+                print_package_list_entry(package)?;
+            }
+        } else {
+            for package in &packages {
+                print_latest_version_package_list_entry(package)?;
+            }
         }
 
         Ok(())

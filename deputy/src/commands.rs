@@ -193,6 +193,8 @@ pub struct ListOptions {
         help = "Filter packages by category. Supports multiple categories separated by commas. "
     )]
     pub category: Option<String>,
+    #[clap(short = 'a', long, help = "List all versions of the package")]
+    pub all_versions: bool,
 }
 
 #[derive(Debug, Args)]

@@ -32,6 +32,10 @@ const SearchBar = () => {
     router.push(`${searchUrl}`);
   };
 
+  const handleBlur = () => {
+    setSearchInput('');
+  };
+
   return (
     <form onSubmit={handleSearchSubmit}>
       <InputGroup
@@ -39,7 +43,9 @@ const SearchBar = () => {
         leftIcon={<Icon icon="search" />}
         type="search"
         placeholder={t('searchbox')}
+        value={searchInput}
         onChange={(event) => setSearchInput(event.target.value)}
+        onBlur={handleBlur}
       />
     </form>
   );

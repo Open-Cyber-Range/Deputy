@@ -423,13 +423,15 @@ impl From<PackageWithVersions> for PackageWithVersionsRest {
 pub struct PackagesWithVersionsAndPages {
     pub packages: Vec<PackageWithVersions>,
     pub total_pages: i64,
+    pub total_packages: i64,
 }
 
-impl From<(Vec<PackageWithVersions>, i64)> for PackagesWithVersionsAndPages {
-    fn from((packages, total_pages): (Vec<PackageWithVersions>, i64)) -> Self {
+impl From<(Vec<PackageWithVersions>, i64, i64)> for PackagesWithVersionsAndPages {
+    fn from((packages, total_pages, total_packages): (Vec<PackageWithVersions>, i64, i64)) -> Self {
         Self {
             packages,
             total_pages,
+            total_packages,
         }
     }
 }

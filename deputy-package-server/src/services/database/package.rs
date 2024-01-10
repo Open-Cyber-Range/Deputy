@@ -104,6 +104,7 @@ impl Handler<GetPackages> for Database {
                     Ok(PackagesWithVersionsAndPages::from((
                         packages_with_versions_query_result,
                         query.1,
+                        query.2,
                     )))
                 })
                 .await??;

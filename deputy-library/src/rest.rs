@@ -83,4 +83,5 @@ impl PackageWithVersionsRest {
 pub struct PackagesWithVersionsAndPagesRest {
     pub packages: Vec<PackageWithVersionsRest>,
     pub total_pages: i64,
+    pub total_packages: i64,
 }

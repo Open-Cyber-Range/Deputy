@@ -144,6 +144,7 @@ impl Handler<GetPackages> for MockDatabase {
                     let packages_with_versions_and_pages = PackagesWithVersionsAndPages::from((
                         packages_with_versions,
                         rand::random::<i64>(),
+                        rand::random::<i64>(),
                     ));
 
                     Ok(packages_with_versions_and_pages)

@@ -35,30 +35,55 @@ const SearchPage = () => {
     packagesWithVersionsFetcher
   );
 
+  if (error) {
+    return (
+      <div className={styles.packageContainer}>
+        <H4>{t('searchResultsFor', { searchInput })}</H4>
+        <div>{t('failedLoading')}</div>
+      </div>
+    );
+  }
+
+  if (!searchResults) {
+    return null;
+  }
+
+  const startIndex = (currentPage - 1) * selectedLimit + 1;
+  const endIndex = Math.min(
+    startIndex + selectedLimit - 1,
+    searchResults.totalPackages
+  );
+
   return (
     <div className={styles.packageContainer}>
       <H4>{t('searchResultsFor', { searchInput })}</H4>
-      {error && <div>{t('failedLoading')}</div>}
-      {(!searchResults || searchResults.packages.length === 0) && (
-        <div>{t('noResults')}</div>
-      )}
-
-      {searchResults && searchResults.packages.length > 0 && (
+      {searchResults.packages.length === 0 && <div>{t('noResults')}</div>}
+      {searchResults.packages.length > 0 && (
         <div>
-          <HTMLSelect
-            id="limit"
-            value={selectedLimit}
-            iconName="caret-down"
-            onChange={(event) => {
-              setSelectedLimit(parseInt(event.target.value, 10));
-              setCurrentPage(1);
-            }}
-          >
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </HTMLSelect>
+          <div className="flex flex-row justify-between mt-6">
+            <HTMLSelect
+              id="limit"
+              value={selectedLimit}
+              iconName="caret-down"
+              onChange={(event) => {
+                setSelectedLimit(parseInt(event.target.value, 10));
+                setCurrentPage(1);
+              }}
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </HTMLSelect>
+
+            <span className={styles.resultsCount}>
+              {t('resultsCount', {
+                startIndex,
+                endIndex,
+                count: searchResults.totalPackages,
+              })}
+            </span>
+          </div>
 
           <ul className={styles.noBullets}>
             {searchResults.packages.map((deputyPackage) => {

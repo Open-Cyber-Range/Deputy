@@ -208,6 +208,14 @@ action = ""
     .to_string()
 }
 
+pub fn banner_fields() -> String {
+    r#"
+[banner]
+file_path = ""
+"#
+    .to_string()
+}
+
 pub fn other_fields() -> String {
     r#"
 [other]

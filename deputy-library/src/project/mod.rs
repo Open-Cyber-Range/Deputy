@@ -30,6 +30,7 @@ pub struct Project {
     pub inject: Option<Inject>,
     pub malware: Option<Malware>,
     pub exercise: Option<Exercise>,
+    pub banner: Option<Banner>,
     pub other: Option<Other>,
 }
 
@@ -100,6 +101,10 @@ impl Project {
             self.condition.as_ref().map(|_| ContentType::Condition),
             self.inject.as_ref().map(|_| ContentType::Inject),
             self.event.as_ref().map(|_| ContentType::Event),
+            self.malware.as_ref().map(|_| ContentType::Malware),
+            self.exercise.as_ref().map(|_| ContentType::Exercise),
+            self.banner.as_ref().map(|_| ContentType::Banner),
+            self.other.as_ref().map(|_| ContentType::Other),
         ];
         content_types.retain(|potential_content_types| potential_content_types.is_some());
         if content_types.len() > 1 {
@@ -144,6 +149,11 @@ impl Project {
                     return Err(anyhow!("Exercise package info not found"));
                 }
             }
+            ContentType::Banner => {
+                if self.banner.is_none() {
+                    return Err(anyhow!("Banner package info not found"));
+                }
+            }
             ContentType::Other => {
                 if self.other.is_none() {
                     return Err(anyhow!("Other package info not found"));
@@ -170,6 +180,13 @@ impl Project {
             let file_path = package_path.join(&event.file_path);
             if !file_path.exists() {
                 return Err(anyhow!("Event file not found"));
+            }
+        }
+
+        if let Some(banner) = &self.banner {
+            let file_path = package_path.join(&banner.file_path);
+            if !file_path.exists() {
+                return Err(anyhow!("Banner file not found"));
             }
         }
 
@@ -232,6 +249,7 @@ pub struct Feature {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
+    #[serde(alias = "File_path", alias = "FILE_PATH")]
     pub file_path: String,
 }
 
@@ -259,6 +277,12 @@ pub struct Malware {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Exercise {
+    #[serde(alias = "File_path", alias = "FILE_PATH")]
+    pub file_path: String,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Banner {
     #[serde(alias = "File_path", alias = "FILE_PATH")]
     pub file_path: String,
 }
@@ -337,6 +361,8 @@ pub enum ContentType {
     Malware,
     #[serde(alias = "exercise", alias = "EXERCISE")]
     Exercise,
+    #[serde(alias = "banner", alias = "BANNER")]
+    Banner,
     #[serde(alias = "other", alias = "OTHER")]
     Other,
 }
@@ -351,6 +377,7 @@ impl fmt::Display for ContentType {
             ContentType::Event => write!(f, "Event"),
             ContentType::Malware => write!(f, "Malware"),
             ContentType::Exercise => write!(f, "Exercise"),
+            ContentType::Banner => write!(f, "Banner"),
             ContentType::Other => write!(f, "Other"),
         }
     }
@@ -372,6 +399,7 @@ impl ContentType {
             ContentType::Event => "Event",
             ContentType::Malware => "Malware",
             ContentType::Exercise => "Exercise",
+            ContentType::Banner => "Banner",
             ContentType::Other => "Other",
         }
     }
@@ -387,6 +415,7 @@ impl ContentType {
             "event",
             "malware",
             "exercise",
+            "banner",
             "other",
         ]
     }
@@ -404,6 +433,7 @@ impl TryFrom<&str> for ContentType {
             "event" => Ok(ContentType::Event),
             "malware" => Ok(ContentType::Malware),
             "exercise" => Ok(ContentType::Exercise),
+            "banner" => Ok(ContentType::Banner),
             "other" => Ok(ContentType::Other),
             _ => Err(anyhow!("Invalid content type")),
         }

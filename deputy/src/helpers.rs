@@ -14,12 +14,12 @@ use std::path::Path;
 use std::{io::Write, path::PathBuf};
 use tempfile::TempDir;
 
-pub fn find_toml(current_path: PathBuf) -> Result<PathBuf> {
+pub fn find_toml(current_path: &Path) -> Result<PathBuf> {
     let mut toml_path = current_path.join(PACKAGE_TOML);
     if toml_path.is_file() {
         Ok(toml_path)
     } else if toml_path.pop() && toml_path.pop() {
-        Ok(find_toml(toml_path)?)
+        Ok(find_toml(&toml_path)?)
     } else {
         Err(anyhow!("Could not find package.toml"))
     }
@@ -125,7 +125,6 @@ operating_system = ""
 architecture = ""
 type = "OVA"
 file_path = ""
-readme_path = "README.md"
 "#,
     )
 }
@@ -143,97 +142,96 @@ pub fn feature_fields() -> String {
     set_feature_type(chosen_feature_type)
 }
 
+pub fn set_assets_field() -> String {
+    r#"assets = []
+"#
+    .to_string()
+}
+
 pub fn set_feature_type(feature_type: &str) -> String {
-    let action = if feature_type == "service" {
-        let action_input: String = Input::new()
-            .with_prompt("action")
-            .default("".to_string())
-            .interact_text()
-            .unwrap();
-        format!(
-            r#"action = "{}"
-            delete_action = ""
-"#,
-            action_input
-        )
+    let action_field: &str = if feature_type != "artifact" {
+        r#"action = ""
+"#
     } else {
-        "".to_string()
+        r#""#
     };
 
     format!(
         r#"
 [feature]
 type = "{}"
-{}"#,
-        feature_type, action
+{action_field}restarts = false
+"#,
+        feature_type
     )
 }
 
 pub fn exercise_fields() -> String {
-    let file_path: String = Input::new()
-        .with_prompt("Exercise File Path")
-        .interact_text()
-        .unwrap();
-
-    format!(
-        r#"
+    r#"
 [exercise]
-file_path = "{path}"
-"#,
-        path = file_path
-    )
+file_path = ""
+"#
+    .to_string()
 }
 
 pub fn condition_fields() -> String {
-    let action_path: &str = "path to executable";
-
-    format!(
-        r#"[condition]
-action = "{action_path}"
-interval = "30"
-
-"#,
-        action_path = action_path,
-    )
+    r#"
+[condition]
+action = ""
+interval = 30
+"#
+    .to_string()
 }
 
 pub fn inject_fields() -> String {
-    r#"[inject]
-action = "path to executable"
-
+    r#"
+[inject]
+action = ""
+restarts = false
 "#
     .to_string()
 }
 
 pub fn event_fields() -> String {
-    r#"[event]
-action = "path to executable"
-
+    r#"
+[event]
+file_path = ""
 "#
     .to_string()
 }
 
 pub fn malware_fields() -> String {
-    r#"[malware]
-action = "path to executable"
+    r#"
+[malware]
+action = ""
+"#
+    .to_string()
+}
 
+pub fn banner_fields() -> String {
+    r#"
+[banner]
+file_path = ""
 "#
     .to_string()
 }
 
 pub fn other_fields() -> String {
-    r#"[other]"#.to_string()
+    r#"
+[other]
+"#
+    .to_string()
 }
 
 pub fn create_default_readme(package_dir: &str) -> Result<()> {
-    let readme_content = r#"This is readme file"#;
+    let readme_content = r#"This is a readme file"#;
 
     fs::write(format!("{}/README.md", package_dir), readme_content)?;
 
     Ok(())
 }
 
-pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
+pub fn print_latest_version_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
     let latest_version = VersionRest::get_latest_package(package.versions.clone())?
         .map(|version_rest| version_rest.version.to_owned())
         .ok_or_else(|| anyhow!("Package missing version"))?;
@@ -244,6 +242,20 @@ pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()>
         type = package.package_type
     );
 
+    Ok(())
+}
+
+pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
+    let mut versions = package.versions.clone();
+    versions.sort_by(|a, b| b.version.cmp(&a.version));
+    for version in versions {
+        println!(
+            "{name}/{type} {version}",
+            name = package.name.green(),
+            type = package.package_type,
+            version = version.version,
+        );
+    }
     Ok(())
 }
 
@@ -276,7 +288,7 @@ mod tests {
             .rand_bytes(0)
             .tempfile_in(&temp_dir)?;
 
-        assert!(find_toml(temp_dir.path().to_path_buf())?.is_file());
+        assert!(find_toml(temp_dir.path())?.is_file());
         package_toml.close()?;
         temp_dir.close()?;
         Ok(())

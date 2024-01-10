@@ -43,7 +43,7 @@ mod tests {
             cli_configuration.configuration_folder.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(&toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             package_folder,
@@ -90,7 +90,7 @@ mod tests {
             cli_configuration.configuration_folder.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(&toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             package_folder,
@@ -164,7 +164,7 @@ mod tests {
             deputy_configuration.configuration_folder.path(),
         );
         command.assert().failure().stderr(predicate::str::contains(
-            "Error: Failed to create package based on TOML file",
+            "Error: TOML parse error at line 1, column 1",
         ));
 
         Ok(())
@@ -189,13 +189,14 @@ mod tests {
         let mut login_command = Command::cargo_bin("deputy")?;
         login_command
             .arg("login")
+            .arg("--token")
+            .arg("some-token-value")
             .arg("--registry-name")
             .arg(&registry_name);
         login_command.env(
             CONFIGURATION_FOLDER_PATH_ENV_KEY,
             deputy_configuration.configuration_folder.path(),
         );
-        login_command.write_stdin("some-token-value\n");
         login_command.assert().success();
 
         let mut command = Command::cargo_bin("deputy")?;
@@ -210,7 +211,7 @@ mod tests {
             deputy_configuration.configuration_folder.path(),
         );
 
-        let temp_package = Package::from_file(toml_path, 0)?;
+        let temp_package = Package::from_file(&toml_path, 0)?;
         let outbound_package_size = &temp_package.file.metadata().unwrap().len();
         let saved_package_path: PathBuf = [
             package_folder,

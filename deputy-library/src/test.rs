@@ -65,7 +65,7 @@ impl TryInto<Package> for &TempArchive {
 
     fn try_into(self) -> Result<Package> {
         let toml_path = self.toml_file.path().to_path_buf();
-        Package::from_file(toml_path, 0)
+        Package::from_file(&toml_path, 0)
     }
 }
 

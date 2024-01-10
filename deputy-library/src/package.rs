@@ -230,9 +230,9 @@ impl Package {
         })
     }
 
-    pub fn from_file(package_toml_path: PathBuf, compression: u32) -> Result<Self> {
-        let archive_path = archiver::create_package(&package_toml_path, compression)?;
-        let metadata = Self::gather_metadata(&package_toml_path, &archive_path)?;
+    pub fn from_file(package_toml_path: &PathBuf, compression: u32) -> Result<Self> {
+        let archive_path = archiver::create_package(package_toml_path, compression)?;
+        let metadata = Self::gather_metadata(package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
         let mut temp_path_option = None;
         if cfg!(feature = "test") {

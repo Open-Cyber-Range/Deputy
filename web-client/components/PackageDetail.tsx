@@ -46,9 +46,7 @@ const PackageDetailView = () => {
         <span className={styles.name}>{name}</span>
         <span className={styles.version}>{latestVersion.version}</span>
         <span className={styles.version}>{latestVersion.license}</span>
-        <span className={styles.packageSize}>
-          {formatBytes(latestVersion.packageSize)}
-        </span>
+        <span>{formatBytes(latestVersion.packageSize)}</span>
         <span className={styles.createdAt}>
           {t('createdAt')}: {displayLocalTime(latestVersion.createdAt)}
         </span>

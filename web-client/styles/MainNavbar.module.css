@@ -10,3 +10,7 @@
   flex-basis: 50em;
   align-items: center;
 }
+
+.searchbox {
+  margin: 1rem;
+}

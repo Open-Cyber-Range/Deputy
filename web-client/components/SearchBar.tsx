@@ -1,5 +1,5 @@
 import useTranslation from 'next-translate/useTranslation';
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import {
   Icon,
@@ -8,7 +8,8 @@ import {
   Position,
   Toast,
 } from '@blueprintjs/core';
-import { extractAndRemoveTypeAndCategory } from '../utils';
+import { getEncodedSearchUrl } from '../utils';
+import styles from '../styles/MainNavbar.module.css';
 
 const SearchBar = () => {
   const { t } = useTranslation('common');
@@ -16,32 +17,14 @@ const SearchBar = () => {
   const router = useRouter();
   const [isEmptySearch, setIsEmptySearch] = useState(false);
 
-  const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
-
-  let searchUrl = searchInput
-    ? `/search?q=${encodeURIComponent(parsedSearchInput.remainingString)}`
-    : ``;
-  if (parsedSearchInput.type) {
-    if (searchUrl) {
-      searchUrl += `&type=${encodeURIComponent(parsedSearchInput.type)}`;
-    }
-  }
-  if (parsedSearchInput.categories) {
-    if (searchUrl) {
-      searchUrl += `&categories=${encodeURIComponent(
-        parsedSearchInput.categories
-      )}`;
-    }
-  }
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!searchInput.trim()) {
       setIsEmptySearch(true);
       return;
     }
     setIsEmptySearch(false);
-    router.push(`${searchUrl}`);
+    router.push(`${getEncodedSearchUrl(searchInput)}`);
   };
 
   const handleBlur = () => {
@@ -73,7 +56,7 @@ const SearchBar = () => {
         )}
       </OverlayToaster>
       <InputGroup
-        className="m-[1rem]"
+        className={styles.searchbox}
         leftIcon={<Icon icon="search" />}
         type="search"
         placeholder={t('searchbox')}

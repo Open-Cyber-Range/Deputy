@@ -210,6 +210,7 @@ impl Project {
 pub struct Account {
     pub name: String,
     pub password: String,
+    pub private_key: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]

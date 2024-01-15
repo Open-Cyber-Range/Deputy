@@ -15,10 +15,6 @@ const SearchBar = () => {
     router.push(`${getEncodedSearchUrl(searchInput.trim())}`);
   };
 
-  const handleBlur = () => {
-    setSearchInput('');
-  };
-
   return (
     <form onSubmit={handleSearchSubmit}>
       <InputGroup
@@ -30,7 +26,6 @@ const SearchBar = () => {
         onChange={(event) => {
           setSearchInput(event.target.value);
         }}
-        onBlur={handleBlur}
       />
     </form>
   );

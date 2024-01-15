@@ -16,9 +16,8 @@ const SearchBar = () => {
   };
 
   return (
-    <form onSubmit={handleSearchSubmit}>
+    <form className={styles.searchbox} onSubmit={handleSearchSubmit}>
       <InputGroup
-        className={styles.searchbox}
         leftIcon={<Icon icon="search" />}
         type="search"
         placeholder={t('searchbox')}

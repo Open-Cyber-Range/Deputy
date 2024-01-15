@@ -63,9 +63,9 @@ export const calculateStartEndIndex = (
 export function getEncodedSearchUrl(searchInput: string) {
   const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
 
-  let searchUrl = searchInput
-    ? `/search?q=${encodeURIComponent(parsedSearchInput.remainingString)}`
-    : ``;
+  let searchUrl = `/search?q=${encodeURIComponent(
+    parsedSearchInput.remainingString
+  )}`;
   if (parsedSearchInput.type) {
     if (searchUrl) {
       searchUrl += `&type=${encodeURIComponent(parsedSearchInput.type)}`;

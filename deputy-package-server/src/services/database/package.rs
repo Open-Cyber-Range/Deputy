@@ -290,6 +290,31 @@ impl Handler<CreateCategory> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Category>>")]
+pub struct GetAllCategories;
+
+impl Handler<GetAllCategories> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(&mut self, _: GetAllCategories, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let categories = block(move || {
+                    let categories: Vec<Category> = Category::all().load(&mut connection)?;
+                    Ok(categories)
+                })
+                .await??;
+                Ok(categories)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Category>>")]
 pub struct GetCategoriesForPackage {
     pub id: Uuid,
 }

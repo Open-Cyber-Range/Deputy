@@ -196,6 +196,7 @@ impl TestPackageServer {
                                                         ),
                                                 ),
                                         )
+                                        .route("", get().to(get_all_packages::<MockDatabase>))
                                         .service(
                                             scope("")
                                                 .service(scope("").route(

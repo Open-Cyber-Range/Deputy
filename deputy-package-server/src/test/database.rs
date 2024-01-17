@@ -119,15 +119,66 @@ impl Handler<GetPackages> for MockDatabase {
             async move {}
                 .into_actor(self)
                 .map(move |_, mock_database, _| {
-                    let packages: Vec<Package> = match msg.search_term {
-                        Some(search_term) => mock_database
-                            .packages
+                    let mut packages: Vec<Package> =
+                        mock_database.packages.values().cloned().collect();
+
+                    if msg.search_term.is_some() {
+                        packages = packages
+                            .into_iter()
+                            .filter(|package| {
+                                package.name.contains(&msg.search_term.clone().unwrap())
+                            })
+                            .collect();
+                    }
+
+                    if msg.package_type.is_some() {
+                        packages = packages
+                            .into_iter()
+                            .filter(|package| {
+                                package.package_type.eq_ignore_ascii_case(
+                                    msg.package_type.clone().unwrap().as_str(),
+                                )
+                            })
+                            .collect();
+                    }
+
+                    if msg.categories.is_some() {
+                        let category_ids: Vec<Uuid> = mock_database
+                            .categories
                             .values()
-                            .filter(|package| package.name.contains(&search_term))
-                            .cloned()
-                            .collect(),
-                        None => mock_database.packages.values().cloned().collect(),
-                    };
+                            .filter(|category| {
+                                msg.categories
+                                    .clone()
+                                    .unwrap()
+                                    .contains(&category.name.to_lowercase())
+                            })
+                            .map(|category| category.id)
+                            .collect();
+
+                        if category_ids.is_empty() {
+                            return Ok(PackagesWithVersionsAndPages::from((
+                                vec![],
+                                rand::random::<i64>(),
+                                rand::random::<i64>(),
+                            )));
+                        }
+
+                        let package_ids_by_categories: Vec<Uuid> = mock_database
+                            .package_categories
+                            .iter()
+                            .filter(|(_package_id, category_ids)| {
+                                category_ids
+                                    .iter()
+                                    .any(|category_id| category_ids.contains(category_id))
+                            })
+                            .map(|(package_id, _category_ids)| package_id.to_owned())
+                            .collect();
+
+                        packages = packages
+                            .into_iter()
+                            .filter(|package| package_ids_by_categories.contains(&package.id))
+                            .collect();
+                    }
 
                     let packages_with_versions: Vec<PackageWithVersions> = packages
                         .into_iter()

@@ -99,10 +99,10 @@ impl Handler<GetPackages> for Database {
                                     .map(|package_category| package_category.package_id)
                                     .collect::<Vec<Uuid>>();
 
-                            if search_packages.package_type.is_some() {
+                            if let Some(package_type) = search_packages.package_type {
                                 Package::search_name_with_type_and_categories(
                                     search_term.to_lowercase(),
-                                    search_packages.package_type.unwrap().to_lowercase(),
+                                    package_type.to_lowercase(),
                                     package_ids_by_categories,
                                 )
                                 .paginate(search_packages.page)

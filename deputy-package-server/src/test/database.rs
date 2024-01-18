@@ -123,21 +123,20 @@ impl Handler<GetPackages> for MockDatabase {
                         mock_database.packages.values().cloned().collect();
 
                     if let Some(search_term) = msg.search_term.clone() {
-                        packages = packages
-                            .into_iter()
-                            .filter(|package| package.name.contains(&search_term))
-                            .collect();
+                        packages.retain(|package| {
+                            package
+                                .name
+                                .to_lowercase()
+                                .contains(search_term.to_lowercase().as_str())
+                        });
                     }
 
                     if let Some(search_package_type) = msg.package_type.clone() {
-                        packages = packages
-                            .into_iter()
-                            .filter(|package| {
-                                package
-                                    .package_type
-                                    .eq_ignore_ascii_case(search_package_type.as_str())
-                            })
-                            .collect();
+                        packages.retain(|package| {
+                            package
+                                .package_type
+                                .eq_ignore_ascii_case(search_package_type.as_str())
+                        });
                     }
 
                     if let Some(categories) = msg.categories.clone() {
@@ -169,10 +168,7 @@ impl Handler<GetPackages> for MockDatabase {
                             .map(|(package_id, _category_ids)| package_id.to_owned())
                             .collect();
 
-                        packages = packages
-                            .into_iter()
-                            .filter(|package| package_ids_by_categories.contains(&package.id))
-                            .collect();
+                        packages.retain(|package| package_ids_by_categories.contains(&package.id));
                     }
 
                     let packages_with_versions: Vec<PackageWithVersions> = packages

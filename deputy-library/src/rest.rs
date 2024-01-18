@@ -8,6 +8,7 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub struct VersionRest {
     pub id: Uuid,
+    pub package_id: Uuid,
     pub version: String,
     pub description: String,
     pub license: String,
@@ -15,6 +16,7 @@ pub struct VersionRest {
     pub readme_html: String,
     pub package_size: u64,
     pub checksum: String,
+    pub categories: Vec<CategoryRest>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -84,4 +86,14 @@ pub struct PackagesWithVersionsAndPagesRest {
     pub packages: Vec<PackageWithVersionsRest>,
     pub total_pages: i64,
     pub total_packages: i64,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryRest {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
 }

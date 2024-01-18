@@ -9,7 +9,7 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
-use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
+use deputy_library::rest::{CategoryRest, PackageWithVersionsRest, VersionRest};
 use diesel::helper_types::FindBy;
 use diesel::insert_into;
 use diesel::mysql::Mysql;
@@ -78,6 +78,18 @@ impl Category {
         category_names: Vec<String>,
     ) -> FilterByNames<categories::table, categories::name, categories::deleted_at, Self> {
         Self::all().filter(categories::name.eq_any(category_names))
+    }
+}
+
+impl From<Category> for CategoryRest {
+    fn from(category: Category) -> Self {
+        Self {
+            id: category.id.into(),
+            name: category.name,
+            created_at: category.created_at,
+            updated_at: category.updated_at,
+            deleted_at: category.deleted_at,
+        }
     }
 }
 
@@ -415,6 +427,7 @@ impl From<Version> for VersionRest {
     fn from(version: Version) -> Self {
         Self {
             id: version.id.into(),
+            package_id: version.package_id.into(),
             version: version.version,
             description: version.description,
             license: version.license,
@@ -422,6 +435,7 @@ impl From<Version> for VersionRest {
             readme_html: version.readme_html,
             package_size: version.package_size,
             checksum: version.checksum,
+            categories: Vec::new(),
             created_at: version.created_at,
             updated_at: version.updated_at,
         }

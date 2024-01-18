@@ -1,6 +1,7 @@
 use crate::middleware::authentication::local_token::UserTokenInfo;
-use crate::models::helpers::versioning::{
-    get_package_by_name_and_version, get_packages_by_name, validate_version,
+use crate::models::helpers::{
+    uuid::Uuid,
+    versioning::{get_package_by_name_and_version, get_packages_by_name, validate_version},
 };
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetAllCategories, GetCategoriesForPackage,
@@ -21,10 +22,10 @@ use actix_web::{
 };
 use anyhow::Result;
 use async_stream::try_stream;
-use deputy_library::archiver::ArchiveStreamer;
-use deputy_library::rest::VersionRest;
 use deputy_library::{
+    archiver::ArchiveStreamer,
     package::{Package, PackageFile, PackageMetadata},
+    rest::{CategoryRest, VersionRest},
     validation::{validate_name, validate_version_semantic},
 };
 use futures::{Stream, StreamExt};
@@ -182,9 +183,8 @@ pub async fn get_all_packages<T>(
     query: Query<SearchQuery>,
 ) -> Result<Json<PackagesWithVersionsAndPages>, Error>
 where
-    T: Actor + Handler<GetPackages> + Handler<GetCategoriesForPackage>,
+    T: Actor + Handler<GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let search_term = &query.search_term;
     let optional_package_type = &query.type_param;
@@ -222,8 +222,9 @@ pub async fn get_all_versions<T>(
     query: Query<VersionQuery>,
 ) -> Result<Json<Vec<VersionRest>>, Error>
 where
-    T: Actor + Handler<GetVersionsByPackageName>,
+    T: Actor + Handler<GetVersionsByPackageName> + Handler<GetCategoriesForPackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let package_name = path_variable.into_inner();
     validate_name(package_name.to_string()).map_err(|error| {
@@ -244,22 +245,46 @@ where
         None => None,
     };
 
-    let packages: Vec<VersionRest> = get_packages_by_name(package_name.to_string(), app_state)
-        .await?
-        .into_iter()
-        .filter_map(|package| match &version_requirement {
-            Some(version_requirement) => {
-                if let Ok(version) = Version::parse(&package.version) {
-                    if version_requirement.matches(&version) && !package.is_yanked {
-                        return Some(package);
+    let mut packages: Vec<VersionRest> =
+        get_packages_by_name(package_name.to_string(), app_state.clone())
+            .await?
+            .into_iter()
+            .filter_map(|package| match &version_requirement {
+                Some(version_requirement) => {
+                    if let Ok(version) = Version::parse(&package.version) {
+                        if version_requirement.matches(&version) && !package.is_yanked {
+                            return Some(package);
+                        }
                     }
+                    None
                 }
-                None
-            }
-            None => Some(package),
-        })
-        .map(|package| package.into())
-        .collect();
+                None => Some(package),
+            })
+            .map(|package| package.into())
+            .collect();
+    if let Some(package) = packages.first() {
+        let categories: Vec<Category> = app_state
+            .database_address
+            .send(GetCategoriesForPackage {
+                id: Uuid::from(package.package_id),
+            })
+            .await
+            .map_err(|error| {
+                error!("Failed to get categories: {error}");
+                ServerResponseError(PackageServerError::MailboxError.into())
+            })?
+            .map_err(|error| {
+                error!("Failed to get categories: {error}");
+                ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+            })?;
+        let categories_rest: Vec<CategoryRest> = categories
+            .into_iter()
+            .map(|category| category.into())
+            .collect();
+        for package in &mut packages {
+            package.categories = categories_rest.clone();
+        }
+    }
     Ok(Json(packages))
 }
 

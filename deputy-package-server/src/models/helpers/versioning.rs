@@ -2,7 +2,7 @@ use crate::errors::{PackageServerError, ServerResponseError};
 use crate::models::Version;
 use crate::services::database::package::{GetPackageByNameAndVersion, GetVersionsByPackageName};
 use crate::AppState;
-use actix::Actor;
+use actix::{Actor, Handler};
 use actix_web::{web::Data, Error, HttpResponse, Result as ActixWebResult};
 use anyhow::Result;
 use deputy_library::rest::VersionRest;
@@ -14,8 +14,8 @@ pub async fn get_package_by_name_and_version<T>(
     app_state: Data<AppState<T>>,
 ) -> ActixWebResult<Version, ServerResponseError>
 where
-    T: Actor + actix::Handler<GetPackageByNameAndVersion>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    T: Actor + Handler<GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     app_state
         .database_address
@@ -36,8 +36,8 @@ pub async fn get_packages_by_name<T>(
     app_state: Data<AppState<T>>,
 ) -> ActixWebResult<Vec<Version>, ServerResponseError>
 where
-    T: Actor + actix::Handler<GetVersionsByPackageName>,
-    <T as actix::Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
+    T: Actor + Handler<GetVersionsByPackageName>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
 {
     app_state
         .database_address

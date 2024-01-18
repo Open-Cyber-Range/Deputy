@@ -64,6 +64,8 @@ impl Handler<CreatePackage> for Database {
 #[rtype(result = "Result<PackagesWithVersionsAndPages>")]
 pub struct GetPackages {
     pub search_term: Option<String>,
+    pub package_type: Option<String>,
+    pub categories: Option<Vec<String>>,
     pub page: i64,
     pub per_page: i64,
 }
@@ -78,12 +80,60 @@ impl Handler<GetPackages> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let query = match search_packages.search_term {
-                        Some(search_term) => Package::search_name(search_term.to_lowercase())
+                    let query = match (
+                        search_packages.search_term,
+                        search_packages.package_type.clone(),
+                        search_packages.categories,
+                    ) {
+                        (Some(search_term), _, Some(search_categories)) => {
+                            let search_category_ids = Category::by_names(search_categories)
+                                .load(&mut connection)?
+                                .iter()
+                                .map(|category| category.id)
+                                .collect::<Vec<Uuid>>();
+
+                            let package_ids_by_categories =
+                                PackageCategory::by_category_ids(search_category_ids)
+                                    .load(&mut connection)?
+                                    .iter()
+                                    .map(|package_category| package_category.package_id)
+                                    .collect::<Vec<Uuid>>();
+
+                            if let Some(package_type) = search_packages.package_type {
+                                Package::search_name_with_type_and_categories(
+                                    search_term.to_lowercase(),
+                                    package_type.to_lowercase(),
+                                    package_ids_by_categories,
+                                )
+                                .paginate(search_packages.page)
+                                .per_page(search_packages.per_page)
+                                .load_and_count_pages(&mut connection)?
+                            } else {
+                                Package::search_name_with_categories(
+                                    search_term.to_lowercase(),
+                                    package_ids_by_categories,
+                                )
+                                .paginate(search_packages.page)
+                                .per_page(search_packages.per_page)
+                                .load_and_count_pages(&mut connection)?
+                            }
+                        }
+                        (Some(search_term), Some(search_type), None) => {
+                            Package::search_name_with_type(
+                                search_term.to_lowercase(),
+                                search_type.to_lowercase(),
+                            )
                             .paginate(search_packages.page)
                             .per_page(search_packages.per_page)
-                            .load_and_count_pages(&mut connection)?,
-                        None => Package::all()
+                            .load_and_count_pages(&mut connection)?
+                        }
+                        (Some(search_term), None, None) => {
+                            Package::search_name(search_term.to_lowercase())
+                                .paginate(search_packages.page)
+                                .per_page(search_packages.per_page)
+                                .load_and_count_pages(&mut connection)?
+                        }
+                        _ => Package::all()
                             .paginate(search_packages.page)
                             .per_page(search_packages.per_page)
                             .load_and_count_pages(&mut connection)?,
@@ -104,6 +154,7 @@ impl Handler<GetPackages> for Database {
                     Ok(PackagesWithVersionsAndPages::from((
                         packages_with_versions_query_result,
                         query.1,
+                        query.2,
                     )))
                 })
                 .await??;

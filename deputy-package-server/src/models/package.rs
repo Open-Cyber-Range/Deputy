@@ -1,12 +1,16 @@
 use crate::models::helpers::uuid::Uuid;
+use crate::services::database::{
+    FilterByNames, SearchLikeName, SearchLikeNameAndIds, SearchLikeNameAndType,
+    SearchLikeNameAndTypeAndIds,
+};
 use crate::{
     schema::{categories, package_categories, packages, versions},
-    services::database::{All, CategoryFilter, Create, FilterExisting, SelectById, UpdateById},
+    services::database::{All, Create, FilterByIds, FilterExisting, SelectById, UpdateById},
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
-use diesel::helper_types::{Filter, FindBy, Like};
+use diesel::helper_types::FindBy;
 use diesel::insert_into;
 use diesel::mysql::Mysql;
 use diesel::prelude::*;
@@ -66,8 +70,14 @@ impl Category {
 
     pub fn by_ids(
         category_ids: Vec<Uuid>,
-    ) -> CategoryFilter<categories::table, categories::id, categories::deleted_at, Self> {
+    ) -> FilterByIds<categories::table, categories::id, categories::deleted_at, Self> {
         Self::all().filter(categories::id.eq_any(category_ids))
+    }
+
+    pub fn by_names(
+        category_names: Vec<String>,
+    ) -> FilterByNames<categories::table, categories::name, categories::deleted_at, Self> {
+        Self::all().filter(categories::name.eq_any(category_names))
     }
 }
 
@@ -139,6 +149,17 @@ impl PackageCategory {
         Self,
     > {
         Self::all().filter(package_categories::package_id.eq(id))
+    }
+
+    pub fn by_category_ids(
+        category_ids: Vec<Uuid>,
+    ) -> FilterByIds<
+        package_categories::table,
+        package_categories::category_id,
+        package_categories::deleted_at,
+        Self,
+    > {
+        Self::all().filter(package_categories::category_id.eq_any(category_ids))
     }
 
     pub fn by_package_and_category_id(
@@ -248,11 +269,50 @@ impl Package {
 
     pub fn search_name(
         search_term: String,
-    ) -> Filter<
-        FilterExisting<All<packages::table, Self>, packages::deleted_at>,
-        Like<packages::name, String>,
-    > {
+    ) -> SearchLikeName<packages::table, packages::name, packages::deleted_at, Self> {
         Self::all().filter(packages::name.like(format!("%{}%", search_term)))
+    }
+
+    pub fn search_name_with_type(
+        search_term: String,
+        package_type: String,
+    ) -> SearchLikeNameAndType<
+        packages::table,
+        packages::name,
+        packages::package_type,
+        packages::deleted_at,
+        Self,
+    > {
+        Self::search_name(search_term).filter(packages::package_type.eq(package_type))
+    }
+
+    pub fn search_name_with_categories(
+        search_term: String,
+        package_ids_by_categories: Vec<Uuid>,
+    ) -> SearchLikeNameAndIds<
+        packages::table,
+        packages::name,
+        packages::id,
+        packages::deleted_at,
+        Self,
+    > {
+        Self::search_name(search_term).filter(packages::id.eq_any(package_ids_by_categories))
+    }
+
+    pub fn search_name_with_type_and_categories(
+        search_term: String,
+        package_type: String,
+        package_ids_by_categories: Vec<Uuid>,
+    ) -> SearchLikeNameAndTypeAndIds<
+        packages::table,
+        packages::name,
+        packages::package_type,
+        packages::id,
+        packages::deleted_at,
+        Self,
+    > {
+        Self::search_name_with_type(search_term, package_type)
+            .filter(packages::id.eq_any(package_ids_by_categories))
     }
 
     pub fn by_id(
@@ -418,18 +478,20 @@ impl From<PackageWithVersions> for PackageWithVersionsRest {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PackagesWithVersionsAndPages {
     pub packages: Vec<PackageWithVersions>,
     pub total_pages: i64,
+    pub total_packages: i64,
 }
 
-impl From<(Vec<PackageWithVersions>, i64)> for PackagesWithVersionsAndPages {
-    fn from((packages, total_pages): (Vec<PackageWithVersions>, i64)) -> Self {
+impl From<(Vec<PackageWithVersions>, i64, i64)> for PackagesWithVersionsAndPages {
+    fn from((packages, total_pages, total_packages): (Vec<PackageWithVersions>, i64, i64)) -> Self {
         Self {
             packages,
             total_pages,
+            total_packages,
         }
     }
 }

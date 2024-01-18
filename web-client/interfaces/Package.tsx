@@ -31,4 +31,5 @@ export type PackageWithVersions = {
 export type PackagesWithVersionsAndPages = {
   packages: PackageWithVersions[];
   totalPages: number;
+  totalPackages: number;
 };

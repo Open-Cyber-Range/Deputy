@@ -49,3 +49,54 @@ export function extractAndRemoveTypeAndCategory(inputString: string): {
   }
   return { type, categories, remainingString };
 }
+
+export const calculateStartEndIndex = (
+  currentPage: number,
+  selectedLimit: number,
+  totalCount: number
+) => {
+  const startIndex = (currentPage - 1) * selectedLimit + 1;
+  const endIndex = Math.min(startIndex + selectedLimit - 1, totalCount);
+  return { startIndex, endIndex };
+};
+
+export function getEncodedSearchUrl(searchInput: string) {
+  const parsedSearchInput = extractAndRemoveTypeAndCategory(searchInput);
+
+  let searchUrl = `/search?q=${encodeURIComponent(
+    parsedSearchInput.remainingString
+  )}`;
+  if (parsedSearchInput.type) {
+    if (searchUrl) {
+      searchUrl += `&type=${encodeURIComponent(parsedSearchInput.type)}`;
+    }
+  }
+  if (parsedSearchInput.categories) {
+    if (searchUrl) {
+      searchUrl += `&categories=${encodeURIComponent(
+        parsedSearchInput.categories
+      )}`;
+    }
+  }
+  return searchUrl;
+}
+
+export function getSearchUrlAndInput(
+  q: string,
+  currentPage: number,
+  selectedLimit: number,
+  type: string,
+  categories: string
+) {
+  let apiSearchUrl = `/api/v1/package?search_term=${q}&page=${currentPage}&limit=${selectedLimit}`;
+  let searchInput = `"${q}"`;
+  if (type) {
+    apiSearchUrl += `&type=${type}`;
+    searchInput += ` (type: ${type})`;
+  }
+  if (categories) {
+    apiSearchUrl += `&categories=${categories}`;
+    searchInput += ` (categories: ${categories})`;
+  }
+  return { apiSearchUrl, searchInput };
+}

@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use diesel::{
     dsl::now,
-    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Select, Update},
+    helper_types::{AsSelect, Eq, EqAny, Filter, IsNull, Like, Select, Update},
     mysql::{Mysql, MysqlConnection},
     query_builder::InsertStatement,
     r2d2::{ConnectionManager, Pool, PooledConnection},
@@ -25,11 +25,21 @@ pub type SelectById<Table, Id, DeletedAtColumn, T> =
     ById<Id, FilterExisting<All<Table, T>, DeletedAtColumn>>;
 pub type Create<Type, Table> = InsertStatement<Table, <Type as Insertable<Table>>::Values>;
 pub type UpdateById<Id, Table, T> = Update<ById<Id, Table>, T>;
-pub type CategoryFilter<Table, Id, DeletedAtColumn, T> =
+pub type FilterByIds<Table, Id, DeletedAtColumn, T> =
     Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Id, Vec<Uuid>>>;
+pub type FilterByNames<Table, Name, DeletedAtColumn, T> =
+    Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, EqAny<Name, Vec<String>>>;
 type UpdateDeletedAt<DeletedAtColumn> = Eq<DeletedAtColumn, now>;
 pub type SoftDelete<L, DeletedAtColumn> = Update<L, UpdateDeletedAt<DeletedAtColumn>>;
 pub type SoftDeleteById<Id, DeleteAtColumn, Table> = SoftDelete<ById<Id, Table>, DeleteAtColumn>;
+pub type SearchLikeName<Table, Name, DeletedAtColumn, T> =
+    Filter<FilterExisting<All<Table, T>, DeletedAtColumn>, Like<Name, String>>;
+pub type SearchLikeNameAndType<Table, Name, Type, DeletedAtColumn, T> =
+    Filter<SearchLikeName<Table, Name, DeletedAtColumn, T>, Eq<Type, String>>;
+pub type SearchLikeNameAndIds<Table, Name, Id, DeletedAtColumn, T> =
+    Filter<SearchLikeName<Table, Name, DeletedAtColumn, T>, EqAny<Id, Vec<Uuid>>>;
+pub type SearchLikeNameAndTypeAndIds<Table, Name, Type, Id, DeletedAtColumn, T> =
+    Filter<SearchLikeNameAndType<Table, Name, Type, DeletedAtColumn, T>, EqAny<Id, Vec<Uuid>>>;
 
 #[derive(Clone)]
 pub struct Database {

@@ -9,7 +9,7 @@ use crate::services::database::package::{
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::PackagesWithVersionsAndPages,
+    models::{Category, PackagesWithVersionsAndPages},
     AppState,
 };
 use actix::{Actor, Handler};

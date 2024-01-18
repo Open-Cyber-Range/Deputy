@@ -122,35 +122,30 @@ impl Handler<GetPackages> for MockDatabase {
                     let mut packages: Vec<Package> =
                         mock_database.packages.values().cloned().collect();
 
-                    if msg.search_term.is_some() {
+                    if let Some(search_term) = msg.search_term.clone() {
+                        packages = packages
+                            .into_iter()
+                            .filter(|package| package.name.contains(&search_term))
+                            .collect();
+                    }
+
+                    if let Some(search_package_type) = msg.package_type.clone() {
                         packages = packages
                             .into_iter()
                             .filter(|package| {
-                                package.name.contains(&msg.search_term.clone().unwrap())
+                                package
+                                    .package_type
+                                    .eq_ignore_ascii_case(search_package_type.as_str())
                             })
                             .collect();
                     }
 
-                    if msg.package_type.is_some() {
-                        packages = packages
-                            .into_iter()
-                            .filter(|package| {
-                                package.package_type.eq_ignore_ascii_case(
-                                    msg.package_type.clone().unwrap().as_str(),
-                                )
-                            })
-                            .collect();
-                    }
-
-                    if msg.categories.is_some() {
+                    if let Some(categories) = msg.categories.clone() {
                         let category_ids: Vec<Uuid> = mock_database
                             .categories
                             .values()
                             .filter(|category| {
-                                msg.categories
-                                    .clone()
-                                    .unwrap()
-                                    .contains(&category.name.to_lowercase())
+                                categories.clone().contains(&category.name.to_lowercase())
                             })
                             .map(|category| category.id)
                             .collect();

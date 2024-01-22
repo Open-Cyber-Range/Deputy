@@ -11,6 +11,7 @@ import { packageTOMLFetcher, packageVersionFetcher } from '../utils/api';
 import PackageVersions from './PackageVersions';
 import FilePreview from './FilePreview';
 import { displayLocalTime, formatBytes } from '../utils';
+import PackageCategories from './PackageCategories';
 
 interface DetailParams extends ParsedUrlQuery {
   name: string;
@@ -55,6 +56,7 @@ const PackageDetailView = () => {
           <TabList>
             <Tab>Readme</Tab>
             <Tab>{t('versions')}</Tab>
+            <Tab>{t('categories')}</Tab>
             <Tab disabled={!packageToml.content.preview}>{t('preview')}</Tab>
           </TabList>
 
@@ -62,9 +64,17 @@ const PackageDetailView = () => {
             <div className={styles.readme}>
               {parse(latestVersion.readmeHtml || '')}
             </div>
+            <ul>
+              {latestVersion.categories?.map((category) => (
+                <li key={category.id}>{category.name}</li>
+              ))}
+            </ul>
           </TabPanel>
           <TabPanel>
             <PackageVersions packageName={name} />
+          </TabPanel>
+          <TabPanel>
+            <PackageCategories packageCategories={latestVersion.categories} />
           </TabPanel>
           <TabPanel>
             <FilePreview packageData={packageToml} />

@@ -442,6 +442,25 @@ impl From<Version> for VersionRest {
     }
 }
 
+impl From<VersionRest> for Version {
+    fn from(version_rest: VersionRest) -> Self {
+        Self {
+            id: version_rest.id.into(),
+            package_id: version_rest.package_id.into(),
+            version: version_rest.version,
+            description: version_rest.description,
+            license: version_rest.license,
+            is_yanked: version_rest.is_yanked,
+            readme_html: version_rest.readme_html,
+            package_size: version_rest.package_size,
+            checksum: version_rest.checksum,
+            created_at: version_rest.created_at,
+            updated_at: version_rest.updated_at,
+            deleted_at: None,
+        }
+    }
+}
+
 impl From<String> for NewCategory {
     fn from(category: String) -> Self {
         Self {

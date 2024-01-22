@@ -25,7 +25,7 @@ use async_stream::try_stream;
 use deputy_library::{
     archiver::ArchiveStreamer,
     package::{Package, PackageFile, PackageMetadata},
-    rest::{CategoryRest, VersionRest},
+    rest::VersionRest,
     validation::{validate_name, validate_version_semantic},
 };
 use futures::{Stream, StreamExt};
@@ -68,7 +68,7 @@ where
         ServerResponseError(PackageServerError::MetadataParse.into())
     })?;
 
-    let versions: Vec<crate::models::Version> =
+    let versions: Vec<VersionRest> =
         get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
     if let Err(error) = validate_version(package_metadata.version.as_str(), versions) {
         drain_stream(body).await?;
@@ -245,7 +245,7 @@ where
         None => None,
     };
 
-    let mut packages: Vec<VersionRest> =
+    let packages: Vec<VersionRest> =
         get_packages_by_name(package_name.to_string(), app_state.clone())
             .await?
             .into_iter()
@@ -262,29 +262,6 @@ where
             })
             .map(|package| package.into())
             .collect();
-    if let Some(package) = packages.first() {
-        let categories: Vec<Category> = app_state
-            .database_address
-            .send(GetCategoriesForPackage {
-                id: Uuid::from(package.package_id),
-            })
-            .await
-            .map_err(|error| {
-                error!("Failed to get categories: {error}");
-                ServerResponseError(PackageServerError::MailboxError.into())
-            })?
-            .map_err(|error| {
-                error!("Failed to get categories: {error}");
-                ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
-            })?;
-        let categories_rest: Vec<CategoryRest> = categories
-            .into_iter()
-            .map(|category| category.into())
-            .collect();
-        for package in &mut packages {
-            package.categories = categories_rest.clone();
-        }
-    }
     Ok(Json(packages))
 }
 
@@ -327,8 +304,9 @@ pub async fn get_package_version<T>(
     app_state: Data<AppState<T>>,
 ) -> Result<Json<VersionRest>, Error>
 where
-    T: Actor + Handler<GetPackageByNameAndVersion>,
+    T: Actor + Handler<GetPackageByNameAndVersion> + Handler<GetCategoriesForPackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
@@ -336,11 +314,12 @@ where
     let package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
-        app_state,
+        app_state.clone(),
     )
     .await?;
 
-    Ok(Json(package_version.into()))
+    let package_version_rest: VersionRest = package_version.into();
+    Ok(Json(package_version_rest))
 }
 
 pub async fn yank_version<T>(
@@ -371,8 +350,8 @@ where
     let response = app_state
         .database_address
         .send(UpdateVersionMsg {
-            id: package_version.id,
-            version: package_version,
+            id: Uuid::from(package_version.id),
+            version: package_version.into(),
         })
         .await
         .map_err(|error| {

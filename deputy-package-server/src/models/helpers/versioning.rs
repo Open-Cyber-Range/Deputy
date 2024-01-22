@@ -1,5 +1,4 @@
 use crate::errors::{PackageServerError, ServerResponseError};
-use crate::models::Version;
 use crate::services::database::package::{GetPackageByNameAndVersion, GetVersionsByPackageName};
 use crate::AppState;
 use actix::{Actor, Handler};
@@ -12,7 +11,7 @@ pub async fn get_package_by_name_and_version<T>(
     name: String,
     version: String,
     app_state: Data<AppState<T>>,
-) -> ActixWebResult<Version, ServerResponseError>
+) -> ActixWebResult<VersionRest, ServerResponseError>
 where
     T: Actor + Handler<GetPackageByNameAndVersion>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
@@ -34,7 +33,7 @@ where
 pub async fn get_packages_by_name<T>(
     name: String,
     app_state: Data<AppState<T>>,
-) -> ActixWebResult<Vec<Version>, ServerResponseError>
+) -> ActixWebResult<Vec<VersionRest>, ServerResponseError>
 where
     T: Actor + Handler<GetVersionsByPackageName>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
@@ -55,7 +54,7 @@ where
 
 pub fn validate_version(
     uploadable_version: &str,
-    package_versions: Vec<Version>,
+    package_versions: Vec<VersionRest>,
 ) -> Result<HttpResponse, Error> {
     let rest_packages = package_versions
         .into_iter()

@@ -8,6 +8,7 @@ use crate::models::{
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{anyhow, Ok, Result};
+use deputy_library::rest::VersionRest;
 use diesel::{OptionalExtension, RunQueryDsl};
 
 #[derive(Message)]
@@ -166,14 +167,14 @@ impl Handler<GetPackages> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Version>")]
+#[rtype(result = "Result<VersionRest>")]
 pub struct GetPackageByNameAndVersion {
     pub name: String,
     pub version: String,
 }
 
 impl Handler<GetPackageByNameAndVersion> for Database {
-    type Result = ResponseActFuture<Self, Result<Version>>;
+    type Result = ResponseActFuture<Self, Result<VersionRest>>;
 
     fn handle(
         &mut self,
@@ -188,10 +189,20 @@ impl Handler<GetPackageByNameAndVersion> for Database {
                 let package = block(move || {
                     let package: Package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)?;
-                    let package_version = package
+                    let package_version: Version = package
                         .exact_version(query_params.version)
                         .first(&mut connection)?;
-                    Ok(package_version)
+                    let package_categories =
+                        PackageCategory::by_package_id(package.id).load(&mut connection)?;
+                    let category_ids: Vec<Uuid> =
+                        package_categories.iter().map(|pc| pc.category_id).collect();
+                    let categories = Category::by_ids(category_ids).load(&mut connection)?;
+                    let mut package_version_rest: VersionRest = package_version.into();
+                    package_version_rest.categories = categories
+                        .into_iter()
+                        .map(|category| category.into())
+                        .collect();
+                    Ok(package_version_rest)
                 })
                 .await??;
                 Ok(package)
@@ -202,11 +213,11 @@ impl Handler<GetPackageByNameAndVersion> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<Version>>")]
+#[rtype(result = "Result<Vec<VersionRest>>")]
 pub struct GetVersionsByPackageName(pub String);
 
 impl Handler<GetVersionsByPackageName> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
+    type Result = ResponseActFuture<Self, Result<Vec<VersionRest>>>;
 
     fn handle(
         &mut self,
@@ -223,8 +234,24 @@ impl Handler<GetVersionsByPackageName> for Database {
                         .first(&mut connection)
                         .optional()?;
                     if let Some(package) = package {
-                        let package_versions = package.versions().load(&mut connection)?;
-                        return Ok(package_versions);
+                        let package_versions: Vec<Version> =
+                            package.versions().load(&mut connection)?;
+                        let package_categories =
+                            PackageCategory::by_package_id(package.id).load(&mut connection)?;
+                        let category_ids: Vec<Uuid> =
+                            package_categories.iter().map(|pc| pc.category_id).collect();
+                        let categories = Category::by_ids(category_ids).load(&mut connection)?;
+                        let mut package_versions_rest: Vec<VersionRest> = Vec::new();
+                        for package_version in package_versions {
+                            let mut package_version_rest: VersionRest = package_version.into();
+                            package_version_rest.categories = categories
+                                .clone()
+                                .into_iter()
+                                .map(|category| category.into())
+                                .collect();
+                            package_versions_rest.push(package_version_rest);
+                        }
+                        return Ok(package_versions_rest);
                     }
                     Ok(Vec::new())
                 })

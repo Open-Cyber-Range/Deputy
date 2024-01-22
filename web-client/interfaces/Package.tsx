@@ -14,6 +14,8 @@ export type Version = {
   readmePath: string;
   readmeHtml: string;
   packageSize: number;
+  type: string;
+  categories?: Category[];
   checksum: string;
   createdAt: string;
   updatedAt: string;

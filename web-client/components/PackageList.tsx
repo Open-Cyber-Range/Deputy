@@ -25,7 +25,11 @@ const PackageList = ({ packages }: { packages: PackageWithVersions[] }) => {
                   </Link>
                 </span>
                 <span className={styles.version}>{latestVersion.version}</span>
-                <span>{formatBytes(latestVersion.packageSize)}</span>
+                {latestVersion.packageSize > 0 && (
+                  <span className={styles.packageSize}>
+                    {formatBytes(latestVersion.packageSize)}
+                  </span>
+                )}
                 <div>{deputyPackage.description}</div>
               </Card>
             </li>

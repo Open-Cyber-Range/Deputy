@@ -2,6 +2,7 @@ import { Fetcher } from 'swr';
 import TOML from '@iarna/toml';
 import { getSession } from 'next-auth/react';
 import {
+  Category,
   Package,
   PackagesWithVersionsAndPages,
   Version,
@@ -14,7 +15,7 @@ import {
   TokenRest,
 } from '../interfaces/Token';
 
-import { compareVersions } from './sort';
+import { compareCategories, compareVersions } from './sort';
 
 export const packageFetcher: Fetcher<Package[], string> = async (...url) => {
   const response = await fetch(...url);
@@ -53,6 +54,12 @@ export const packageVersionFetcher: Fetcher<Version, string> = async (
 export const packageTOMLFetcher: Fetcher<Project, string> = async (...url) => {
   const response = await fetch(...url);
   return TOML.parse(await response.text()) as unknown as Project;
+};
+
+export const categoryFetcher: Fetcher<Category[], string> = async (...url) => {
+  const response = await fetch(...url);
+  const categories: Category[] = await response.json();
+  return categories.sort(compareCategories);
 };
 
 export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {

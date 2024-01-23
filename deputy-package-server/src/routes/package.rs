@@ -3,13 +3,13 @@ use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
 use crate::services::database::package::{
-    CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
-    GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
+    CreateCategory, CreatePackage, GetAllCategories, GetPackageByNameAndVersion, GetPackages,
+    GetVersionsByPackageName, UpdateVersionMsg,
 };
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::PackagesWithVersionsAndPages,
+    models::{Category, PackagesWithVersionsAndPages},
     AppState,
 };
 use actix::{Actor, Handler};
@@ -21,10 +21,10 @@ use actix_web::{
 };
 use anyhow::Result;
 use async_stream::try_stream;
-use deputy_library::archiver::ArchiveStreamer;
-use deputy_library::rest::VersionRest;
 use deputy_library::{
+    archiver::ArchiveStreamer,
     package::{Package, PackageFile, PackageMetadata},
+    rest::VersionRest,
     validation::{validate_name, validate_version_semantic},
 };
 use futures::{Stream, StreamExt};
@@ -182,9 +182,8 @@ pub async fn get_all_packages<T>(
     query: Query<SearchQuery>,
 ) -> Result<Json<PackagesWithVersionsAndPages>, Error>
 where
-    T: Actor + Handler<GetPackages> + Handler<GetCategoriesForPackage>,
+    T: Actor + Handler<GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let search_term = &query.search_term;
     let optional_package_type = &query.type_param;
@@ -363,4 +362,26 @@ where
         owner_email = user_info.email
     );
     Ok(Json(response))
+}
+
+pub async fn get_all_categories<T>(
+    app_state: Data<AppState<T>>,
+) -> Result<Json<Vec<Category>>, Error>
+where
+    T: Actor + Handler<GetAllCategories>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetAllCategories>,
+{
+    let categories: Vec<Category> = app_state
+        .database_address
+        .send(GetAllCategories)
+        .await
+        .map_err(|error| {
+            error!("Failed to get categories: {error}");
+            ServerResponseError(PackageServerError::MailboxError.into())
+        })?
+        .map_err(|error| {
+            error!("Failed to get categories: {error}");
+            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+        })?;
+    Ok(Json(categories))
 }

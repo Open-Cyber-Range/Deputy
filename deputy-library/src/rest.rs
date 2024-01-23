@@ -8,6 +8,7 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub struct VersionRest {
     pub id: Uuid,
+    pub package_id: Uuid,
     pub version: String,
     pub description: String,
     pub license: String,

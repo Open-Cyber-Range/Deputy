@@ -5,8 +5,8 @@ use crate::models::{
 };
 use crate::services::database::owner::{AddOwner, DeleteOwner, GetOwners};
 use crate::services::database::package::{
-    CreateCategory, CreatePackage, GetCategoriesForPackage, GetPackageByNameAndVersion,
-    GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
+    CreateCategory, CreatePackage, GetAllCategories, GetCategoriesForPackage,
+    GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
 };
 use actix::Actor;
 use actix::ActorFutureExt;
@@ -139,7 +139,7 @@ impl Handler<GetPackages> for MockDatabase {
                         });
                     }
 
-                    if let Some(categories) = msg.categories.clone() {
+                    if let Some(categories) = msg.categories {
                         let category_ids: Vec<Uuid> = mock_database
                             .categories
                             .values()
@@ -459,5 +459,22 @@ impl Handler<GetCategoriesForPackage> for MockDatabase {
                 Ok(categories)
             },
         ))
+    }
+}
+
+impl Handler<GetAllCategories> for MockDatabase {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(&mut self, _msg: GetAllCategories, _ctx: &mut Self::Context) -> Self::Result {
+        let db_categories = self.categories.clone();
+
+        Box::pin(
+            async move { _msg }
+                .into_actor(self)
+                .map(move |_msg, _mock_database, _| {
+                    let categories: Vec<Category> = db_categories.values().cloned().collect();
+                    Ok(categories)
+                }),
+        )
     }
 }

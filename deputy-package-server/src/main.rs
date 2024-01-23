@@ -16,8 +16,8 @@ use deputy_package_server::{
         basic::{status, version},
         owner::{add_owner, delete_owner, get_all_owners},
         package::{
-            add_package, download_file, download_package, get_all_packages, get_all_versions,
-            get_package_version, yank_version,
+            add_package, download_file, download_package, get_all_categories, get_all_packages,
+            get_all_versions, get_package_version, yank_version,
         },
     },
     services::database::Database,
@@ -109,6 +109,7 @@ async fn real_main() -> Result<()> {
                                         .wrap(LocalTokenAuthenticationMiddlewareFactory),
                                 ),
                         )
+                        .route("/category", get().to(get_all_categories::<Database>))
                         .service(
                             scope("/token")
                                 .service(

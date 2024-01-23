@@ -11,6 +11,7 @@ import { packageTOMLFetcher, packageVersionFetcher } from '../utils/api';
 import PackageVersions from './PackageVersions';
 import FilePreview from './FilePreview';
 import { displayLocalTime, formatBytes } from '../utils';
+import PackageCategories from './PackageCategories';
 
 interface DetailParams extends ParsedUrlQuery {
   name: string;
@@ -45,6 +46,9 @@ const PackageDetailView = () => {
       <Card interactive={false} elevation={Elevation.ONE}>
         <span className={styles.name}>{name}</span>
         <span className={styles.version}>{latestVersion.version}</span>
+        <span className={styles.version}>
+          {packageToml.content.type.toUpperCase()}
+        </span>
         <span className={styles.version}>{latestVersion.license}</span>
         <span>{formatBytes(latestVersion.packageSize)}</span>
         <span className={styles.createdAt}>
@@ -55,6 +59,14 @@ const PackageDetailView = () => {
           <TabList>
             <Tab>Readme</Tab>
             <Tab>{t('versions')}</Tab>
+            <Tab
+              disabled={
+                !packageToml.package.categories ||
+                packageToml.package.categories.length === 0
+              }
+            >
+              {t('categories')}
+            </Tab>
             <Tab disabled={!packageToml.content.preview}>{t('preview')}</Tab>
           </TabList>
 
@@ -65,6 +77,11 @@ const PackageDetailView = () => {
           </TabPanel>
           <TabPanel>
             <PackageVersions packageName={name} />
+          </TabPanel>
+          <TabPanel>
+            <PackageCategories
+              packageCategories={packageToml.package.categories}
+            />
           </TabPanel>
           <TabPanel>
             <FilePreview packageData={packageToml} />

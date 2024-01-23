@@ -415,6 +415,7 @@ impl From<Version> for VersionRest {
     fn from(version: Version) -> Self {
         Self {
             id: version.id.into(),
+            package_id: version.package_id.into(),
             version: version.version,
             description: version.description,
             license: version.license,

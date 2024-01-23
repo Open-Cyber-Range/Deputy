@@ -188,7 +188,7 @@ impl Handler<GetPackageByNameAndVersion> for Database {
                 let package = block(move || {
                     let package: Package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)?;
-                    let package_version = package
+                    let package_version: Version = package
                         .exact_version(query_params.version)
                         .first(&mut connection)?;
                     Ok(package_version)
@@ -223,7 +223,8 @@ impl Handler<GetVersionsByPackageName> for Database {
                         .first(&mut connection)
                         .optional()?;
                     if let Some(package) = package {
-                        let package_versions = package.versions().load(&mut connection)?;
+                        let package_versions: Vec<Version> =
+                            package.versions().load(&mut connection)?;
                         return Ok(package_versions);
                     }
                     Ok(Vec::new())
@@ -282,6 +283,31 @@ impl Handler<CreateCategory> for Database {
                 })
                 .await??;
                 Ok(category)
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<Category>>")]
+pub struct GetAllCategories;
+
+impl Handler<GetAllCategories> for Database {
+    type Result = ResponseActFuture<Self, Result<Vec<Category>>>;
+
+    fn handle(&mut self, _: GetAllCategories, _ctx: &mut Self::Context) -> Self::Result {
+        let connection_result = self.get_connection();
+
+        Box::pin(
+            async move {
+                let mut connection = connection_result?;
+                let categories = block(move || {
+                    let categories: Vec<Category> = Category::all().load(&mut connection)?;
+                    Ok(categories)
+                })
+                .await??;
+                Ok(categories)
             }
             .into_actor(self),
         )

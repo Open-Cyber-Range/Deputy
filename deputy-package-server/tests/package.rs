@@ -3,7 +3,7 @@ mod common;
 #[cfg(test)]
 mod tests {
 
-    use crate::common::{set_mock_user_token, setup_package_server, BodyTest};
+    use crate::common::{set_mock_user_token, setup_package_server, upload_test_package, BodyTest};
     use actix_http::Payload;
     use actix_web::{
         body::to_bytes,
@@ -17,7 +17,9 @@ mod tests {
         test::TempArchive,
     };
     use deputy_package_server::{
-        routes::package::{add_package, download_file, download_package, yank_version},
+        routes::package::{
+            add_package, download_file, download_package, get_all_categories, yank_version,
+        },
         test::{database::MockDatabase, middleware::MockTokenMiddlewareFactory},
     };
     use std::path::PathBuf;
@@ -213,11 +215,12 @@ mod tests {
 
     #[actix_web::test]
     async fn yank_package() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (_package_folder, app_state) = setup_package_server()?;
+        let package_name = upload_test_package(&app_state).await.unwrap();
+        let package_version = "1.0.4".to_string();
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
-                .route("/package", post().to(add_package::<MockDatabase>))
                 .route(
                     "/package/{package_name}/{version}/yank/{set_yank}",
                     put().to(yank_version::<MockDatabase>),
@@ -226,21 +229,6 @@ mod tests {
         )
         .await;
 
-        let archive = TempArchive::builder().build()?;
-        let test_package: Package = (&archive).try_into()?;
-        let package_name = test_package.metadata.name.clone();
-        let package_version = test_package.metadata.version.clone();
-        let stream: PackageStream = test_package.to_stream().await?;
-        let request = test::TestRequest::post().uri("/package").to_request();
-        let (request, _) = request.replace_payload(Payload::from(stream));
-        set_mock_user_token(&request);
-        let response = test::call_service(&app, request).await;
-        assert!(response.status().is_success());
-        assert!(PathBuf::from(package_folder.path())
-            .join(package_name.clone())
-            .exists());
-        package_folder.close()?;
-
         let uri = format!("/package/{}/{}/yank/true", package_name, package_version);
         let request = test::TestRequest::put().uri(uri.as_str()).to_request();
         set_mock_user_token(&request);
@@ -248,6 +236,32 @@ mod tests {
         assert!(response.status().is_success());
         let body = to_bytes(response.into_body()).await.unwrap();
         let search_string = b"isYanked\":true";
+        assert!(body
+            .windows(search_string.len())
+            .any(|window| window == search_string));
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_get_all_categories() -> Result<()> {
+        let (_package_folder, app_state) = setup_package_server()?;
+        upload_test_package(&app_state).await.unwrap();
+
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/category", get().to(get_all_categories::<MockDatabase>))
+                .wrap(MockTokenMiddlewareFactory),
+        )
+        .await;
+
+        let request = test::TestRequest::get().uri("/category").to_request();
+        set_mock_user_token(&request);
+        let response = test::call_service(&app, request).await;
+        assert!(response.status().is_success());
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let search_string = b"\"name\":\"category1\"";
         assert!(body
             .windows(search_string.len())
             .any(|window| window == search_string));

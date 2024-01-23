@@ -33,3 +33,11 @@ export type PackagesWithVersionsAndPages = {
   totalPages: number;
   totalPackages: number;
 };
+
+export type Category = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string;
+};

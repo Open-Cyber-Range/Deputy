@@ -1,7 +1,7 @@
 [package]
 name = "deputy"
 description = "Deputy CLI tool to interact with deputy packages"
-version = "3.7.0"
+version = "4.0.0"
 edition = "2021"
 
 [package.metadata.deb]

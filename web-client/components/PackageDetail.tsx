@@ -64,11 +64,6 @@ const PackageDetailView = () => {
             <div className={styles.readme}>
               {parse(latestVersion.readmeHtml || '')}
             </div>
-            <ul>
-              {latestVersion.categories?.map((category) => (
-                <li key={category.id}>{category.name}</li>
-              ))}
-            </ul>
           </TabPanel>
           <TabPanel>
             <PackageVersions packageName={name} />

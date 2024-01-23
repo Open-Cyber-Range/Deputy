@@ -86,13 +86,3 @@ pub struct PackagesWithVersionsAndPagesRest {
     pub total_pages: i64,
     pub total_packages: i64,
 }
-
-#[derive(Clone, Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CategoryRest {
-    pub id: Uuid,
-    pub name: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub deleted_at: Option<NaiveDateTime>,
-}

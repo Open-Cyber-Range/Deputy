@@ -3,8 +3,8 @@ use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
 use crate::services::database::package::{
-    CreateCategory, CreatePackage, GetAllCategories, GetCategoriesForPackage,
-    GetPackageByNameAndVersion, GetPackages, GetVersionsByPackageName, UpdateVersionMsg,
+    CreateCategory, CreatePackage, GetAllCategories, GetPackageByNameAndVersion, GetPackages,
+    GetVersionsByPackageName, UpdateVersionMsg,
 };
 use crate::{
     constants::{default_limit, default_page},
@@ -219,11 +219,10 @@ pub async fn get_all_versions<T>(
     path_variable: Path<String>,
     app_state: Data<AppState<T>>,
     query: Query<VersionQuery>,
-) -> Result<Json<Vec<crate::models::Version>>, Error>
+) -> Result<Json<Vec<VersionRest>>, Error>
 where
-    T: Actor + Handler<GetVersionsByPackageName> + Handler<GetCategoriesForPackage>,
+    T: Actor + Handler<GetVersionsByPackageName>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let package_name = path_variable.into_inner();
     validate_name(package_name.to_string()).map_err(|error| {
@@ -244,22 +243,22 @@ where
         None => None,
     };
 
-    let packages: Vec<crate::models::Version> =
-        get_packages_by_name(package_name.to_string(), app_state.clone())
-            .await?
-            .into_iter()
-            .filter_map(|package| match &version_requirement {
-                Some(version_requirement) => {
-                    if let Ok(version) = Version::parse(&package.version) {
-                        if version_requirement.matches(&version) && !package.is_yanked {
-                            return Some(package);
-                        }
+    let packages: Vec<VersionRest> = get_packages_by_name(package_name.to_string(), app_state)
+        .await?
+        .into_iter()
+        .filter_map(|package| match &version_requirement {
+            Some(version_requirement) => {
+                if let Ok(version) = Version::parse(&package.version) {
+                    if version_requirement.matches(&version) && !package.is_yanked {
+                        return Some(package);
                     }
-                    None
                 }
-                None => Some(package),
-            })
-            .collect();
+                None
+            }
+            None => Some(package),
+        })
+        .map(|package| package.into())
+        .collect();
     Ok(Json(packages))
 }
 
@@ -302,9 +301,8 @@ pub async fn get_package_version<T>(
     app_state: Data<AppState<T>>,
 ) -> Result<Json<VersionRest>, Error>
 where
-    T: Actor + Handler<GetPackageByNameAndVersion> + Handler<GetCategoriesForPackage>,
+    T: Actor + Handler<GetPackageByNameAndVersion>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
-    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetCategoriesForPackage>,
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
@@ -312,7 +310,7 @@ where
     let package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
-        app_state.clone(),
+        app_state,
     )
     .await?;
 

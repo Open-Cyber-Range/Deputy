@@ -139,7 +139,7 @@ impl Handler<GetPackages> for MockDatabase {
                         });
                     }
 
-                    if let Some(categories) = msg.categories.clone() {
+                    if let Some(categories) = msg.categories {
                         let category_ids: Vec<Uuid> = mock_database
                             .categories
                             .values()

@@ -32,12 +32,6 @@ impl From<Uuid> for uuid::Uuid {
     }
 }
 
-impl From<uuid::Uuid> for Uuid {
-    fn from(s: uuid::Uuid) -> Self {
-        Self(s)
-    }
-}
-
 impl TryFrom<&str> for Uuid {
     type Error = uuid::Error;
 

@@ -9,7 +9,7 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
-use deputy_library::rest::{CategoryRest, PackageWithVersionsRest, VersionRest};
+use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
 use diesel::helper_types::FindBy;
 use diesel::insert_into;
 use diesel::mysql::Mysql;
@@ -78,18 +78,6 @@ impl Category {
         category_names: Vec<String>,
     ) -> FilterByNames<categories::table, categories::name, categories::deleted_at, Self> {
         Self::all().filter(categories::name.eq_any(category_names))
-    }
-}
-
-impl From<Category> for CategoryRest {
-    fn from(category: Category) -> Self {
-        Self {
-            id: category.id.into(),
-            name: category.name,
-            created_at: category.created_at,
-            updated_at: category.updated_at,
-            deleted_at: category.deleted_at,
-        }
     }
 }
 
@@ -437,25 +425,6 @@ impl From<Version> for VersionRest {
             checksum: version.checksum,
             created_at: version.created_at,
             updated_at: version.updated_at,
-        }
-    }
-}
-
-impl From<VersionRest> for Version {
-    fn from(version_rest: VersionRest) -> Self {
-        Self {
-            id: version_rest.id.into(),
-            package_id: version_rest.package_id.into(),
-            version: version_rest.version,
-            description: version_rest.description,
-            license: version_rest.license,
-            is_yanked: version_rest.is_yanked,
-            readme_html: version_rest.readme_html,
-            package_size: version_rest.package_size,
-            checksum: version_rest.checksum,
-            created_at: version_rest.created_at,
-            updated_at: version_rest.updated_at,
-            deleted_at: None,
         }
     }
 }

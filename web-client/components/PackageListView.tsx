@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
 import { ChangeEvent, useState } from 'react';
+import Link from 'next/link';
 import { packagesWithVersionsFetcher } from '../utils/api';
 import styles from '../styles/PackageList.module.css';
 import PageLimitSelect from './PageLimitSelect';
@@ -40,6 +41,9 @@ const PackageListView = () => {
           selectedLimit={selectedLimit}
           onChange={handleLimitChange}
         />
+        <Link className={styles.createdAt} href="/categories">
+          {t('browseAllCategories')}
+        </Link>
       </div>
 
       <PackageList packages={packageList.packages} />

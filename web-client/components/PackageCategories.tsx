@@ -1,34 +1,25 @@
-import { Card, Elevation } from '@blueprintjs/core';
+import { Card, Elevation, H4 } from '@blueprintjs/core';
 import Link from 'next/link';
 import styles from '../styles/PackageList.module.css';
-import { Category } from '../interfaces/Package';
-import { sortCategories } from '../utils/sort';
 
 const PackageCategories = ({
   packageCategories,
 }: {
-  packageCategories: Category[] | undefined;
+  packageCategories: string[] | undefined;
 }) => {
   if (!packageCategories) {
     return null;
   }
 
-  const sortedPackageCategories = packageCategories.sort(sortCategories);
-
   return (
     <div>
       <ul className={styles.noBullets}>
-        {sortedPackageCategories.map((category) => (
-          <li key={category.id}>
+        {packageCategories.sort().map((category) => (
+          <li key={category}>
             <Card interactive={false} elevation={Elevation.ONE}>
-              <span>
-                <Link
-                  href={`/search?q=&categories=${category.name}`}
-                  className={styles.name}
-                >
-                  {category.name}
-                </Link>
-              </span>
+              <Link href={`/search?q=&categories=${category}`}>
+                <H4 className={styles.name}>{category}</H4>
+              </Link>
             </Card>
           </li>
         ))}

@@ -435,7 +435,6 @@ impl From<Version> for VersionRest {
             readme_html: version.readme_html,
             package_size: version.package_size,
             checksum: version.checksum,
-            categories: Vec::new(),
             created_at: version.created_at,
             updated_at: version.updated_at,
         }

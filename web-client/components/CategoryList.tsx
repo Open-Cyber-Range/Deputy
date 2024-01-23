@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
 import { Card, Elevation, H4 } from '@blueprintjs/core';
+import Link from 'next/link';
 import { categoryFetcher } from '../utils/api';
 import styles from '../styles/PackageList.module.css';
 
@@ -26,10 +27,9 @@ const CategoryListView = () => {
           return (
             <li className="mt-[2rem]" key={`${category.name}-${category.name}`}>
               <Card interactive={false} elevation={Elevation.ONE}>
-                <span>
+                <Link href={`/search?q=&categories=${category.name}`}>
                   <H4 className={styles.name}>{category.name}</H4>
-                </span>
-                <div className={styles.createdAt}>{category.createdAt}</div>
+                </Link>
               </Card>
             </li>
           );

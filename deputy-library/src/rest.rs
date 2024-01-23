@@ -16,7 +16,6 @@ pub struct VersionRest {
     pub readme_html: String,
     pub package_size: u64,
     pub checksum: String,
-    pub categories: Vec<CategoryRest>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }

@@ -46,6 +46,9 @@ const PackageDetailView = () => {
       <Card interactive={false} elevation={Elevation.ONE}>
         <span className={styles.name}>{name}</span>
         <span className={styles.version}>{latestVersion.version}</span>
+        <span className={styles.version}>
+          {packageToml.content.type.toUpperCase()}
+        </span>
         <span className={styles.version}>{latestVersion.license}</span>
         <span>{formatBytes(latestVersion.packageSize)}</span>
         <span className={styles.createdAt}>
@@ -56,7 +59,14 @@ const PackageDetailView = () => {
           <TabList>
             <Tab>Readme</Tab>
             <Tab>{t('versions')}</Tab>
-            <Tab>{t('categories')}</Tab>
+            <Tab
+              disabled={
+                !packageToml.package.categories ||
+                packageToml.package.categories.length === 0
+              }
+            >
+              {t('categories')}
+            </Tab>
             <Tab disabled={!packageToml.content.preview}>{t('preview')}</Tab>
           </TabList>
 
@@ -69,7 +79,9 @@ const PackageDetailView = () => {
             <PackageVersions packageName={name} />
           </TabPanel>
           <TabPanel>
-            <PackageCategories packageCategories={latestVersion.categories} />
+            <PackageCategories
+              packageCategories={packageToml.package.categories}
+            />
           </TabPanel>
           <TabPanel>
             <FilePreview packageData={packageToml} />

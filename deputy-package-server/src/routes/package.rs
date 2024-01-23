@@ -1,7 +1,6 @@
 use crate::middleware::authentication::local_token::UserTokenInfo;
-use crate::models::helpers::{
-    uuid::Uuid,
-    versioning::{get_package_by_name_and_version, get_packages_by_name, validate_version},
+use crate::models::helpers::versioning::{
+    get_package_by_name_and_version, get_packages_by_name, validate_version,
 };
 use crate::services::database::package::{
     CreateCategory, CreatePackage, GetAllCategories, GetCategoriesForPackage,
@@ -68,7 +67,7 @@ where
         ServerResponseError(PackageServerError::MetadataParse.into())
     })?;
 
-    let versions: Vec<VersionRest> =
+    let versions: Vec<crate::models::Version> =
         get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
     if let Err(error) = validate_version(package_metadata.version.as_str(), versions) {
         drain_stream(body).await?;
@@ -220,7 +219,7 @@ pub async fn get_all_versions<T>(
     path_variable: Path<String>,
     app_state: Data<AppState<T>>,
     query: Query<VersionQuery>,
-) -> Result<Json<Vec<VersionRest>>, Error>
+) -> Result<Json<Vec<crate::models::Version>>, Error>
 where
     T: Actor + Handler<GetVersionsByPackageName> + Handler<GetCategoriesForPackage>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetVersionsByPackageName>,
@@ -245,7 +244,7 @@ where
         None => None,
     };
 
-    let packages: Vec<VersionRest> =
+    let packages: Vec<crate::models::Version> =
         get_packages_by_name(package_name.to_string(), app_state.clone())
             .await?
             .into_iter()
@@ -260,7 +259,6 @@ where
                 }
                 None => Some(package),
             })
-            .map(|package| package.into())
             .collect();
     Ok(Json(packages))
 }
@@ -318,8 +316,7 @@ where
     )
     .await?;
 
-    let package_version_rest: VersionRest = package_version.into();
-    Ok(Json(package_version_rest))
+    Ok(Json(package_version.into()))
 }
 
 pub async fn yank_version<T>(
@@ -350,8 +347,8 @@ where
     let response = app_state
         .database_address
         .send(UpdateVersionMsg {
-            id: Uuid::from(package_version.id),
-            version: package_version.into(),
+            id: package_version.id,
+            version: package_version,
         })
         .await
         .map_err(|error| {

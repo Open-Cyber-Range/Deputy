@@ -8,7 +8,6 @@ use crate::models::{
 use actix::{Handler, Message, ResponseActFuture, WrapFuture};
 use actix_web::web::block;
 use anyhow::{anyhow, Ok, Result};
-use deputy_library::rest::VersionRest;
 use diesel::{OptionalExtension, RunQueryDsl};
 
 #[derive(Message)]
@@ -167,14 +166,14 @@ impl Handler<GetPackages> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<VersionRest>")]
+#[rtype(result = "Result<Version>")]
 pub struct GetPackageByNameAndVersion {
     pub name: String,
     pub version: String,
 }
 
 impl Handler<GetPackageByNameAndVersion> for Database {
-    type Result = ResponseActFuture<Self, Result<VersionRest>>;
+    type Result = ResponseActFuture<Self, Result<Version>>;
 
     fn handle(
         &mut self,
@@ -192,17 +191,7 @@ impl Handler<GetPackageByNameAndVersion> for Database {
                     let package_version: Version = package
                         .exact_version(query_params.version)
                         .first(&mut connection)?;
-                    let package_categories =
-                        PackageCategory::by_package_id(package.id).load(&mut connection)?;
-                    let category_ids: Vec<Uuid> =
-                        package_categories.iter().map(|pc| pc.category_id).collect();
-                    let categories = Category::by_ids(category_ids).load(&mut connection)?;
-                    let mut package_version_rest: VersionRest = package_version.into();
-                    package_version_rest.categories = categories
-                        .into_iter()
-                        .map(|category| category.into())
-                        .collect();
-                    Ok(package_version_rest)
+                    Ok(package_version)
                 })
                 .await??;
                 Ok(package)
@@ -213,11 +202,11 @@ impl Handler<GetPackageByNameAndVersion> for Database {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<VersionRest>>")]
+#[rtype(result = "Result<Vec<Version>>")]
 pub struct GetVersionsByPackageName(pub String);
 
 impl Handler<GetVersionsByPackageName> for Database {
-    type Result = ResponseActFuture<Self, Result<Vec<VersionRest>>>;
+    type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
 
     fn handle(
         &mut self,
@@ -236,22 +225,7 @@ impl Handler<GetVersionsByPackageName> for Database {
                     if let Some(package) = package {
                         let package_versions: Vec<Version> =
                             package.versions().load(&mut connection)?;
-                        let package_categories =
-                            PackageCategory::by_package_id(package.id).load(&mut connection)?;
-                        let category_ids: Vec<Uuid> =
-                            package_categories.iter().map(|pc| pc.category_id).collect();
-                        let categories = Category::by_ids(category_ids).load(&mut connection)?;
-                        let mut package_versions_rest: Vec<VersionRest> = Vec::new();
-                        for package_version in package_versions {
-                            let mut package_version_rest: VersionRest = package_version.into();
-                            package_version_rest.categories = categories
-                                .clone()
-                                .into_iter()
-                                .map(|category| category.into())
-                                .collect();
-                            package_versions_rest.push(package_version_rest);
-                        }
-                        return Ok(package_versions_rest);
+                        return Ok(package_versions);
                     }
                     Ok(Vec::new())
                 })

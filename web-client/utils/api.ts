@@ -15,7 +15,7 @@ import {
   TokenRest,
 } from '../interfaces/Token';
 
-import { compareVersions } from './sort';
+import { compareCategories, compareVersions } from './sort';
 
 export const packageFetcher: Fetcher<Package[], string> = async (...url) => {
   const response = await fetch(...url);
@@ -58,7 +58,8 @@ export const packageTOMLFetcher: Fetcher<Project, string> = async (...url) => {
 
 export const categoryFetcher: Fetcher<Category[], string> = async (...url) => {
   const response = await fetch(...url);
-  return response.json();
+  const categories: Category[] = await response.json();
+  return categories.sort(compareCategories);
 };
 
 export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {

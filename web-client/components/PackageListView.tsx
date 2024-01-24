@@ -3,7 +3,6 @@ import useTranslation from 'next-translate/useTranslation';
 import { ChangeEvent, useState } from 'react';
 import Link from 'next/link';
 import { packagesWithVersionsFetcher } from '../utils/api';
-import styles from '../styles/PackageList.module.css';
 import PageLimitSelect from './PageLimitSelect';
 import Pagination from './Pagination';
 import PackageList from './PackageList';
@@ -31,13 +30,16 @@ const PackageListView = () => {
   };
 
   return (
-    <div className={styles.packageContainer}>
-      <div>
+    <div className="p-[2rem] w-[60rem] max-w-[90%]">
+      <div className="flex justify-between">
         <PageLimitSelect
           selectedLimit={selectedLimit}
           onChange={handleLimitChange}
         />
-        <Link className={styles.createdAt} href="/categories">
+        <Link
+          className="bp4-button bp4-small bg-cr14-dark-blue"
+          href="/categories"
+        >
           {t('browseAllCategories')}
         </Link>
       </div>

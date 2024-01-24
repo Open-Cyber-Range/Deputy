@@ -3,7 +3,6 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Icon, InputGroup } from '@blueprintjs/core';
 import { getEncodedSearchUrl } from '../utils';
-import styles from '../styles/MainNavbar.module.css';
 
 const SearchBar = () => {
   const { t } = useTranslation('common');
@@ -16,7 +15,10 @@ const SearchBar = () => {
   };
 
   return (
-    <form className={styles.searchbox} onSubmit={handleSearchSubmit}>
+    <form
+      className="flex flex-col grow relative m-[1rem]"
+      onSubmit={handleSearchSubmit}
+    >
       <InputGroup
         leftIcon={<Icon icon="search" />}
         type="search"

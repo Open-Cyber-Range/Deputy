@@ -14,7 +14,6 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import styles from '../styles/MainNavbar.module.css';
 import SearchBar from './SearchBar';
 
 const UserMenu = () => {
@@ -60,12 +59,18 @@ const MainNavbar = () => {
     <>
       {session.user?.name && (
         <Popover content={<UserMenu />} position={Position.BOTTOM}>
-          <Button text={session.user.name} minimal icon="caret-down" />
+          <Button
+            className="font-bolt"
+            text={session.user.name}
+            small
+            icon="caret-down"
+          />
         </Popover>
       )}
       <Button
         className="ml-2"
-        minimal
+        icon="log-out"
+        small
         onClick={(e) => {
           e.preventDefault();
           signOut();
@@ -76,7 +81,9 @@ const MainNavbar = () => {
     </>
   ) : (
     <Button
-      minimal
+      className="font-bolt"
+      small
+      icon="log-in"
       onClick={(e) => {
         e.preventDefault();
         signIn();
@@ -87,17 +94,21 @@ const MainNavbar = () => {
   );
 
   return (
-    <Navbar className={styles.navbar}>
-      <div className={styles.navbar_container}>
+    <Navbar className="flex justify-center items-center bg-cr14-dark-blue">
+      <div className="flex items-center basis-[50em]">
         <NavbarGroup align="left">
           <NavbarHeading>
-            <Link href="/"> Deputy</Link>
+            <span className="bp4-navbar-heading text-m font-bold uppercase tracking-wider text-cr14-gray">
+              Deputy
+            </span>
           </NavbarHeading>
           <NavbarDivider />
         </NavbarGroup>
         <SearchBar />
         <NavbarGroup align="right">
-          <Link href="/packages">{t('browseAllPackages')}</Link>
+          <Link className="bp4-button bp4-small" href="/packages">
+            {t('browseAllPackages')}
+          </Link>
           <NavbarDivider />
           {loginComponent}
         </NavbarGroup>

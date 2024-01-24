@@ -80,12 +80,13 @@ impl Handler<GetPackages> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
+                    let search_term = search_packages.search_term.unwrap_or_default();
+
                     let query = match (
-                        search_packages.search_term,
                         search_packages.package_type.clone(),
                         search_packages.categories,
                     ) {
-                        (Some(search_term), _, Some(search_categories)) => {
+                        (_, Some(search_categories)) => {
                             let search_category_ids = Category::by_names(search_categories)
                                 .load(&mut connection)?
                                 .iter()
@@ -99,10 +100,10 @@ impl Handler<GetPackages> for Database {
                                     .map(|package_category| package_category.package_id)
                                     .collect::<Vec<Uuid>>();
 
-                            if let Some(package_type) = search_packages.package_type {
+                            if let Some(search_package_type) = search_packages.package_type {
                                 Package::search_name_with_type_and_categories(
-                                    search_term.to_lowercase(),
-                                    package_type.to_lowercase(),
+                                    search_term,
+                                    search_package_type.to_lowercase(),
                                     package_ids_by_categories,
                                 )
                                 .paginate(search_packages.page)
@@ -110,7 +111,7 @@ impl Handler<GetPackages> for Database {
                                 .load_and_count_pages(&mut connection)?
                             } else {
                                 Package::search_name_with_categories(
-                                    search_term.to_lowercase(),
+                                    search_term,
                                     package_ids_by_categories,
                                 )
                                 .paginate(search_packages.page)
@@ -118,22 +119,14 @@ impl Handler<GetPackages> for Database {
                                 .load_and_count_pages(&mut connection)?
                             }
                         }
-                        (Some(search_term), Some(search_type), None) => {
-                            Package::search_name_with_type(
-                                search_term.to_lowercase(),
-                                search_type.to_lowercase(),
-                            )
-                            .paginate(search_packages.page)
-                            .per_page(search_packages.per_page)
-                            .load_and_count_pages(&mut connection)?
-                        }
-                        (Some(search_term), None, None) => {
-                            Package::search_name(search_term.to_lowercase())
-                                .paginate(search_packages.page)
-                                .per_page(search_packages.per_page)
-                                .load_and_count_pages(&mut connection)?
-                        }
-                        _ => Package::all()
+                        (Some(search_package_type), None) => Package::search_name_with_type(
+                            search_term,
+                            search_package_type.to_lowercase(),
+                        )
+                        .paginate(search_packages.page)
+                        .per_page(search_packages.per_page)
+                        .load_and_count_pages(&mut connection)?,
+                        _ => Package::search_name(search_term)
                             .paginate(search_packages.page)
                             .per_page(search_packages.per_page)
                             .load_and_count_pages(&mut connection)?,

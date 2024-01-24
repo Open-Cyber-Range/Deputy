@@ -263,7 +263,7 @@ impl Package {
         packages::table.select(Self::as_select())
     }
 
-    pub fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
+    fn all() -> FilterExisting<All<packages::table, Self>, packages::deleted_at> {
         Self::all_with_deleted().filter(packages::deleted_at.is_null())
     }
 

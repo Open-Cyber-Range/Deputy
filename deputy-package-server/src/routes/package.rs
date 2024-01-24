@@ -277,7 +277,10 @@ where
         .join(Package::normalize_file_path(package_name, package_version));
 
     let stream = try_stream! {
-        let mut archive = ArchiveStreamer::prepare_archive(package_path).unwrap();
+        let mut archive = ArchiveStreamer::prepare_archive(package_path).map_err(|error| {
+            error!("Failed to open the package: {error}");
+            ServerResponseError(PackageServerError::FileNotFound.into())
+        })?;
         let mut archive_stream = ArchiveStreamer::try_new(&mut archive, file_path_in_package.into())
             .map_err(|error| {
                 error!("Failed to open the package: {error}");

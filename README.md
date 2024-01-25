@@ -46,6 +46,11 @@ Additional configuration:
 
 - Modify the `.env` file to your liking, for example, set the `DOCUMENTATION_URL` to your own documentation page
 
+Login credentials in the development environment are
+
+Username: `developers@cr14.ee`
+Password: `Testimine.123`
+
 ### Deputy Package Server
 
 #### Database

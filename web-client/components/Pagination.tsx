@@ -1,5 +1,4 @@
 import { Button } from '@blueprintjs/core';
-import styles from '../styles/PackageList.module.css';
 
 const Pagination = ({
   currentPage,
@@ -11,7 +10,7 @@ const Pagination = ({
   onPageChange: (page: number) => void;
 }) => {
   return (
-    <div className={styles.pagination}>
+    <div className="mt-[2rem] flex justify-center gap-8 items-center">
       <Button
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
         disabled={currentPage === 1}

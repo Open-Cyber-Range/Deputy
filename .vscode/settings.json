@@ -34,4 +34,7 @@
       "password": "mysql_pass"
     }
   ],
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 }

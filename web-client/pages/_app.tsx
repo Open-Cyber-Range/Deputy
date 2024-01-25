@@ -23,7 +23,9 @@ const Deputy = ({
         <meta name={t('metaName')} content={t('metaContent')} />
       </Head>
       <MainNavbar />
-      <Component {...pageProps} />
+      <div className="flex flex-col items-center p-10">
+        <Component {...pageProps} />
+      </div>
     </SessionProvider>
   );
 };

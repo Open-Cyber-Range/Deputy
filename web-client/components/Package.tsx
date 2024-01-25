@@ -1,8 +1,9 @@
 import { Card, Elevation, Tag } from '@blueprintjs/core';
-import Link from 'next/link';
 import useTranslation from 'next-translate/useTranslation';
+import { useRouter } from 'next/router';
 import { Version } from '../interfaces/Package';
 import { formatBytes } from '../utils';
+import VersionTag from './Versiontag';
 
 const Package = ({
   deputyPackage,
@@ -15,22 +16,21 @@ const Package = ({
   version: Version;
 }) => {
   const { t } = useTranslation('common');
+  const router = useRouter();
   return (
     <Card
       key={`${deputyPackage.name}-${version.version}`}
-      interactive={false}
+      interactive
       elevation={Elevation.TWO}
-      className="mt-[2rem]"
+      onClick={() =>
+        router.push(`/packages/${deputyPackage.name}/${version.version}`)
+      }
+      className="mt-[2rem] rounded-xl"
     >
       <div className="flex flex-col gap-8">
         <div className="flex justify-between items-end">
-          <span>
-            <Link
-              href={`/packages/${deputyPackage.name}/${version.version}`}
-              className="decoration-0 font-bold text-xl text-nowrap text-[#0082be]"
-            >
-              {deputyPackage.name}
-            </Link>
+          <span className="decoration-0 font-bold text-xl text-nowrap text-[#0082be]">
+            {deputyPackage.name}
           </span>
           <div className="flex gap-4">
             {version.packageSize > 0 && (
@@ -38,9 +38,7 @@ const Package = ({
                 {formatBytes(version.packageSize)}
               </Tag>
             )}
-            <Tag large minimal round>
-              v{version.version}
-            </Tag>
+            <VersionTag version={version.version} />
             {version.isYanked && (
               <Tag large minimal round intent="danger">
                 {t('yanked')}

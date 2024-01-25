@@ -1,6 +1,5 @@
-import { Card, Elevation, H4 } from '@blueprintjs/core';
+import { H4 } from '@blueprintjs/core';
 import Link from 'next/link';
-import styles from '../styles/PackageList.module.css';
 
 const PackageCategories = ({
   packageCategories,
@@ -12,18 +11,18 @@ const PackageCategories = ({
   }
 
   return (
-    <div>
-      <ul className={styles.noBullets}>
-        {packageCategories.sort().map((category) => (
-          <li key={category}>
-            <Card interactive={false} elevation={Elevation.ONE}>
-              <Link href={`/search?q=&categories=${category}`}>
-                <H4 className={styles.name}>{category}</H4>
-              </Link>
-            </Card>
-          </li>
-        ))}
-      </ul>
+    <div className="grid gap-4 grid-cols-3 mt-[2rem]">
+      {packageCategories.sort().map((category) => (
+        <Link
+          className="bp4-button bp4-large bp4-intent-primary"
+          key={category}
+          href={`/search?q=&categories=${category}`}
+        >
+          <H4 className="m-0 text-cr14-gray truncate max-w-[100%]">
+            {category}
+          </H4>
+        </Link>
+      ))}
     </div>
   );
 };

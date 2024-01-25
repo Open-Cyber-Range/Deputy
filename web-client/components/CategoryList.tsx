@@ -1,9 +1,8 @@
 import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
-import { Card, Elevation, H4 } from '@blueprintjs/core';
-import Link from 'next/link';
+import { H2 } from '@blueprintjs/core';
 import { categoryFetcher } from '../utils/api';
-import styles from '../styles/PackageList.module.css';
+import PackageCategories from './PackageCategories';
 
 const CategoryListView = () => {
   const { t } = useTranslation('common');
@@ -17,20 +16,11 @@ const CategoryListView = () => {
   }
 
   return (
-    <div className={styles.packageContainer}>
-      <ul className={styles.noBullets}>
-        {categories.map((category) => {
-          return (
-            <li className="mt-[2rem]" key={`${category.name}-${category.name}`}>
-              <Card interactive={false} elevation={Elevation.ONE}>
-                <Link href={`/search?q=&categories=${category.name}`}>
-                  <H4 className={styles.name}>{category.name}</H4>
-                </Link>
-              </Card>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="lg:max-w-[60rem] max-w-[80%]">
+      <H2 className="mt-[1rem]">{t('categories')}</H2>
+      <PackageCategories
+        packageCategories={categories.map((category) => category.name)}
+      />
     </div>
   );
 };

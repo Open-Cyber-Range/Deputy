@@ -16,7 +16,8 @@
         "github.copilot-labs",
         "github.copilot-chat",
         "rvest.vs-code-prettier-eslint",
-        "dbaeumer.vscode-eslint"
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
       ]
     }
   },

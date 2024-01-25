@@ -4,7 +4,6 @@ import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
 import { H4 } from '@blueprintjs/core';
 import { packagesWithVersionsFetcher } from '../utils/api';
-import styles from '../styles/PackageList.module.css';
 import { calculateStartEndIndex, getSearchUrlAndInput } from '../utils';
 import PageLimitSelect from './PageLimitSelect';
 import Pagination from './Pagination';
@@ -36,7 +35,7 @@ const SearchResults = () => {
 
   if (error) {
     return (
-      <div className={styles.packageContainer}>
+      <div className="w-[80%] max-w-[60rem] mt-[2rem]">
         <H4>{t('searchResultsFor', { searchInput })}</H4>
         <div>{t('failedLoadingPackages')}</div>
       </div>
@@ -63,17 +62,17 @@ const SearchResults = () => {
   };
 
   return (
-    <div className={styles.packageContainer}>
+    <div className="w-[80%] max-w-[60rem] mt-[2rem]">
       <H4>{t('searchResultsFor', { searchInput })}</H4>
       {searchResults.packages.length === 0 && <div>{t('noResults')}</div>}
       {searchResults.packages.length > 0 && (
-        <div>
-          <div className={styles.resultsCountContainer}>
+        <>
+          <div className="flex justify-between mt-[2rem]">
             <PageLimitSelect
               selectedLimit={selectedLimit}
               onChange={handleLimitChange}
             />
-            <span className={styles.resultsCount}>
+            <span>
               {t('resultsCount', {
                 startIndex,
                 endIndex,
@@ -89,7 +88,7 @@ const SearchResults = () => {
             totalPages={searchResults.totalPages}
             onPageChange={handlePageChange}
           />
-        </div>
+        </>
       )}
     </div>
   );

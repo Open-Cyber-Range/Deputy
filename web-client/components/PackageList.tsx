@@ -9,7 +9,11 @@ const PackageList = ({ packages }: { packages: PackageWithVersions[] }) => {
         const latestVersion = getLatestVersion(deputyPackage);
         return (
           latestVersion && (
-            <Package deputyPackage={deputyPackage} version={latestVersion} />
+            <Package
+              key={`${deputyPackage.name}-${latestVersion.version}`}
+              deputyPackage={deputyPackage}
+              version={latestVersion}
+            />
           )
         );
       })}

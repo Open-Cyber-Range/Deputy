@@ -15,15 +15,11 @@ const Home: NextPage = () => {
   };
 
   return (
-    <div>
-      <main>
-        <div className="flex flex-col items-center p-10 mt-6">
-          <H3>{t('welcome')}</H3>
-          <Button className="mt-6" intent="primary" large onClick={handleClick}>
-            {t('documentationButton')}
-          </Button>
-        </div>
-      </main>
+    <div className="flex flex-col items-center p-10 mt-6">
+      <H3>{t('welcome')}</H3>
+      <Button className="mt-6" intent="primary" large onClick={handleClick}>
+        {t('documentationButton')}
+      </Button>
     </div>
   );
 };

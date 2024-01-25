@@ -21,7 +21,11 @@ const PackageVersions = ({ packageName }: { packageName: string }) => {
   return (
     <>
       {packageVersions.map((version) => (
-        <Package version={version} deputyPackage={{ name: packageName }} />
+        <Package
+          key={`${packageName}-${version.version}`}
+          version={version}
+          deputyPackage={{ name: packageName }}
+        />
       ))}
     </>
   );

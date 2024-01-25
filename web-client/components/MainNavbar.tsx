@@ -59,12 +59,9 @@ const MainNavbar = () => {
     <>
       {session.user?.name && (
         <Popover content={<UserMenu />} position={Position.BOTTOM}>
-          <Button
-            className="font-bolt"
-            text={session.user.name}
-            small
-            icon="caret-down"
-          />
+          <Button className="font-bolt" small icon="caret-down">
+            <span className="whitespace-nowrap">{session.user.name}</span>
+          </Button>
         </Popover>
       )}
       <Button
@@ -76,7 +73,7 @@ const MainNavbar = () => {
           signOut();
         }}
       >
-        {t('logOut')}
+        <span className="whitespace-nowrap">{t('logOut')}</span>
       </Button>
     </>
   ) : (
@@ -89,7 +86,7 @@ const MainNavbar = () => {
         signIn();
       }}
     >
-      {t('logIn')}
+      <span className="whitespace-nowrap">{t('logIn')}</span>
     </Button>
   );
 
@@ -98,15 +95,20 @@ const MainNavbar = () => {
       <div className="flex items-center basis-[50em]">
         <NavbarGroup align="left">
           <NavbarHeading>
-            <span className="bp4-navbar-heading text-m font-bold uppercase tracking-wider text-cr14-gray">
-              Deputy
-            </span>
+            <Link className="hover:no-underline focus:outline-none" href="/">
+              <span className="bp4-navbar-heading text-m font-bold uppercase tracking-wider text-cr14-gray">
+                Deputy
+              </span>
+            </Link>
           </NavbarHeading>
           <NavbarDivider />
         </NavbarGroup>
         <SearchBar />
         <NavbarGroup align="right">
-          <Link className="bp4-button bp4-small" href="/packages">
+          <Link
+            className="bp4-button bp4-small whitespace-nowrap"
+            href="/packages"
+          >
             {t('browseAllPackages')}
           </Link>
           <NavbarDivider />

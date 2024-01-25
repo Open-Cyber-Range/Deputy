@@ -38,7 +38,7 @@ const PackageDetailView = () => {
   }
 
   if (latestVersionError || packageTOMLError) {
-    return <div>{t('failedLoading')} </div>;
+    return <div>{t('failedLoadingPackages')} </div>;
   }
 
   return (

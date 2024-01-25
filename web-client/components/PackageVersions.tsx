@@ -17,7 +17,7 @@ const PackageVersions = ({ packageName }: { packageName: string }) => {
   }
 
   if (allPackageVersions) {
-    return <div>{t('failedLoading')} </div>;
+    return <div>{t('failedLoadingPackages')} </div>;
   }
 
   return (

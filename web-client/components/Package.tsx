@@ -34,7 +34,7 @@ const Package = ({
           </span>
           <div className="flex gap-4">
             {version.packageSize > 0 && (
-              <Tag large minimal round icon="bring-data">
+              <Tag large minimal round icon="database">
                 {formatBytes(version.packageSize)}
               </Tag>
             )}

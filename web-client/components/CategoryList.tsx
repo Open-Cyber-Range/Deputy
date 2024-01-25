@@ -12,12 +12,8 @@ const CategoryListView = () => {
     categoryFetcher
   );
 
-  if (error) {
-    return <div>{t('failedLoading')}</div>;
-  }
-
-  if (!categories) {
-    return null;
+  if (error || !categories || categories.length === 0) {
+    return <div>{t('failedLoadingCategories')}</div>;
   }
 
   return (

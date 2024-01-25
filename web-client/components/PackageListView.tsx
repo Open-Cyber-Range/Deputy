@@ -17,12 +17,8 @@ const PackageListView = () => {
     `/api/v1/package?page=${currentPage}&limit=${selectedLimit}`,
     packagesWithVersionsFetcher
   );
-  if (error) {
-    return <div>{t('failedLoading')} </div>;
-  }
-
-  if (!packageList) {
-    return null;
+  if (error || !packageList) {
+    return <div>{t('failedLoadingPackages')} </div>;
   }
 
   const handleLimitChange = (event: ChangeEvent<HTMLSelectElement>) => {

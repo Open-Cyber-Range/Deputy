@@ -38,7 +38,7 @@ const SearchResults = () => {
     return (
       <div className={styles.packageContainer}>
         <H4>{t('searchResultsFor', { searchInput })}</H4>
-        <div>{t('failedLoading')}</div>
+        <div>{t('failedLoadingPackages')}</div>
       </div>
     );
   }

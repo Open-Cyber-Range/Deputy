@@ -250,7 +250,7 @@ pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()>
     versions.sort_by(|a, b| b.version.cmp(&a.version));
     for version in versions {
         println!(
-            "{name}/{type} {version}",
+            "{name}/{type}, {version}",
             name = package.name.green(),
             type = package.package_type,
             version = version.version,

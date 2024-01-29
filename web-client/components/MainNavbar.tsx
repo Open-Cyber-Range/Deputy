@@ -102,6 +102,7 @@ const MainNavbar = () => {
               </span>
             </Link>
           </NavbarHeading>
+          <NavbarDivider />
           <NavbarSponsors />
         </NavbarGroup>
         <SearchBar />

@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import SearchBar from './SearchBar';
+import NavbarSponsors from './SponsorIcons';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');
@@ -101,7 +102,7 @@ const MainNavbar = () => {
               </span>
             </Link>
           </NavbarHeading>
-          <NavbarDivider />
+          <NavbarSponsors />
         </NavbarGroup>
         <SearchBar />
         <NavbarGroup align="right">

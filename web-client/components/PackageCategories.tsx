@@ -14,7 +14,7 @@ const PackageCategories = ({
     <div className="grid gap-4 grid-cols-3 mt-[2rem]">
       {packageCategories.sort().map((category) => (
         <Link
-          className="bp4-button bp4-large bp4-intent-primary"
+          className="bp5-button bp5-large bp5-intent-primary"
           key={category}
           href={`/search?q=&categories=${category}`}
         >

@@ -41,7 +41,7 @@ const Tokens: NextPage = () => {
 
   return (
     <div>
-      <OverlayToaster position={Position.TOP}>
+      <OverlayToaster usePortal={false} position={Position.TOP}>
         {creationError && (
           <Toast timeout={10000} intent="danger" message={creationError} />
         )}

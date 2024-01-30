@@ -16,6 +16,7 @@ const NavbarSponsors = () => (
         alt="norwayGrants-logo"
         fill
         className="object-contain absolute py-1"
+        sizes="(max-width: 60px) 10vw, 60px"
       />
     </a>
     <a
@@ -29,6 +30,7 @@ const NavbarSponsors = () => (
         alt="eas-logo"
         fill
         className="object-contain absolute"
+        sizes="(max-width: 60px) 10vw, 60px"
       />
     </a>
   </>

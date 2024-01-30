@@ -16,10 +16,13 @@ const PackageListView = () => {
     `/api/v1/package?page=${currentPage}&limit=${selectedLimit}`,
     packagesWithVersionsFetcher
   );
-  if (error || !packageList) {
-    return <div>{t('failedLoadingPackages')} </div>;
+  if (!packageList) {
+    return <div>{t('loading')} </div>;
   }
 
+  if (error) {
+    return <div>{t('failedLoadingPackages')} </div>;
+  }
   const handleLimitChange = (event: ChangeEvent<HTMLSelectElement>) => {
     setSelectedLimit(parseInt(event.target.value, 10));
     setCurrentPage(1);
@@ -37,10 +40,10 @@ const PackageListView = () => {
           onChange={handleLimitChange}
         />
         <Link
-          className="bp4-button bp4-small bg-cr14-dark-blue"
+          className="bp5-button bp5-small w-56 h-8 bg-cr14-dark-blue rounded-md"
           href="/categories"
         >
-          {t('browseAllCategories')}
+          <span className="text-white">{t('browseAllCategories')}</span>
         </Link>
       </div>
 

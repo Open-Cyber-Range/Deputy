@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import easLogo from 'assets/logos/enterprise-estonia-eas-vector-logo.svg';
+import easLogo from 'assets/logos/EAS=White.png';
 import norwayGrantsLogo from 'assets/logos/Norway_grants_White.png';
 
 const NavbarSponsors = () => (
@@ -9,21 +9,27 @@ const NavbarSponsors = () => (
       href="https://eeagrants.org/"
       target="_blank"
       rel="noopener noreferrer"
-      className="h-full"
+      className="h-12 w-12 m-4 relative outline-none"
     >
       <Image
         src={norwayGrantsLogo}
         alt="norwayGrants-logo"
-        className="h-full px-4 object-contain py-1"
+        fill
+        className="object-contain absolute py-1"
       />
     </a>
     <a
       href="https://eas.ee"
       target="_blank"
       rel="noopener noreferrer"
-      className="h-full flex items-center"
+      className="h-20 w-20 mr-4 relative outline-none"
     >
-      <Image src={easLogo} alt="eas-logo" className="h-16 pr-4" />
+      <Image
+        src={easLogo}
+        alt="eas-logo"
+        fill
+        className="object-contain absolute"
+      />
     </a>
   </>
 );

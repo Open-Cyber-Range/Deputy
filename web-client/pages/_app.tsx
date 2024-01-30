@@ -3,8 +3,11 @@ import '@blueprintjs/core/lib/css/blueprint.css';
 import '../styles/global.css';
 import Head from 'next/head';
 import useTranslation from 'next-translate/useTranslation';
+import React from 'react';
 import { SessionProvider } from 'next-auth/react';
 import MainNavbar from '../components/MainNavbar';
+
+if (typeof window === 'undefined') React.useLayoutEffect = React.useEffect;
 
 const Deputy = ({
   Component,

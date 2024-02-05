@@ -40,7 +40,7 @@ const Tokens: NextPage = () => {
   } = useSWR('/api/v1/token', apiTokenFetcher);
 
   return (
-    <div>
+    <div className="w-full">
       <OverlayToaster usePortal={false} position={Position.TOP}>
         {creationError && (
           <Toast timeout={10000} intent="danger" message={creationError} />
@@ -52,7 +52,7 @@ const Tokens: NextPage = () => {
           <Toast timeout={10000} intent="success" message={deletionSuccess} />
         )}
       </OverlayToaster>
-      <main className="flex flex-row justify-center">
+      <main className="flex flex-row justify-center w-full">
         <div className="flex flex-col items-strech w-full max-w-2xl">
           <div className="flex flex-row mt-6 items-end justify-between">
             <H3 className="m-0">{t('tokens')}</H3>

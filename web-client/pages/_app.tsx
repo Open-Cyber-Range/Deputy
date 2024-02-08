@@ -22,6 +22,7 @@ const Deputy = ({
       session={session}
     >
       <Head>
+        <link rel="icon" href="/favicon.ico" />
         <title>{t('title')}</title>
         <meta name={t('metaName')} content={t('metaContent')} />
       </Head>

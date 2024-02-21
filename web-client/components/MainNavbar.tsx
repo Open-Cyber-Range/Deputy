@@ -15,8 +15,10 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import Image from 'next/image';
 import SearchBar from './SearchBar';
 import NavbarSponsors from './SponsorIcons';
+import deputylogo from '../assets/logos/DEPUTY_BLUEBLUEv4.svg';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');
@@ -62,8 +64,12 @@ const MainNavbar = () => {
         <NavbarGroup align={Alignment.LEFT} className="max-w-[20rem]">
           <NavbarHeading>
             <Link className="hover:no-underline focus:outline-none" href="/">
-              <span className="py-4 text-m font-bold uppercase tracking-wider text-cr14-gray">
-                Deputy
+              <span className="py-4">
+                <Image
+                  className="object-contain h-10 w-10"
+                  src={deputylogo}
+                  alt="Deputy Logo"
+                />
               </span>
             </Link>
           </NavbarHeading>

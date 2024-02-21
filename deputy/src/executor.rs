@@ -98,6 +98,9 @@ impl Executor {
             None => current_dir()?,
         };
         let toml_path = find_toml(&package_path)?;
+        let package_root_path = toml_path
+            .parent()
+            .ok_or(anyhow!("Failed to get package root path"))?;
 
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
@@ -107,7 +110,7 @@ impl Executor {
 
         let mut project = create_project_from_toml_path(&toml_path)?;
         project.validate()?;
-        project.validate_files(&package_path)?;
+        project.validate_files(package_root_path)?;
 
         let package = Package::from_file(&toml_path, options.compression).map_err(|e| {
             anyhow::anyhow!(
@@ -227,10 +230,14 @@ impl Executor {
         };
 
         let toml_path = find_toml(&package_path)?;
+        let package_root_path = toml_path
+            .parent()
+            .ok_or(anyhow!("Failed to get package root path"))?;
+
         let mut project = create_project_from_toml_path(&toml_path)?;
 
         project.validate()?;
-        project.validate_files(&package_path)?;
+        project.validate_files(package_root_path)?;
         project.print_inspect_message(options.pretty)?;
         Ok(())
     }

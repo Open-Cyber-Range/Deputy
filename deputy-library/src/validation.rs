@@ -55,6 +55,7 @@ impl Validate for Project {
         validate_version_semantic(self.package.version.clone())?;
         validate_vm_accounts(self.virtual_machine.clone())?;
         validate_license(self.package.license.clone())?;
+        validate_categories(self.package.categories.clone())?;
         self.validate_assets()?;
         Ok(())
     }
@@ -87,6 +88,19 @@ pub fn validate_license(license: String) -> Result<()> {
             "License must match SPDX specifications https://spdx.dev/spdx-specification-21-web-version/#h.jxpfx0ykyb60"
         )),
     }
+}
+
+pub fn validate_categories(categories: Option<Vec<String>>) -> Result<()> {
+    if let Some(categories) = categories {
+        for category in categories.iter() {
+            if category.trim().is_empty() {
+                return Err(anyhow!(
+                    "A category cannot be an empty string or only whitespace"
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn validate_vm_accounts(virtual_machine: Option<VirtualMachine>) -> Result<()> {

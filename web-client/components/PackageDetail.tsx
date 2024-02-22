@@ -80,8 +80,7 @@ const PackageDetailView = () => {
           <Tab>{t('versions')}</Tab>
           <Tab
             disabled={
-              !packageToml.package.categories ||
-              packageToml.package.categories.length === 0
+              !packageToml?.package?.categories?.some((category) => category)
             }
           >
             {t('categories')}

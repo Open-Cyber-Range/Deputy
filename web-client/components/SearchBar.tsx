@@ -16,7 +16,7 @@ const SearchBar = () => {
 
   return (
     <form
-      className="flex flex-col grow relative m-[1rem]"
+      className="flex flex-col grow relative m-[1rem] w-full"
       onSubmit={handleSearchSubmit}
     >
       <InputGroup

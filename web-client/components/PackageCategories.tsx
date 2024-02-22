@@ -12,17 +12,20 @@ const PackageCategories = ({
 
   return (
     <div className="grid gap-4 grid-cols-3 mt-[2rem]">
-      {packageCategories.sort().map((category) => (
-        <Link
-          className="bp4-button bp4-large bp4-intent-primary"
-          key={category}
-          href={`/search?q=&categories=${category}`}
-        >
-          <H4 className="m-0 text-cr14-gray truncate max-w-[100%]">
-            {category}
-          </H4>
-        </Link>
-      ))}
+      {packageCategories
+        .filter((category) => category.trim() !== '')
+        .sort()
+        .map((category) => (
+          <Link
+            className="bp5-button bp5-large bp5-intent-primary"
+            key={category}
+            href={`/search?q=&categories=${category}`}
+          >
+            <H4 className="m-0 text-cr14-gray truncate max-w-[100%]">
+              {category}
+            </H4>
+          </Link>
+        ))}
     </div>
   );
 };

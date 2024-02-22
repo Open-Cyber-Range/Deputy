@@ -1,6 +1,6 @@
 {
   "name": "deputy-front",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@blueprintjs/core": "^4.9.4",
+    "@blueprintjs/core": "^5.8.2",
     "@iarna/toml": "^2.2.5",
     "html-react-parser": "^3.0.7",
     "next": "13.0.3",

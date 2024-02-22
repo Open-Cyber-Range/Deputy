@@ -420,7 +420,7 @@ version = "{version}"
 authors = ["{author_name} {author_email}"]
 license = "{chosen_license}"
 readme  = "README.md"
-categories = [""]
+categories = []
 {assets_field}
 [content]
 type = "{chosen_content_type}"

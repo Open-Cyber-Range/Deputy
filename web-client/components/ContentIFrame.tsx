@@ -9,6 +9,7 @@ async function fetchCSS(cssURL: string) {
 const ContentIFrame = ({ content }: { content: string }) => {
   const [url, setUrl] = useState<string | undefined>(undefined);
   const cssLink = '/styles/gfm.min.css';
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const htmlString = DOMPurify.sanitize(content);
@@ -51,14 +52,22 @@ const ContentIFrame = ({ content }: { content: string }) => {
       });
   }, [content, cssLink]);
 
+  const handleLoad = () => {
+    if (iframeRef.current) {
+      iframeRef.current.style.height = `${iframeRef.current.contentWindow?.document.body.scrollHeight}px`;
+    }
+  };
+
   if (!content || !url) {
     return null;
   }
 
   return (
     <iframe
-      className="w-full h-[65vh]"
+      ref={iframeRef}
+      className="w-full"
       src={url}
+      onLoad={handleLoad}
       sandbox="allow-same-origin"
       title="HTML content"
     />

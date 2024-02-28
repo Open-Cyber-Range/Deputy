@@ -6,8 +6,10 @@ use crate::{
 use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
+use base64::{engine::general_purpose, Engine};
 use futures::{Stream, StreamExt};
-use pulldown_cmark::{html::push_html, Parser};
+use pulldown_cmark::{html, Event, Options, Parser, Tag};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -34,15 +36,47 @@ pub struct PackageMetadata {
     pub checksum: String,
 }
 
+async fn process_image(
+    url_str: &str,
+    alt_text: &str,
+    width: &str,
+    package_path: &Path,
+) -> Result<String> {
+    if !url_str.starts_with("http") {
+        let image_path = url_str.to_string();
+        let mut archive = ArchiveStreamer::prepare_archive(package_path.to_path_buf())?;
+        if let Some(mut image_stream) = ArchiveStreamer::try_new(&mut archive, image_path.into())? {
+            let mut img_bytes = Vec::new();
+            while let Some(bytes) = image_stream.next().await {
+                let bytes =
+                    bytes.map_err(|error| anyhow!("Failed to read image stream: {error}"))?;
+                img_bytes.extend_from_slice(&bytes);
+            }
+            let img_base64 = general_purpose::STANDARD.encode(&img_bytes);
+            Ok(format!(
+                "<img src=\"data:image/png;base64,{}\" alt=\"{}\" width=\"{}\" />",
+                img_base64, alt_text, width
+            ))
+        } else {
+            Err(anyhow!("Failed to create image stream"))
+        }
+    } else {
+        Ok(format!(
+            "<img src=\"{}\" alt=\"{}\" width=\"{}\" />",
+            url_str, alt_text, width
+        ))
+    }
+}
+
 impl PackageMetadata {
     pub async fn readme_html(&self, package_base_path: PathBuf) -> Result<Option<String>> {
         let readme_path = self.readme_path.clone();
         let package_path_end = Package::normalize_file_path(&self.name, &self.version);
         let package_path = package_base_path.join(package_path_end);
 
-        let mut archive = ArchiveStreamer::prepare_archive(package_path)?;
+        let mut archive = ArchiveStreamer::prepare_archive(package_path.clone())?;
         if let Some(mut archive_stream) =
-            ArchiveStreamer::try_new(&mut archive, readme_path.into())?
+            ArchiveStreamer::try_new(&mut archive, readme_path.clone().into())?
         {
             let mut readme_markdown_string = String::new();
             while let Some(bytes) = archive_stream.next().await {
@@ -50,10 +84,59 @@ impl PackageMetadata {
                     bytes.map_err(|error| anyhow!("Failed to read archive stream: {error}"))?;
                 readme_markdown_string.push_str(&String::from_utf8(bytes.to_vec())?);
             }
-            let parser = Parser::new(&readme_markdown_string);
-            let mut html_string = String::new();
-            push_html(&mut html_string, parser);
-            return Ok(Some(html_string));
+
+            let mut options = Options::empty();
+            options.insert(Options::ENABLE_TABLES);
+            options.insert(Options::ENABLE_FOOTNOTES);
+            options.insert(Options::ENABLE_TASKLISTS);
+            options.insert(Options::ENABLE_STRIKETHROUGH);
+            options.insert(Options::ENABLE_SMART_PUNCTUATION);
+            options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+
+            let parser = Parser::new_ext(&readme_markdown_string, options);
+            let mut html_output = String::new();
+            let mut buffer = String::new();
+
+            let img_regex = Regex::new(r#"<img\s.*?src\s*=\s*"([^"]*)"\s.*?alt\s*=\s*"([^"]*)"(?:\s.*?width\s*=\s*"([^"]*)")?.*?/>"#).unwrap();
+
+            let mut alt_text = String::new();
+            let mut in_alt_text = false;
+
+            for event in parser {
+                match event {
+                    Event::Start(Tag::Image(_, url, _)) => {
+                        in_alt_text = true;
+                        let url_str = url.to_string();
+                        let img_tag = process_image(&url_str, &alt_text, "", &package_path).await?;
+                        buffer.push_str(&img_tag);
+
+                        alt_text.clear();
+                    }
+
+                    Event::Html(html) if img_regex.is_match(&html) => {
+                        let captures = img_regex.captures(&html).unwrap();
+                        let url_str = captures.get(1).map_or("", |m| m.as_str());
+                        let alt_text = captures.get(2).map_or("", |m| m.as_str());
+                        let width = captures.get(3).map_or("", |m| m.as_str());
+
+                        let img_tag =
+                            process_image(url_str, alt_text, width, &package_path).await?;
+                        buffer.push_str(&img_tag);
+                    }
+
+                    Event::Text(text) if in_alt_text => {
+                        alt_text.push_str(&text);
+                    }
+                    Event::End(Tag::Image(_, _, _)) => {
+                        in_alt_text = false;
+                    }
+                    _ => html::push_html(&mut buffer, std::iter::once(event)),
+                }
+            }
+
+            html_output.push_str(&buffer);
+
+            return Ok(Some(html_output));
         }
         Ok(None)
     }

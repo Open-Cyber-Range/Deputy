@@ -1,7 +1,8 @@
 import useSWR from 'swr';
 import useTranslation from 'next-translate/useTranslation';
-import { ChangeEvent, useState } from 'react';
+import { ChangeEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { packagesWithVersionsFetcher } from '../utils/api';
 import PageLimitSelect from './PageLimitSelect';
 import Pagination from './Pagination';
@@ -9,13 +10,15 @@ import PackageList from './PackageList';
 
 const PackageListView = () => {
   const { t } = useTranslation('common');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedLimit, setSelectedLimit] = useState(20);
+  const router = useRouter();
+  const currentPage = Number(router.query.page) || 1;
+  const selectedLimit = Number(router.query.limit) || 20;
 
   const { data: packageList, error } = useSWR(
     `/api/v1/package?page=${currentPage}&limit=${selectedLimit}`,
     packagesWithVersionsFetcher
   );
+
   if (!packageList) {
     return <div>{t('loading')} </div>;
   }
@@ -23,13 +26,20 @@ const PackageListView = () => {
   if (error) {
     return <div>{t('failedLoadingPackages')} </div>;
   }
+
   const handleLimitChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedLimit(parseInt(event.target.value, 10));
-    setCurrentPage(1);
+    const newLimit = parseInt(event.target.value, 10);
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, page: 1, limit: newLimit },
+    });
   };
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, page: newPage },
+    });
   };
 
   return (

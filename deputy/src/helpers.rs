@@ -6,7 +6,7 @@ use colored::Colorize;
 use deputy_library::archiver::{decompress_archive, unpack_archive};
 use deputy_library::project::FeatureType;
 use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
-use dialoguer::{Input, Select};
+use dialoguer::Select;
 use futures::{Stream, StreamExt};
 use human_bytes::human_bytes;
 use std::fs;
@@ -110,23 +110,15 @@ pub async fn create_file_from_stream(
 }
 
 pub fn virtual_machine_fields() -> String {
-    let default_account: String = Input::new()
-        .with_prompt("Default Account Name")
-        .default("root".to_string())
-        .interact_text()
-        .unwrap();
-
-    format!(
-        r#"
+    r#"
 [virtual-machine]
-accounts = [{{ name = "{default_account}", password = "" }}]
-default_account = "{default_account}"
+accounts = [{ name = "", password = "" }]
 operating_system = ""
 architecture = ""
 type = "OVA"
 file_path = ""
-"#,
-    )
+"#
+    .to_string()
 }
 
 pub fn feature_fields() -> String {

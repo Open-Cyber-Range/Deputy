@@ -216,7 +216,6 @@ pub struct Account {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
     pub accounts: Option<Vec<Account>>,
-    pub default_account: Option<String>,
     #[serde(default)]
     pub operating_system: Option<OperatingSystem>,
     #[serde(default)]

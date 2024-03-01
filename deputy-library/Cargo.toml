@@ -1,6 +1,6 @@
 [package]
 name = "deputy-library"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,9 +11,11 @@ actix-web = "4"
 actix-files = "0.6"
 anyhow = "1"
 async-trait = "0.1"
+base64 = "0.21"
 bytes = "1"
 byte-unit = { version = "4", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
+comrak = "0.21"
 env_logger = "0.10"
 fancy-regex = "0.11"
 filetime = { version = "0.2", optional = true }
@@ -33,6 +35,7 @@ parse_duration = "2"
 port_check = "0.1"
 rand = { version = "0.8", optional = true }
 rayon = { version = "1", optional = true }
+regex = "1"
 tar = "0.4"
 tempfile = "3"
 thiserror = "1"

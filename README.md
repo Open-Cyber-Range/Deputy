@@ -38,6 +38,8 @@ Use attached `.devcontainer` in `vscode` for better development experience.
 Executable at `target/debug/deputy` is automatically added to the path and working configuration
 is specified at `/home/vscode/.deputy/configuration.toml`.
 
+To test the CLI against a locally running deputy-package-server, set the `.devcontainer/deputy-development/deputy-configuration.toml` files `main-registry` to `http://127.0.0.1:9000/`.
+
 For now testing out changes in `deputy` involves two steps
 
 1. `cargo build -p deputy`

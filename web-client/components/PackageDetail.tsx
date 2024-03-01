@@ -3,7 +3,6 @@ import useSWR from 'swr';
 import { Card, Elevation, H2, Tag } from '@blueprintjs/core';
 import useTranslation from 'next-translate/useTranslation';
 import { useRouter } from 'next/router';
-import parse from 'html-react-parser';
 import { TabList, TabPanel, Tab, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { packageTOMLFetcher, packageVersionFetcher } from '../utils/api';
@@ -12,6 +11,7 @@ import FilePreview from './FilePreview';
 import { displayLocalTime, formatBytes } from '../utils';
 import PackageCategories from './PackageCategories';
 import VersionTag from './Versiontag';
+import ContentIFrame from './ContentIFrame';
 
 interface DetailParams extends ParsedUrlQuery {
   name: string;
@@ -90,7 +90,7 @@ const PackageDetailView = () => {
 
         <TabPanel>
           <div className="mt-[2rem]">
-            {parse(latestVersion.readmeHtml || '')}
+            <ContentIFrame content={latestVersion.readmeHtml} />
           </div>
         </TabPanel>
         <TabPanel>

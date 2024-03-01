@@ -183,6 +183,13 @@ impl Project {
             }
         }
 
+        if let Some(exercise) = &self.exercise {
+            let file_path = package_path.join(&exercise.file_path);
+            if !file_path.exists() {
+                return Err(anyhow!("Exercise file not found"));
+            }
+        }
+
         if let Some(banner) = &self.banner {
             let file_path = package_path.join(&banner.file_path);
             if !file_path.exists() {
@@ -216,7 +223,6 @@ pub struct Account {
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct VirtualMachine {
     pub accounts: Option<Vec<Account>>,
-    pub default_account: Option<String>,
     #[serde(default)]
     pub operating_system: Option<OperatingSystem>,
     #[serde(default)]

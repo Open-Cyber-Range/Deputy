@@ -36,7 +36,6 @@ lazy_static! {
         type = "vm"
         [virtual-machine]
         accounts = [{name = "user1", password = "password1"},{name = "user2", password = "password2", private_key = "private_key"}]
-        default_account = "user1"
         operating_system = "Debian"
         architecture = "arm64"
         type = "OVA"

@@ -54,17 +54,25 @@ const FilePreview = ({ packageData }: { packageData: Project }) => {
     }
   });
 
-  return (
-    <div>
-      <Lightbox
-        slides={slides}
-        inline={{ style: { aspectRatio: '3 / 2' } }}
-        video={{ preload: 'none' }}
-        plugins={[Video, Thumbnails, Inline, Fullscreen]}
-      />
-      <div>{codeBlocks}</div>
-    </div>
-  );
+  if (slides.length > 0) {
+    return (
+      <div>
+        <Lightbox
+          slides={slides}
+          inline={{ style: { aspectRatio: '3 / 2' } }}
+          video={{ preload: 'none' }}
+          plugins={[Video, Thumbnails, Inline, Fullscreen]}
+        />
+        {codeBlocks.length > 0 && <div>{codeBlocks}</div>}
+      </div>
+    );
+  }
+
+  if (codeBlocks.length > 0) {
+    return <div>{codeBlocks}</div>;
+  }
+
+  return null;
 };
 
 export default FilePreview;

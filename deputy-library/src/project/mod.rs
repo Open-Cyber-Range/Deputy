@@ -160,6 +160,21 @@ impl Project {
                 }
             }
         }
+
+        if let Some(preview) = &self.content.preview {
+            for preview_item in preview {
+                match preview_item {
+                    Preview::Picture(paths) | Preview::Video(paths) | Preview::Code(paths) => {
+                        for path in paths {
+                            if !Path::new(path).exists() {
+                                return Err(anyhow!("Preview file \"{path}\" not found"));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 

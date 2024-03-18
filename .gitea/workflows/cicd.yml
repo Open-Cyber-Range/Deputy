@@ -22,7 +22,7 @@ jobs:
   lint-and-test-rust:
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder
+      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
       options: --security-opt seccomp=unconfined
     steps:
       - name: Debug nodejs
@@ -42,7 +42,7 @@ jobs:
   lint-frontend:
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/frontend-builder
+      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/frontend-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
     needs: ["lint-and-test-rust"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder
+      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
     needs: ["lint-and-test-rust"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder
+      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -105,6 +105,11 @@ jobs:
             apt-get update
             apt-get install -y git
           fi
+
+      - name: Install Node.js
+        run: |
+          curl -sL https://deb.nodesource.com/setup_18.x | bash -
+          apt-get install -y nodejs
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,6 +145,11 @@ jobs:
             apt-get install -y git
           fi
 
+      - name: Install Node.js
+        run: |
+          curl -sL https://deb.nodesource.com/setup_18.x | bash -
+          apt-get install -y nodejs
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -167,7 +177,7 @@ jobs:
       ]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/ocr-base-deployment-image
+      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/ocr-base-deployment-image:latest
     steps:
       - name: Install Git
         run: |

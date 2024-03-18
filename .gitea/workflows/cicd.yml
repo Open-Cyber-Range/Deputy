@@ -14,15 +14,15 @@ on:
 env:
   OCR_DEPLOYMENT_USER: ${{ secrets.OCR_DEPLOYMENT_USER }}
   OCR_DEPLOYMENT_PASSWORD: ${{ secrets.OCR_DEPLOYMENT_PASSWORD }}
-  OCR_APT_REPOSITORY: ${{ secrets.OCR_APT_REPOSITORY }}
-  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  OCR_APT_REPOSITORY: ${{ vars.OCR_APT_REPOSITORY }}
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
   MANFRED_GITHUB_TOKEN: ${{ secrets.MANFRED_GITHUB_TOKEN }}
 
 jobs:
   lint-and-test-rust:
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/rust-builder:latest
       options: --security-opt seccomp=unconfined
     steps:
       - name: Debug nodejs
@@ -42,7 +42,7 @@ jobs:
   lint-frontend:
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/frontend-builder:latest
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/frontend-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
     needs: ["lint-and-test-rust"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/rust-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
     needs: ["lint-and-test-rust"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/rust-builder:latest
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/rust-builder:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -96,7 +96,7 @@ jobs:
     needs: ["lint-frontend"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/docker:20.10.17
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/docker:20.10.17
     steps:
       - name: Install Git
         run: |
@@ -135,7 +135,7 @@ jobs:
       ["build-and-upload-x86-64bit-linux-release-for-deputy-package-server"]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/docker:20.10.17
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/docker:20.10.17
     steps:
       - name: Install Git
         run: |
@@ -177,7 +177,7 @@ jobs:
       ]
     runs-on: ubuntu-latest
     container:
-      image: ${{ secrets.DOCKER_REGISTRY_PULL }}/ocr-base-deployment-image:latest
+      image: ${{ vars.DOCKER_REGISTRY_PULL }}/ocr-base-deployment-image:latest
     steps:
       - name: Install Git
         run: |

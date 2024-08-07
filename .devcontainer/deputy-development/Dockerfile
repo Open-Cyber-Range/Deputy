@@ -24,4 +24,4 @@ RUN chown -R vscode:vscode /home/vscode/.deputy
 
 COPY ./deputy /usr/bin/deputy
 COPY ./deputy-release /usr/bin/deputy-release
-COPY ./deputy-configuration.toml /home/vscode/.deputy/configuration.toml
+COPY ./configuration.toml /home/vscode/.deputy/configuration.toml

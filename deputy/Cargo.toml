@@ -33,7 +33,7 @@ anyhow = "1"
 awc = { version = "3", features = ["rustls"] }
 bytes = "1"
 byte-unit = "5"
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
 colored = "2"
 deputy-library = { path = "../deputy-library", default-features = false }
 dialoguer = "0.11"

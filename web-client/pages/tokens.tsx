@@ -154,7 +154,7 @@ const Tokens: NextPage = () => {
                   <tr>
                     <th>{t('name')}</th>
                     <th>{t('createdAt')}</th>
-                    <th> </th>
+                    <th aria-label="delete-button-column"> </th>
                   </tr>
                 </thead>
                 <tbody>

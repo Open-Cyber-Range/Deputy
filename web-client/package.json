@@ -26,6 +26,9 @@
     "swr": "^2.2.5",
     "yet-another-react-lightbox": "^3.21.2"
   },
+  "resolutions": {
+    "jose": "4.15.5"
+  },
   "devDependencies": {
     "@types/node": "18.7.16",
     "@types/react": "18.0.18",

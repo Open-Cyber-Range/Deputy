@@ -296,7 +296,7 @@ impl Client {
         }
 
         Err(Client::response_to_error(
-            "Failed to delete owner",
+            "Failed to list owners",
             response.body().await?.to_vec(),
         )?)
     }

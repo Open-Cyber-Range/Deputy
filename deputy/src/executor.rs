@@ -83,7 +83,7 @@ impl Executor {
     }
 
     pub async fn publish(&self, options: PublishOptions) -> Result<()> {
-        let progress_actor = SpinnerProgressBar::new("Package published".to_string()).start();
+        let progress_actor = SpinnerProgressBar::new("Package published".to_string())?.start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Finding toml".to_string(),
@@ -154,7 +154,7 @@ impl Executor {
     }
 
     pub async fn fetch(&self, options: FetchOptions) -> Result<()> {
-        let progress_actor = SpinnerProgressBar::new("Package fetched".to_string()).start();
+        let progress_actor = SpinnerProgressBar::new("Package fetched".to_string())?.start();
         progress_actor
             .send(AdvanceProgressBar(ProgressStatus::InProgress(
                 "Updating the repositories".to_string(),

@@ -40,7 +40,7 @@ uuid = { version = "1", features = ["serde"] }
 gzp = { version = "0.11", default-features = false, features = [
   "deflate_rust",
 ] }
-pulldown-cmark = { version = "0.9", default-features = false }
+pulldown-cmark = { version = "0.11", default-features = false, features = ["html"]}
 duration-str = "0.11"
 
 [dev-dependencies]

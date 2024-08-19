@@ -1,4 +1,7 @@
-use crate::errors::{PackageServerError, ServerResponseError};
+use crate::{
+    constants::JWT_AUDIENCE,
+    errors::{PackageServerError, ServerResponseError},
+};
 use actix_http::HttpMessage;
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
@@ -37,7 +40,11 @@ impl Token {
     -----END PUBLIC KEY-----"
         );
         let decoding_key = DecodingKey::from_rsa_pem(pem_file.as_bytes()).unwrap();
-        jsonwebtoken::decode::<Token>(token, &decoding_key, &Validation::new(Algorithm::RS256))
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_audience(&[JWT_AUDIENCE]);
+
+        jsonwebtoken::decode::<Token>(token, &decoding_key, &validation)
             .map(|data| data.claims)
             .map_err(|e| {
                 log::error!("Failed to decode JWT: {}", e);

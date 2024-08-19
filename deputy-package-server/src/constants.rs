@@ -18,3 +18,5 @@ lazy_static! {
     pub static ref NAIVEDATETIME_DEFAULT_VALUE: NaiveDateTime =
         NaiveDateTime::parse_from_str(NAIVEDATETIME_DEFAULT_STRING, DATETIME_FORMAT).unwrap();
 }
+
+pub const JWT_AUDIENCE: &str = "deputy";

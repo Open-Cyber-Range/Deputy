@@ -3,9 +3,9 @@ use crate::constants::{
     inspecting::DEFAULT_PACKAGE_PATH,
     DEFAULT_REGISTRY_NAME,
 };
-use clap::{ArgEnum, Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 
-#[derive(ArgEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 pub enum UnpackLevel {
     Raw,
     Uncompressed,
@@ -15,7 +15,7 @@ pub enum UnpackLevel {
 #[derive(Debug, Args)]
 pub struct FetchOptions {
     pub package_name: String,
-    #[clap(arg_enum, short, long, default_value_t = UnpackLevel::Regular)]
+    #[clap(value_enum, short, long, default_value_t = UnpackLevel::Regular)]
     pub unpack_level: UnpackLevel,
     #[clap(short, long, default_value = DEFAULT_PACKAGE_VERSION_REQUIREMENT, help = "Version of the package to fetch")]
     pub version_requirement: String,

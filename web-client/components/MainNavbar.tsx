@@ -16,9 +16,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Image from 'next/image';
+import deputylogo from 'assets/logos/DEPUTY_BLUEBLUEv4.svg';
 import SearchBar from './SearchBar';
 import NavbarSponsors from './SponsorIcons';
-import deputylogo from '../assets/logos/DEPUTY_BLUEBLUEv4.svg';
 
 const UserMenu = () => {
   const { t } = useTranslation('common');

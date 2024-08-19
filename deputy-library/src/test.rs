@@ -51,6 +51,7 @@ pub struct TempArchive {
     pub src_file: NamedTempFile,
     pub toml_file: NamedTempFile,
     pub readme_file: NamedTempFile,
+    pub large_file: Option<NamedTempFile>,
 }
 
 impl TempArchive {
@@ -223,16 +224,20 @@ impl TempArchiveBuilder {
             .tempfile_in(&src_dir)?;
         readme_file.write_all(b"This is a readme file")?;
 
-        if self.is_large {
-            let mut large_file = Builder::new()
+        let large_file = if self.is_large {
+            let file_size_bytes = Byte::parse_str("20MB", true)?.as_u64() as usize;
+            let large_file_content: Vec<u8> = TempArchiveBuilder::generate_vec(file_size_bytes)?;
+            let mut file = Builder::new()
                 .prefix("large")
                 .suffix(".txt")
                 .rand_bytes(0)
                 .tempfile_in(&dir)?;
-            let random_bytes: Vec<u8> =
-                TempArchiveBuilder::generate_vec(Byte::from_str("20MB")?.get_bytes() as usize)?;
-            large_file.write_all(&random_bytes)?;
-        }
+            file.write_all(&large_file_content)?;
+
+            Some(file)
+        } else {
+            None
+        };
 
         let temp_project = TempArchive {
             root_dir: dir,
@@ -242,6 +247,7 @@ impl TempArchiveBuilder {
             src_file,
             toml_file,
             readme_file,
+            large_file,
         };
 
         Ok(temp_project)

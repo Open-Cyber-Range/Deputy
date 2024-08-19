@@ -6,7 +6,7 @@ RUN echo 'deb [arch=amd64] https://nexus.ocr.cr14.net/repository/ocr-apt-hosted/
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install deputy mitmproxy -y
 
-ENV NODE_VERSION=18.15.0
+ENV NODE_VERSION=18.20.4
 RUN apt-get install -y curl libmariadb-dev-compat libmariadb-dev
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 ENV NVM_DIR=/root/.nvm
@@ -24,4 +24,4 @@ RUN chown -R vscode:vscode /home/vscode/.deputy
 
 COPY ./deputy /usr/bin/deputy
 COPY ./deputy-release /usr/bin/deputy-release
-COPY ./deputy-configuration.toml /home/vscode/.deputy/configuration.toml
+COPY ./configuration.toml /home/vscode/.deputy/configuration.toml

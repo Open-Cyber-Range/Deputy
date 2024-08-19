@@ -1,12 +1,12 @@
 use crate::project::ContentType;
+use duration_str::parse;
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
-use parse_duration::parse;
 use std::time::Duration;
 
 pub const LOCKFILE: &str = "deputy.lock";
-pub const LOCKFILE_TIMEOUT: &str = "5 minutes";
-pub const LOCKFILE_SLEEP: &str = "250 milliseconds";
+pub const LOCKFILE_TIMEOUT: &str = "5min";
+pub const LOCKFILE_SLEEP: &str = "250ms";
 
 lazy_static! {
     pub static ref VALID_NAME: Regex = Regex::new(r#"^[a-zA-Z0-9_-]+$"#).unwrap();

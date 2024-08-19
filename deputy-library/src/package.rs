@@ -8,7 +8,7 @@ use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine};
 use futures::{Stream, StreamExt};
-use pulldown_cmark::{html, Event, Options, Parser, Tag};
+use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -97,17 +97,17 @@ impl PackageMetadata {
             let mut html_output = String::new();
             let mut buffer = String::new();
 
-            let img_regex = Regex::new(r#"<img\s.*?src\s*=\s*"([^"]*)"\s.*?alt\s*=\s*"([^"]*)"(?:\s.*?width\s*=\s*"([^"]*)")?.*?/>"#).unwrap();
+            let img_regex = Regex::new(r#"<img\s+[^>]*src\s*=\s*"([^"]*)"\s+[^>]*alt\s*=\s*"([^"]*)"(?:\s+[^>]*width\s*=\s*"([^"]*)")?[^>]*>"#).unwrap();
 
             let mut alt_text = String::new();
             let mut in_alt_text = false;
 
             for event in parser {
                 match event {
-                    Event::Start(Tag::Image(_, url, _)) => {
+                    Event::Start(Tag::Image { dest_url, .. }) => {
                         in_alt_text = true;
-                        let url_str = url.to_string();
-                        let img_tag = process_image(&url_str, &alt_text, "", &package_path).await?;
+                        let img_tag =
+                            process_image(&dest_url, &alt_text, "", &package_path).await?;
                         buffer.push_str(&img_tag);
 
                         alt_text.clear();
@@ -127,7 +127,7 @@ impl PackageMetadata {
                     Event::Text(text) if in_alt_text => {
                         alt_text.push_str(&text);
                     }
-                    Event::End(Tag::Image(_, _, _)) => {
+                    Event::End(TagEnd::Image) => {
                         in_alt_text = false;
                     }
                     _ => html::push_html(&mut buffer, std::iter::once(event)),

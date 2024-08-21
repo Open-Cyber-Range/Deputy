@@ -9,6 +9,7 @@ use deputy_library::{
     package::PackageStream,
     rest::{OwnerRest, PackageWithVersionsRest, PackagesWithVersionsAndPagesRest, VersionRest},
 };
+use futures::StreamExt;
 use log::error;
 use qstring::QString;
 use std::str::from_utf8;
@@ -108,7 +109,11 @@ impl Client {
             .await
             .map_err(|error| anyhow!("Failed to fetch package metadata: {:?}", error))?;
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
             let version_rest: VersionRest = serde_json::from_slice(&body)?;
             return Ok(version_rest);
         }
@@ -138,7 +143,12 @@ impl Client {
             .await
             .map_err(|error| anyhow!("Failed to fetch packages: {:?}", error))?;
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
+
             let packages: Vec<VersionRest> = serde_json::from_slice(&body)?;
             if let Some(matching_package) = VersionRest::get_latest_package(packages)? {
                 return Ok(matching_package);
@@ -171,7 +181,11 @@ impl Client {
         match response.status() {
             awc::http::StatusCode::NOT_FOUND => Ok(()),
             awc::http::StatusCode::OK => {
-                let body = response.body().await?;
+                let mut body = Vec::new();
+                while let Some(chunk) = response.next().await {
+                    let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                    body.extend_from_slice(&chunk);
+                }
                 let packages: Vec<VersionRest> = serde_json::from_slice(&body)?;
                 if let Some(existing) = VersionRest::is_latest_version(&version, packages)? {
                     return Err(anyhow!(
@@ -208,7 +222,11 @@ impl Client {
             .map_err(|error| anyhow!("Failed to yank version: {:?}", error))?;
 
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
             let version_rest: VersionRest = serde_json::from_slice(&body)?;
             return Ok(version_rest);
         }
@@ -287,7 +305,11 @@ impl Client {
             .map_err(|error| anyhow!("{:?}", error))?;
 
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
             let owners: Vec<OwnerRest> = serde_json::from_slice(&body)?;
             let owner_emails: Vec<String> =
                 owners.iter().map(|owner| owner.email.clone()).collect();
@@ -331,7 +353,12 @@ impl Client {
             .map_err(|error| anyhow!("Failed to list packages: {:?}", error))?;
 
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
+
             let packages_with_versions_and_pages: PackagesWithVersionsAndPagesRest =
                 serde_json::from_slice(&body)?;
             return Ok(packages_with_versions_and_pages.packages);
@@ -361,7 +388,11 @@ impl Client {
             .map_err(|error| anyhow!("Failed to get package info: {:?}", error))?;
 
         if response.status().is_success() {
-            let body = response.body().await?;
+            let mut body = Vec::new();
+            while let Some(chunk) = response.next().await {
+                let chunk = chunk.map_err(|e| anyhow!("Failed to read chunk: {:?}", e))?;
+                body.extend_from_slice(&chunk);
+            }
             let packages_with_versions_and_pages: PackagesWithVersionsAndPagesRest =
                 serde_json::from_slice(&body)?;
             return Ok(packages_with_versions_and_pages.packages);

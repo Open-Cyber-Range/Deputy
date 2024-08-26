@@ -1,6 +1,9 @@
 import NextAuth, { AuthOptions, Session } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
-import KeycloakProvider from 'next-auth/providers/keycloak';
+import { OAuthConfig } from 'next-auth/providers';
+import KeycloakProvider, {
+  KeycloakProfile,
+} from 'next-auth/providers/keycloak';
 
 export const refreshToken = async (token: JWT): Promise<JWT> => {
   try {
@@ -85,6 +88,27 @@ export const authOptions: AuthOptions = {
       }
 
       return mergedSession;
+    },
+  },
+  events: {
+    async signOut({ token }: { token: JWT }) {
+      const issuerUrl = (
+        authOptions.providers.find(
+          (p) => p.id === 'keycloak'
+        ) as OAuthConfig<KeycloakProfile>
+      ).options!.issuer!;
+
+      const logOutUrl = new URL(`${issuerUrl}/protocol/openid-connect/logout`);
+      logOutUrl.searchParams.set('id_token_hint', token.idToken! as string);
+
+      const response = await fetch(logOutUrl);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to log out: ${response.statusText} - ${errorText}`
+        );
+      }
     },
   },
 };

@@ -10,6 +10,7 @@ use crate::{
     project::*,
 };
 use anyhow::{anyhow, Result};
+use constants::{MAX_NAME_LENGTH, MIN_NAME_LENGTH};
 use semver::{Version, VersionReq};
 use spdx;
 
@@ -67,6 +68,11 @@ pub fn validate_name(name: String) -> Result<()> {
             name
         ));
     };
+    if name.len() > MAX_NAME_LENGTH || name.len() < MIN_NAME_LENGTH {
+        return Err(anyhow!(
+            "Package name must be between {MIN_NAME_LENGTH} and {MAX_NAME_LENGTH} characters long."
+        ));
+    }
     Ok(())
 }
 

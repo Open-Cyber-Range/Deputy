@@ -18,6 +18,9 @@ lazy_static! {
         { LOCKFILE_TIMEOUT_DURATION.as_millis() / LOCKFILE_SLEEP_DURATION.as_millis() } as u64;
 }
 
+pub const MIN_NAME_LENGTH: usize = 3;
+pub const MAX_NAME_LENGTH: usize = 50;
+
 pub const SHA256_LENGTH: usize = 64;
 
 pub const COMPRESSION_CHUNK_SIZE: usize = 131_072;

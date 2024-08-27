@@ -21,6 +21,7 @@ use actix_web::{
 };
 use anyhow::Result;
 use async_stream::try_stream;
+use deputy_library::validation::Validate;
 use deputy_library::{
     archiver::ArchiveStreamer,
     package::{Package, PackageFile, PackageMetadata},
@@ -62,9 +63,15 @@ where
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, CreateCategory>,
 {
-    let (package_metadata, body) = PackageMetadata::from_stream(body).await.map_err(|error| {
-        error!("Failed to parse package metadata: {error}");
-        ServerResponseError(PackageServerError::MetadataParse.into())
+    let (mut package_metadata, body) =
+        PackageMetadata::from_stream(body).await.map_err(|error| {
+            error!("Failed to parse package metadata: {error}");
+            ServerResponseError(PackageServerError::MetadataParse.into())
+        })?;
+
+    package_metadata.validate().map_err(|error| {
+        error!("Failed to validate the package metadata: {error}");
+        ServerResponseError(PackageServerError::MetadataValidation.into())
     })?;
 
     let versions: Vec<crate::models::Version> =

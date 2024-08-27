@@ -11,7 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use constants::{MAX_NAME_LENGTH, MIN_NAME_LENGTH};
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 use spdx;
 
 pub trait Validate {
@@ -28,20 +28,16 @@ impl Validate for Package {
 
 impl Validate for PackageMetadata {
     fn validate(&mut self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(anyhow!("Package name is empty"));
-        }
-        if self.version.is_empty() {
-            return Err(anyhow!("Package version is empty"));
-        }
-        if self.version.parse::<Version>().is_err() {
-            return Err(anyhow!("Package version is not valid"));
-        }
+        validate_name(self.name.clone())?;
+        validate_version_semantic(self.version.clone())?;
+        validate_license(self.license.clone())?;
+        validate_categories(self.categories.clone())?;
+
         if self.checksum.is_empty() {
             return Err(anyhow!("Package checksum is empty"));
         }
-        if !(self.checksum.len() == constants::SHA256_LENGTH
-            && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
+        if self.checksum.len() != constants::SHA256_LENGTH
+            || !self.checksum.chars().all(|c| c.is_ascii_hexdigit())
         {
             return Err(anyhow!("Package checksum is not valid"));
         }

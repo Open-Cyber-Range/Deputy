@@ -75,9 +75,82 @@ mod tests {
 
         assert!(response.status().is_client_error());
         let body = to_bytes(response.into_body()).await.unwrap();
-        assert_eq!(body.as_str(), "Failed to validate the package");
+        assert_eq!(body.as_str(), "Failed to validate the package metadata");
 
         package_folder.close()?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn send_invalid_package_name() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server()?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/package", post().to(add_package::<MockDatabase>)),
+        )
+        .await;
+
+        let long_name = "package".repeat(1000);
+        let invalid_names = vec![
+            &long_name,
+            "'; DROP TABLE packages; --",
+            "'; SELECT * FROM users WHERE '1'='1",
+            "<script>alert('XSS')</script>",
+            "<img src=x onerror=alert('XSS')>",
+            "../../../../etc/passwd",
+            "../package",
+            "包裹",
+            "パッケージ",
+            "пакет",
+            " leading",
+            "trailing ",
+            "multiple  spaces",
+            "-leading",
+            "trailing-",
+            "_leading",
+            "trailing_",
+            "-----",
+            "_____",
+            "-_-",
+            "_-_",
+            "name\nwith\nnewlines",
+            "name\twith\ttabs",
+            "name\rwith\rreturns",
+            "name\u{0}with\u{0}nulls",
+            "name\u{7F}with\u{7F}del",
+            "name\u{80}with\u{80}control",
+            "name\u{FFFD}with\u{FFFD}replacement",
+            "name\u{1F600}with\u{1F600}emoji",
+        ];
+        let invalid_special_characters = "!@#$%^&*()+{}|:\"<>?`=[]\\;',./";
+        let mut all_invalid_names: Vec<String> =
+            invalid_names.iter().map(ToString::to_string).collect();
+
+        all_invalid_names.extend(
+            invalid_special_characters
+                .chars()
+                .map(|char| format!("package{char}name")),
+        );
+
+        let archive = TempArchive::builder().build()?;
+
+        for name in all_invalid_names {
+            let mut test_package: Package = (&archive).try_into()?;
+            test_package.metadata.name = name.to_string();
+            let stream: PackageStream = test_package.to_stream().await?;
+            let request = test::TestRequest::post().uri("/package").to_request();
+            let (request, _) = request.replace_payload(Payload::from(stream));
+            set_mock_user_token(&request);
+
+            let response = test::call_service(&app, request).await;
+
+            assert!(response.status().is_client_error());
+            let body = to_bytes(response.into_body()).await.unwrap();
+            assert_eq!(body.as_str(), "Failed to validate the package metadata");
+        }
+        package_folder.close()?;
+
         Ok(())
     }
 

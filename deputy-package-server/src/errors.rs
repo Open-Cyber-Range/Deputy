@@ -9,6 +9,8 @@ use thiserror::Error as ThisError;
 pub enum PackageServerError {
     #[error("Failed to parse metadata")]
     MetadataParse,
+    #[error("Failed to validate the package metadata")]
+    MetadataValidation,
     #[error("Failed to save the file")]
     FileSave,
     #[error("Failed to save the package")]
@@ -83,6 +85,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
                 PackageServerError::NotAuthorized => StatusCode::UNAUTHORIZED,
+                PackageServerError::MetadataValidation => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

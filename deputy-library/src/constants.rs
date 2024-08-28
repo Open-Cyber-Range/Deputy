@@ -9,7 +9,8 @@ pub const LOCKFILE_TIMEOUT: &str = "5min";
 pub const LOCKFILE_SLEEP: &str = "250ms";
 
 lazy_static! {
-    pub static ref VALID_NAME: Regex = Regex::new(r#"^[a-zA-Z0-9_-]+$"#).unwrap();
+    pub static ref VALID_NAME: Regex =
+        Regex::new(r#"^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"#).unwrap();
     static ref LOCKFILE_TIMEOUT_DURATION: Duration =
         parse(LOCKFILE_TIMEOUT).expect("Error parsing lockfile timeout duration");
     pub static ref LOCKFILE_SLEEP_DURATION: Duration =

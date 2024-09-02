@@ -20,7 +20,7 @@ use actix_web::{
     App, HttpServer,
 };
 use anyhow::{anyhow, Error, Result};
-use deputy_library::test::generate_random_string;
+use deputy_library::{constants::default_max_archive_size, test::generate_random_string};
 use futures::TryFutureExt;
 use get_port::{tcp::TcpPort, Ops, Range};
 use rand::Rng;
@@ -123,6 +123,7 @@ impl TestPackageServer {
             let app_data: AppState<MockDatabase> = AppState {
                 package_folder,
                 database_address: database,
+                max_archive_size: default_max_archive_size(),
             };
             try_join!(
                 HttpServer::new(move || {

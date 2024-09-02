@@ -11,7 +11,6 @@ pub mod services;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod utilities;
-pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct AppState<T>

@@ -21,7 +21,7 @@ use actix_web::{
 };
 use anyhow::Result;
 use async_stream::try_stream;
-use deputy_library::validation::Validate;
+use deputy_library::validation::{Validate, ValidatePackage};
 use deputy_library::{
     archiver::ArchiveStreamer,
     package::{Package, PackageFile, PackageMetadata},
@@ -89,13 +89,7 @@ where
     let mut package = Package::new(package_metadata.clone(), archive_file);
 
     package
-        .validate_file_type()
-        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
-    package
-        .validate_archive_size(app_state.max_archive_size)
-        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
-    package
-        .validate_checksum()
+        .validate(app_state.max_archive_size)
         .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
 
     package.save(&app_state.package_folder).map_err(|error| {

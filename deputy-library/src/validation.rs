@@ -18,9 +18,15 @@ pub trait Validate {
     fn validate(&mut self) -> Result<()>;
 }
 
-impl Validate for Package {
-    fn validate(&mut self) -> Result<()> {
+pub trait ValidatePackage {
+    fn validate(&mut self, max_archive_size: u64) -> Result<()>;
+}
+
+impl ValidatePackage for Package {
+    fn validate(&mut self, max_archive_size: u64) -> Result<()> {
         self.metadata.validate()?;
+        self.validate_file_type()?;
+        self.validate_archive_size(max_archive_size)?;
         self.validate_checksum()?;
         Ok(())
     }

@@ -39,6 +39,7 @@ async fn real_main() -> Result<()> {
     let app_state = AppState {
         package_folder: configuration.package_folder,
         database_address: database,
+        max_archive_size: configuration.max_archive_size,
     };
 
     HttpServer::new(move || {

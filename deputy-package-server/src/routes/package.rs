@@ -87,10 +87,17 @@ where
     })?;
 
     let mut package = Package::new(package_metadata.clone(), archive_file);
-    package.validate_checksum().map_err(|error| {
-        error!("Failed to validate the package: {error}");
-        ServerResponseError(PackageServerError::PackageValidation.into())
-    })?;
+
+    package
+        .validate_file_type()
+        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
+    package
+        .validate_archive_size(app_state.max_archive_size)
+        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
+    package
+        .validate_checksum()
+        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
+
     package.save(&app_state.package_folder).map_err(|error| {
         error!("Failed to save the package: {error}");
         ServerResponseError(PackageServerError::PackageSave.into())
@@ -297,6 +304,7 @@ where
                 error!("File not found from the archive");
                 ServerResponseError(PackageServerError::FileNotFound.into())
             })?;
+
         while let Some(row) = archive_stream.next().await {
             yield row?;
         }

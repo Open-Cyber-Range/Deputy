@@ -5,10 +5,11 @@ mod tests {
 
     use crate::common::{set_mock_user_token, setup_package_server, upload_test_package, BodyTest};
     use actix_http::Payload;
+    use actix_web::http::header::ContentType;
     use actix_web::{
         body::to_bytes,
         test,
-        web::{get, post, put, scope},
+        web::{get, post, put, scope, Bytes},
         App,
     };
     use anyhow::Result;
@@ -22,11 +23,14 @@ mod tests {
         },
         test::{database::MockDatabase, middleware::MockTokenMiddlewareFactory},
     };
+    use futures::StreamExt;
+    use std::io::{Read, Write};
     use std::path::PathBuf;
+    use tempfile::tempdir;
 
     #[actix_web::test]
     async fn successfully_add_package() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
@@ -54,7 +58,7 @@ mod tests {
 
     #[actix_web::test]
     async fn send_invalid_package_checksum() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
@@ -83,7 +87,7 @@ mod tests {
 
     #[actix_web::test]
     async fn send_invalid_package_name() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
@@ -156,7 +160,7 @@ mod tests {
 
     #[actix_web::test]
     async fn submit_package_with_same_version_twice() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let app = test::init_service(
             App::new()
                 .app_data(app_state)
@@ -196,7 +200,7 @@ mod tests {
 
     #[actix_web::test]
     async fn download_package_with_name_and_version() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let archive = TempArchive::builder().build()?;
         let test_package: Package = (&archive).try_into()?;
 
@@ -242,7 +246,7 @@ mod tests {
 
     #[actix_web::test]
     async fn download_file_from_package() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let archive = TempArchive::builder().zero_filetimes(false).build()?;
         let test_package: Package = (&archive).try_into()?;
 
@@ -288,7 +292,7 @@ mod tests {
 
     #[actix_web::test]
     async fn yank_package() -> Result<()> {
-        let (_package_folder, app_state) = setup_package_server()?;
+        let (_package_folder, app_state) = setup_package_server(None)?;
         let package_name = upload_test_package(&app_state).await.unwrap();
         let package_version = "1.0.4".to_string();
         let app = test::init_service(
@@ -318,7 +322,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_get_all_categories() -> Result<()> {
-        let (_package_folder, app_state) = setup_package_server()?;
+        let (_package_folder, app_state) = setup_package_server(None)?;
         upload_test_package(&app_state).await.unwrap();
 
         let app = test::init_service(
@@ -338,6 +342,88 @@ mod tests {
         assert!(body
             .windows(search_string.len())
             .any(|window| window == search_string));
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn invalid_package_file_type_is_rejected() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server(None)?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/package", post().to(add_package::<MockDatabase>)),
+        )
+        .await;
+
+        let archive = TempArchive::builder().build()?;
+        let test_package: Package = (&archive).try_into()?;
+
+        let metadata_bytes = Vec::try_from(&test_package.metadata)?;
+        let metadata_stream: PackageStream =
+            Box::pin(futures::stream::iter(vec![Ok(Bytes::from(metadata_bytes))]));
+
+        let mut not_a_package_file = tempfile::NamedTempFile::new_in(&archive.root_dir)?;
+        not_a_package_file.write_all(b"I am not a package")?;
+        let archive_size = not_a_package_file.as_file().metadata()?.len();
+
+        let mut file_content = Vec::new();
+        not_a_package_file
+            .as_file_mut()
+            .read_to_end(&mut file_content)?;
+
+        let file_stream = futures::stream::iter(vec![Ok(Bytes::from(file_content))]);
+
+        let stream = metadata_stream
+            .chain(futures::stream::once(async move {
+                Ok(Bytes::from(archive_size.to_le_bytes().to_vec()))
+            }))
+            .chain(file_stream);
+        let boxed_stream: PackageStream = stream.boxed_local();
+
+        let request = test::TestRequest::post()
+            .uri("/package")
+            .insert_header(ContentType::plaintext())
+            .to_request();
+
+        let (request, _) = request.replace_payload(Payload::from(boxed_stream));
+        set_mock_user_token(&request);
+
+        let response = test::call_service(&app, request).await;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+        package_folder.close()?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn oversized_package_is_rejected() -> Result<()> {
+        let max_package_size = 1024;
+        let (package_folder, app_state) = setup_package_server(Some(max_package_size))?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/package", post().to(add_package::<MockDatabase>)),
+        )
+        .await;
+
+        let archive = TempArchive::builder().build()?;
+        let test_package: Package = (&archive).try_into()?;
+
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::post().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
+        let response = test::call_service(&app, request).await;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+        package_folder.close()?;
 
         Ok(())
     }

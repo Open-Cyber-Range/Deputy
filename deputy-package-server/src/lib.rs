@@ -19,4 +19,5 @@ where
 {
     pub database_address: Addr<T>,
     pub package_folder: String,
+    pub max_archive_size: u64,
 }

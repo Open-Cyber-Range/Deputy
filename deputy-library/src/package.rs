@@ -7,18 +7,22 @@ use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine};
+use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
+use infer::archive::is_gz;
+use log::warn;
 use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{copy, Write},
+    io::{copy, Read, Seek, SeekFrom, Write},
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     pin::Pin,
 };
+use tar::Archive;
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -287,12 +291,88 @@ impl Package {
     pub fn validate_checksum(&mut self) -> Result<()> {
         let calculated = self.file.calculate_checksum()?;
         if calculated != self.metadata.checksum {
+            warn!(
+                "Failed to validate the package checksum {:?}: Checksum mismatch. Calculated: {:?}, Expected: {:?}",
+                self.metadata.name,
+                calculated,
+                self.metadata.checksum
+            );
             return Err(anyhow!(
                 "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
                 calculated,
                 self.metadata.checksum
             ));
         }
+        Ok(())
+    }
+
+    pub fn validate_file_type(&mut self) -> Result<()> {
+        let mut magic_number = [0; 4096];
+        let file = &mut self.file.0;
+        let bytes_read = file.read(&mut magic_number)?;
+
+        file.seek(SeekFrom::Start(0))?;
+
+        if is_gz(&magic_number[..bytes_read]) {
+            Ok(())
+        } else {
+            warn!(
+                "Package validation failed \"{name}\": Invalid file type",
+                name = self.metadata.name
+            );
+            Err(anyhow!("Invalid file type"))
+        }
+    }
+
+    pub fn validate_archive_size(&mut self, max_archive_size: u64) -> Result<()> {
+        let file = &mut self.file.0;
+
+        if file.metadata()?.len() > max_archive_size {
+            warn!(
+                "Package validation failed \"{name}\": Archive exceeds maximum allowed size",
+                name = self.metadata.name
+            );
+            return Err(anyhow!("Archive exceeds maximum allowed size"));
+        };
+
+        let tarfile = MultiGzDecoder::new(file);
+        let mut archive = Archive::new(tarfile);
+        let mut total_uncompressed_size = 0;
+
+        for entry_result in archive.entries()? {
+            let mut entry = entry_result?;
+            let entry_header_size = entry.header().size()?;
+            total_uncompressed_size += entry_header_size;
+
+            if total_uncompressed_size > max_archive_size {
+                warn!(
+                    "Package validation failed \"{name}\": Uncompressed archive exceeds maximum allowed size",
+                    name = self.metadata.name
+                );
+                return Err(anyhow!("Uncompressed archive exceeds maximum allowed size"));
+            }
+
+            let mut buffer = [0; 32768];
+            let mut entry_actual_size = 0;
+
+            while let Ok(bytes_read) = entry.read(&mut buffer) {
+                if bytes_read == 0 {
+                    break;
+                }
+
+                entry_actual_size += bytes_read as u64;
+                if entry_actual_size > entry_header_size {
+                    warn!(
+                        "Package validation failed \"{name}\": Actual file size exceeds header size",
+                        name = self.metadata.name
+                    );
+                    return Err(anyhow!("Actual file size exceeds header size"));
+                }
+            }
+        }
+
+        self.file.0.seek(SeekFrom::Start(0))?;
+
         Ok(())
     }
 

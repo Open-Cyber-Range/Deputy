@@ -307,13 +307,13 @@ impl Package {
     }
 
     pub fn validate_file_type(&mut self) -> Result<()> {
-        let mut magic_number = [0; 4096];
+        let mut file_signature = [0; 4096];
         let file = &mut self.file.0;
-        let bytes_read = file.read(&mut magic_number)?;
+        let bytes_read = file.read(&mut file_signature)?;
 
         file.seek(SeekFrom::Start(0))?;
 
-        if is_gz(&magic_number[..bytes_read]) {
+        if is_gz(&file_signature[..bytes_read]) {
             Ok(())
         } else {
             warn!(

@@ -59,6 +59,8 @@ pub enum PackageServerError {
     PathParameters,
     #[error("Not authorized")]
     NotAuthorized,
+    #[error("Package has been yanked")]
+    PackageYanked,
 }
 
 #[derive(Debug)]
@@ -88,6 +90,7 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
                 PackageServerError::NotAuthorized => StatusCode::UNAUTHORIZED,
                 PackageServerError::MetadataValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageYanked => StatusCode::GONE,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

@@ -10,13 +10,19 @@ import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
 import CodePreview from './CodePreview';
 
-const FilePreview = ({ packageData }: { packageData: Project }) => {
+const FilePreview = ({
+  packageData,
+  isYanked,
+}: {
+  packageData: Project;
+  isYanked: boolean;
+}) => {
   const { asPath } = useRouter();
   const nameAndVersion = asPath.split('/packages/')[1];
   const slides: Slide[] = [];
   const codeBlocks: JSX.Element[] = [];
 
-  if (!packageData.content.preview) {
+  if (!packageData.content.preview || isYanked) {
     return null;
   }
 

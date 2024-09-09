@@ -103,7 +103,7 @@ where
         .await
         .map_err(|error| {
             error!("Failed to generate the readme html: {error}");
-            ServerResponseError(PackageServerError::PackageSave.into())
+            ServerResponseError(PackageServerError::ReadmeParse.into())
         })?
         .unwrap_or_default();
     let response = app_state

@@ -12,7 +12,7 @@ use futures::{Stream, StreamExt};
 use infer::archive::is_gz;
 use log::warn;
 use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
-use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -72,6 +72,23 @@ async fn process_image(
     }
 }
 
+async fn try_process_img_tag(html: &str, package_path: &Path) -> Result<Option<String>> {
+    let element = Html::parse_fragment(html);
+    let img_selector =
+        Selector::parse("img").map_err(|error| anyhow!("Failed to parse selector: {error}"))?;
+
+    if let Some(img_tag) = element.select(&img_selector).next() {
+        let src = img_tag.value().attr("src").unwrap_or("").to_string();
+        let alt = img_tag.value().attr("alt").unwrap_or("").to_string();
+        let width = img_tag.value().attr("width").unwrap_or("").to_string();
+
+        let processed_img_tag = process_image(&src, &alt, &width, package_path).await?;
+        return Ok(Some(processed_img_tag));
+    }
+
+    Ok(None)
+}
+
 impl PackageMetadata {
     pub async fn readme_html(&self, package_base_path: PathBuf) -> Result<Option<String>> {
         let readme_path = self.readme_path.clone();
@@ -101,38 +118,37 @@ impl PackageMetadata {
             let mut html_output = String::new();
             let mut buffer = String::new();
 
-            let img_regex = Regex::new(r#"<img\s+[^>]*src\s*=\s*"([^"]*)"\s+[^>]*alt\s*=\s*"([^"]*)"(?:\s+[^>]*width\s*=\s*"([^"]*)")?[^>]*>"#).unwrap();
-
-            let mut alt_text = String::new();
-            let mut in_alt_text = false;
+            let mut parsing_md_img = false;
+            let mut md_img_alt_text = String::new();
+            let mut md_img_src_url = String::new();
 
             for event in parser {
                 match event {
                     Event::Start(Tag::Image { dest_url, .. }) => {
-                        in_alt_text = true;
-                        let img_tag =
-                            process_image(&dest_url, &alt_text, "", &package_path).await?;
-                        buffer.push_str(&img_tag);
-
-                        alt_text.clear();
+                        parsing_md_img = true;
+                        md_img_src_url = dest_url.to_string();
                     }
 
-                    Event::Html(html) if img_regex.is_match(&html) => {
-                        let captures = img_regex.captures(&html).unwrap();
-                        let url_str = captures.get(1).map_or("", |m| m.as_str());
-                        let alt_text = captures.get(2).map_or("", |m| m.as_str());
-                        let width = captures.get(3).map_or("", |m| m.as_str());
-
-                        let img_tag =
-                            process_image(url_str, alt_text, width, &package_path).await?;
-                        buffer.push_str(&img_tag);
+                    Event::Text(text) if parsing_md_img => {
+                        md_img_alt_text.push_str(&text);
                     }
 
-                    Event::Text(text) if in_alt_text => {
-                        alt_text.push_str(&text);
-                    }
                     Event::End(TagEnd::Image) => {
-                        in_alt_text = false;
+                        parsing_md_img = false;
+
+                        let md_img_tag =
+                            process_image(&md_img_src_url, &md_img_alt_text, "", &package_path)
+                                .await?;
+                        buffer.push_str(&md_img_tag);
+                        md_img_alt_text.clear();
+                        md_img_src_url.clear();
+                    }
+
+                    Event::Html(html) | Event::InlineHtml(html) => {
+                        let processed_img_tag = try_process_img_tag(&html, &package_path).await?;
+                        if let Some(processed_img_tag) = processed_img_tag {
+                            buffer.push_str(&processed_img_tag);
+                        };
                     }
                     _ => html::push_html(&mut buffer, std::iter::once(event)),
                 }

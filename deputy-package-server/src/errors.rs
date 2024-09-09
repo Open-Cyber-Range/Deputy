@@ -15,6 +15,8 @@ pub enum PackageServerError {
     FileSave,
     #[error("Failed to save the package")]
     PackageSave,
+    #[error("Failed to parse readme markdown to html")]
+    ReadmeParse,
     #[error("Package did not pass validation")]
     PackageValidation,
     #[error("Failed to validate the package version")]

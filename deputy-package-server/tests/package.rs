@@ -26,7 +26,6 @@ mod tests {
     use futures::StreamExt;
     use std::io::{Read, Write};
     use std::path::PathBuf;
-    use tempfile::tempdir;
 
     #[actix_web::test]
     async fn successfully_add_package() -> Result<()> {

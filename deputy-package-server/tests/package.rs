@@ -426,4 +426,85 @@ mod tests {
 
         Ok(())
     }
+
+    #[actix_web::test]
+    async fn yanked_package_can_not_be_fetched() -> Result<()> {
+        let (_package_folder, app_state) = setup_package_server(None)?;
+        let package_name = upload_test_package(&app_state).await.unwrap();
+        let package_version = "1.0.4".to_string();
+        let app = test::init_service(
+            App::new().app_data(app_state).service(
+                scope("/package").service(
+                    scope("/{package_name}").service(
+                        scope("/{version}")
+                            .route("/yank/{set_yank}", post().to(yank_version::<MockDatabase>))
+                            .route("/download", get().to(download_package::<MockDatabase>)),
+                    ),
+                ),
+            ),
+        )
+        .await;
+
+        let uri = format!("/package/{package_name}/{package_version}/yank/true");
+        let request = test::TestRequest::post().uri(uri.as_str()).to_request();
+        set_mock_user_token(&request);
+        let response = test::call_service(&app, request).await;
+
+        assert!(response.status().is_success());
+        let body = to_bytes(response.into_body()).await.unwrap();
+        assert!(body.as_str().contains("\"isYanked\":true"));
+
+        let fetch_request_uri = format!("/package/{package_name}/{package_version}/download");
+        let fetch_request = test::TestRequest::get()
+            .uri(&fetch_request_uri)
+            .to_request();
+        let fetch_response = test::call_service(&app, fetch_request).await;
+
+        assert!(fetch_response.status().is_client_error());
+        let body = to_bytes(fetch_response.into_body()).await.unwrap();
+        assert_eq!(body.as_str(), "Package has been yanked");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn files_from_yanked_package_can_not_be_fetched() -> Result<()> {
+        let (_package_folder, app_state) = setup_package_server(None)?;
+        let package_name = upload_test_package(&app_state).await.unwrap();
+        let package_version = "1.0.4".to_string();
+        let app = test::init_service(
+            App::new().app_data(app_state).service(
+                scope("/package").service(
+                    scope("/{package_name}").service(
+                        scope("/{version}")
+                            .route("/yank/{set_yank}", post().to(yank_version::<MockDatabase>))
+                            .route("/path/{tail:.*}", get().to(download_file::<MockDatabase>)),
+                    ),
+                ),
+            ),
+        )
+        .await;
+
+        let uri = format!("/package/{package_name}/{package_version}/yank/true");
+        let request = test::TestRequest::post().uri(uri.as_str()).to_request();
+        set_mock_user_token(&request);
+        let response = test::call_service(&app, request).await;
+
+        assert!(response.status().is_success());
+        let body = to_bytes(response.into_body()).await.unwrap();
+        assert!(body.as_str().contains("\"isYanked\":true"));
+
+        let fetch_file_request_uri =
+            format!("/package/{package_name}/{package_version}/path/src/test_file.txt");
+        let download_request = test::TestRequest::get()
+            .uri(&fetch_file_request_uri)
+            .to_request();
+        let fetch_file_response = test::call_service(&app, download_request).await;
+
+        assert!(fetch_file_response.status().is_client_error());
+        let body = to_bytes(fetch_file_response.into_body()).await.unwrap();
+        assert_eq!(body.as_str(), "Package has been yanked");
+
+        Ok(())
+    }
 }

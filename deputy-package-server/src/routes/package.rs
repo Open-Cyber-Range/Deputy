@@ -1,3 +1,4 @@
+use crate::constants::PACKAGE_TOML;
 use crate::middleware::authentication::local_token::UserTokenInfo;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
@@ -29,7 +30,7 @@ use deputy_library::{
     validation::{validate_name, validate_version_semantic},
 };
 use futures::{Stream, StreamExt};
-use log::{debug, error};
+use log::{debug, error, info};
 use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_with::{formats::CommaSeparator, StringWithSeparator};
@@ -146,7 +147,8 @@ pub async fn download_package<T>(
     app_state: Data<AppState<T>>,
 ) -> Result<NamedFile, Error>
 where
-    T: Actor,
+    T: Actor + Handler<GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     let package_name = &path_variables.0;
     let package_version = &path_variables.1;
@@ -162,6 +164,19 @@ where
 
     let package_path = PathBuf::from(app_state.package_folder.clone())
         .join(Package::normalize_file_path(package_name, package_version));
+
+    let package = get_package_by_name_and_version(
+        package_name.to_string(),
+        package_version.to_string(),
+        app_state,
+    )
+    .await?;
+
+    if package.is_yanked {
+        info!("Requested package \"{package_name}\" has been yanked");
+        return Err(ServerResponseError(PackageServerError::PackageYanked.into()).into());
+    }
+
     NamedFile::open(package_path).map_err(|error| {
         error!("Failed to open the package: {error}");
         Error::from(error)
@@ -275,7 +290,8 @@ pub async fn download_file<T>(
     app_state: Data<AppState<T>>,
 ) -> Result<HttpResponse, Error>
 where
-    T: Actor,
+    T: Actor + Handler<GetPackageByNameAndVersion>,
+    <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackageByNameAndVersion>,
 {
     let package_name = &path_variables.clone().0;
     let package_version = &path_variables.1;
@@ -283,6 +299,18 @@ where
 
     let package_path = PathBuf::from(&app_state.package_folder)
         .join(Package::normalize_file_path(package_name, package_version));
+
+    let package = get_package_by_name_and_version(
+        package_name.to_string(),
+        package_version.to_string(),
+        app_state,
+    )
+    .await?;
+
+    if package.is_yanked && file_path_in_package != PACKAGE_TOML {
+        info!("Package \"{package_name}\" has been yanked, requested file {file_path_in_package} can not be served");
+        return Err(ServerResponseError(PackageServerError::PackageYanked.into()).into());
+    }
 
     let stream = try_stream! {
         let mut archive = ArchiveStreamer::prepare_archive(package_path).map_err(|error| {

@@ -85,7 +85,11 @@ const PackageDetailView = () => {
           >
             {t('categories')}
           </Tab>
-          <Tab disabled={!packageToml.content.preview}>{t('preview')}</Tab>
+          <Tab
+            disabled={!packageToml.content.preview || latestVersion.isYanked}
+          >
+            {t('preview')}
+          </Tab>
         </TabList>
 
         <TabPanel>
@@ -102,7 +106,10 @@ const PackageDetailView = () => {
           />
         </TabPanel>
         <TabPanel>
-          <FilePreview packageData={packageToml} />
+          <FilePreview
+            packageData={packageToml}
+            isYanked={latestVersion.isYanked}
+          />
         </TabPanel>
       </Tabs>
     </Card>

@@ -91,7 +91,13 @@ where
 
     package
         .validate(app_state.max_archive_size)
-        .map_err(|_| ServerResponseError(PackageServerError::PackageValidation.into()))?;
+        .map_err(|error| {
+            error!(
+                "Package \"{name}\" did not pass validation: {error}",
+                name = package_metadata.name
+            );
+            ServerResponseError(PackageServerError::PackageValidation.into())
+        })?;
 
     package.save(&app_state.package_folder).map_err(|error| {
         error!("Failed to save the package: {error}");

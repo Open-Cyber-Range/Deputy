@@ -10,7 +10,6 @@ use base64::{engine::general_purpose, Engine};
 use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
 use infer::archive::is_gz;
-use log::warn;
 use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
@@ -307,12 +306,6 @@ impl Package {
     pub fn validate_checksum(&mut self) -> Result<()> {
         let calculated = self.file.calculate_checksum()?;
         if calculated != self.metadata.checksum {
-            warn!(
-                "Failed to validate the package checksum {:?}: Checksum mismatch. Calculated: {:?}, Expected: {:?}",
-                self.metadata.name,
-                calculated,
-                self.metadata.checksum
-            );
             return Err(anyhow!(
                 "Checksum mismatch. Calculated: {:?}, Expected: {:?}",
                 calculated,
@@ -332,10 +325,6 @@ impl Package {
         if is_gz(&file_signature[..bytes_read]) {
             Ok(())
         } else {
-            warn!(
-                "Package validation failed \"{name}\": Invalid file type",
-                name = self.metadata.name
-            );
             Err(anyhow!("Invalid file type"))
         }
     }
@@ -344,10 +333,6 @@ impl Package {
         let file = &mut self.file.0;
 
         if file.metadata()?.len() > max_archive_size {
-            warn!(
-                "Package validation failed \"{name}\": Archive exceeds maximum allowed size",
-                name = self.metadata.name
-            );
             return Err(anyhow!("Archive exceeds maximum allowed size"));
         };
 
@@ -361,10 +346,6 @@ impl Package {
             total_uncompressed_size += entry_header_size;
 
             if total_uncompressed_size > max_archive_size {
-                warn!(
-                    "Package validation failed \"{name}\": Uncompressed archive exceeds maximum allowed size",
-                    name = self.metadata.name
-                );
                 return Err(anyhow!("Uncompressed archive exceeds maximum allowed size"));
             }
 
@@ -378,10 +359,6 @@ impl Package {
 
                 entry_actual_size += bytes_read as u64;
                 if entry_actual_size > entry_header_size {
-                    warn!(
-                        "Package validation failed \"{name}\": Actual file size exceeds header size",
-                        name = self.metadata.name
-                    );
                     return Err(anyhow!("Actual file size exceeds header size"));
                 }
             }

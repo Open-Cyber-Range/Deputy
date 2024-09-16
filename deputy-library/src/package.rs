@@ -1,4 +1,5 @@
 use crate::constants::PACKAGE_TOML;
+use crate::project::{Content, ContentType, Project};
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
@@ -365,6 +366,84 @@ impl Package {
         }
 
         self.file.0.seek(SeekFrom::Start(0))?;
+
+        Ok(())
+    }
+
+    pub fn validate_consistency(&self) -> Result<()> {
+        let mut package_file = &self.file.0;
+
+        let decoder = MultiGzDecoder::new(package_file);
+        let mut archive = Archive::new(decoder);
+        let mut toml_bytes = Vec::new();
+
+        for file in archive.entries()? {
+            let mut file = file?;
+            if file.path()?.to_str() == Some(PACKAGE_TOML) {
+                file.read_to_end(&mut toml_bytes)?;
+            }
+        }
+        package_file.rewind()?;
+
+        let deserialized_toml: Project = toml::from_str(&String::from_utf8(toml_bytes)?)?;
+
+        if self.metadata.name != deserialized_toml.package.name.to_lowercase() {
+            return Err(anyhow!(
+                "Name mismatch: expected '{}', found '{}'",
+                self.metadata.name,
+                deserialized_toml.package.name.to_lowercase()
+            ));
+        }
+        if self.metadata.package_type != deserialized_toml.content.content_type {
+            return Err(anyhow!(
+                "Package type mismatch: expected '{:?}', found '{:?}'",
+                self.metadata.package_type,
+                deserialized_toml.content.content_type
+            ));
+        }
+        if self.metadata.version != deserialized_toml.package.version {
+            return Err(anyhow!(
+                "Version mismatch: expected '{}', found '{}'",
+                self.metadata.version,
+                deserialized_toml.package.version
+            ));
+        }
+        if self.metadata.description != deserialized_toml.package.description {
+            return Err(anyhow!(
+                "Description mismatch: expected '{}', found '{}'",
+                self.metadata.description,
+                deserialized_toml.package.description
+            ));
+        }
+        if self.metadata.license != deserialized_toml.package.license {
+            return Err(anyhow!(
+                "License mismatch: expected '{}', found '{}'",
+                self.metadata.license,
+                deserialized_toml.package.license
+            ));
+        }
+        if self.metadata.readme_path != deserialized_toml.package.readme {
+            return Err(anyhow!(
+                "Readme path mismatch: expected '{}', found '{}'",
+                self.metadata.readme_path,
+                deserialized_toml.package.readme
+            ));
+        }
+        let actual_package_size = self.file.0.metadata()?.len();
+        if self.metadata.package_size != actual_package_size {
+            return Err(anyhow!(
+                "Package size mismatch: expected '{}', found '{}'",
+                self.metadata.package_size,
+                actual_package_size
+            ));
+        }
+        if self.metadata.categories != deserialized_toml.package.categories {
+            return Err(anyhow!(
+                "Categories mismatch: expected '{:?}', found '{:?}'",
+                self.metadata.categories,
+                deserialized_toml.package.categories
+            ));
+        }
 
         Ok(())
     }

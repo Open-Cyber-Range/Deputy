@@ -5,6 +5,7 @@ mod tests {
 
     use crate::common::{set_mock_user_token, setup_package_server, upload_test_package, BodyTest};
     use actix_http::Payload;
+    use actix_web::dev::ServiceResponse;
     use actix_web::http::header::ContentType;
     use actix_web::{
         body::to_bytes,
@@ -14,7 +15,7 @@ mod tests {
     };
     use anyhow::Result;
     use deputy_library::{
-        package::{Package, PackageStream},
+        package::{Package, PackageMetadata, PackageStream},
         test::TempArchive,
     };
     use deputy_package_server::{
@@ -504,6 +505,150 @@ mod tests {
         assert!(fetch_file_response.status().is_client_error());
         let body = to_bytes(fetch_file_response.into_body()).await.unwrap();
         assert_eq!(body.as_str(), "Package has been yanked");
+
+        Ok(())
+    }
+
+    async fn post_package_with_modified_metadata<F>(modify_metadata: F) -> Result<ServiceResponse>
+    where
+        F: FnOnce(&mut PackageMetadata),
+    {
+        let (package_folder, app_state) = setup_package_server(None)?;
+        let app = test::init_service(
+            App::new()
+                .app_data(app_state)
+                .route("/package", post().to(add_package::<MockDatabase>)),
+        )
+        .await;
+
+        let archive = TempArchive::builder().build()?;
+        let mut test_package: Package = (&archive).try_into()?;
+
+        modify_metadata(&mut test_package.metadata);
+
+        let package_stream = test_package.to_stream().await?;
+        let request = test::TestRequest::post()
+            .uri("/package")
+            .insert_header(ContentType::plaintext())
+            .to_request();
+
+        let (request, _) = request.replace_payload(Payload::from(package_stream));
+        set_mock_user_token(&request);
+
+        let response = test::call_service(&app, request).await;
+        package_folder.close()?;
+
+        Ok(response)
+    }
+
+    #[actix_web::test]
+    async fn mismatched_name_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.name = "invalid".to_string();
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_package_type_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.package_type = deputy_library::project::ContentType::Other;
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_version_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.version = "99.99.99".to_string();
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_description_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.description = "Don't mind me...".to_string();
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_license_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.license = "WTFPL".to_string();
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_readme_path_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.readme_path = "../../../../etc/passwd".to_string();
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_package_size_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.package_size = 0;
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn mismatched_categories_metadata_fails_consistency_check() -> Result<()> {
+        let response = post_package_with_modified_metadata(|metadata| {
+            metadata.categories = Some(vec!["invalid".to_string()]);
+        })
+        .await?;
+
+        assert!(response.status().is_client_error());
+        let body = test::read_body(response).await;
+        assert_eq!(body.as_str(), "Package did not pass validation");
 
         Ok(())
     }

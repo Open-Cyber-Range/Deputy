@@ -34,8 +34,6 @@ pub const fn default_max_archive_size() -> u64 {
     30 * 1024 * 1024 * 1024 // 30 GB
 }
 
-pub const INDEX_REPOSITORY_BRANCH: &str = "master";
-pub const INDEX_REPOSITORY_REMOTE: &str = "origin";
 pub const CONFIGURATION_FOLDER_PATH_ENV_KEY: &str = "DEPUTY_CONFIG_FOLDER";
 
 pub const ASSETS_REQUIRED_PACKAGE_TYPES: [ContentType; 4] = [

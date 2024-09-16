@@ -1,4 +1,4 @@
-use crate::project::{Content, ContentType};
+use crate::constants::PACKAGE_TOML;
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,

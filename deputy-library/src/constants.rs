@@ -4,6 +4,8 @@ use fancy_regex::Regex;
 use lazy_static::lazy_static;
 use std::time::Duration;
 
+pub const PACKAGE_TOML: &str = "package.toml";
+
 pub const LOCKFILE: &str = "deputy.lock";
 pub const LOCKFILE_TIMEOUT: &str = "5min";
 pub const LOCKFILE_SLEEP: &str = "250ms";

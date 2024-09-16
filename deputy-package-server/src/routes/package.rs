@@ -1,4 +1,3 @@
-use crate::constants::PACKAGE_TOML;
 use crate::middleware::authentication::local_token::UserTokenInfo;
 use crate::models::helpers::versioning::{
     get_package_by_name_and_version, get_packages_by_name, validate_version,
@@ -22,6 +21,7 @@ use actix_web::{
 };
 use anyhow::Result;
 use async_stream::try_stream;
+use deputy_library::constants::PACKAGE_TOML;
 use deputy_library::validation::{Validate, ValidatePackage};
 use deputy_library::{
     archiver::ArchiveStreamer,

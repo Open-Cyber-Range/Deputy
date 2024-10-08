@@ -34,5 +34,10 @@
   "userEmailMissing": "User email is missing",
   "tokenDeleted": "Token deleted",
   "failedToDeleteToken": "Failed to delete token",
-  "yanked": "Yanked"
+  "yanked": "Yanked",
+  "404": {
+    "title": "404 - Page Not Found ",
+    "description": "Sorry, the page you are looking for does not exist.",
+    "backToHome": "Go back to the homepage"
+  }
 }

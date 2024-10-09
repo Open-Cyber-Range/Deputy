@@ -5,15 +5,12 @@ const VersionTag = ({
   intent = 'none',
 }: {
   version: string;
+  // eslint-disable-next-line react/require-default-props
   intent?: Intent;
 }) => (
   <Tag large minimal round intent={intent}>
     v{version}
   </Tag>
 );
-
-VersionTag.defaultProps = {
-  intent: 'none',
-};
 
 export default VersionTag;

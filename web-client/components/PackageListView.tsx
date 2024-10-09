@@ -8,11 +8,17 @@ import PageLimitSelect from './PageLimitSelect';
 import Pagination from './Pagination';
 import PackageList from './PackageList';
 
-const PackageListView = () => {
+export interface PackageListViewProps {
+  currentPage: number;
+  selectedLimit: number;
+}
+
+const PackageListView = ({
+  currentPage,
+  selectedLimit,
+}: PackageListViewProps) => {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const currentPage = Number(router.query.page) || 1;
-  const selectedLimit = Number(router.query.limit) || 20;
 
   const { data: packageList, error } = useSWR(
     `/api/v1/package?page=${currentPage}&limit=${selectedLimit}`,

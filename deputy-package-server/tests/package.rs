@@ -652,4 +652,126 @@ mod tests {
 
         Ok(())
     }
+
+    #[actix_web::test]
+    async fn download_file_from_package_with_percent_encoded_filename() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server(None)?;
+        let archive = TempArchive::builder().zero_filetimes(false).build()?;
+        let filename_prefix = "你好abcABCæøåÆØÅäöüïëêîâéíáóúýñ½§!#¤%&()=`@£$€{[]}+´¨^~'-_,;";
+        let filename_suffix = ".txt";
+        let file_content_bytes = "Lörem ipsüm dõlõr sit ämet".as_bytes();
+        let mut special_file = tempfile::Builder::new()
+            .prefix(filename_prefix)
+            .suffix(filename_suffix)
+            .rand_bytes(0)
+            .tempfile_in(&archive.src_dir)?;
+        special_file.write_all(file_content_bytes)?;
+
+        let test_package: Package = (&archive).try_into()?;
+
+        let package_name = test_package.metadata.name.clone();
+        let package_version = test_package.metadata.version.clone();
+
+        let app = test::init_service(
+            App::new().app_data(app_state).service(
+                scope("/package")
+                    .service(
+                        scope("/{package_name}").service(
+                            scope("/{version}")
+                                .route("/path/{tail:.*}", get().to(download_file::<MockDatabase>)),
+                        ),
+                    )
+                    .route("", post().to(add_package::<MockDatabase>)),
+            ),
+        )
+        .await;
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::post().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
+        test::call_service(&app, request).await;
+
+        let filename = format!("{filename_prefix}{filename_suffix}");
+        let encoded_filename = urlencoding::encode(&filename);
+
+        let request = test::TestRequest::get()
+            .uri(&format!(
+                "/package/{package_name}/{package_version}/path/src/{encoded_filename}",
+            ))
+            .to_request();
+
+        let body = test::call_and_read_body(&app, request).await;
+        assert!(body
+            .windows(file_content_bytes.len())
+            .any(|window| window == file_content_bytes));
+
+        package_folder.close()?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn download_file_endpoint_has_correct_attachment_headers_and_filenames() -> Result<()> {
+        let (package_folder, app_state) = setup_package_server(None)?;
+        let archive = TempArchive::builder().zero_filetimes(false).build()?;
+        let test_package: Package = (&archive).try_into()?;
+        let filename_prefix = "你好abcABCæøåÆØÅäöüïëêîâéíáóúýñ½§!#¤%&()=`@£$€{[]}+´¨^~'-_,;";
+        let filename_suffix = ".txt";
+        let file_content_bytes = "Lörem ipsüm dõlõr sit ämet".as_bytes();
+        let mut special_file = tempfile::Builder::new()
+            .prefix(filename_prefix)
+            .suffix(filename_suffix)
+            .rand_bytes(0)
+            .tempfile_in(&archive.src_dir)?;
+        special_file.write_all(file_content_bytes)?;
+
+        let package_name = test_package.metadata.name.clone();
+        let package_version = test_package.metadata.version.clone();
+
+        let app = test::init_service(
+            App::new().app_data(app_state).service(
+                scope("/package")
+                    .service(
+                        scope("/{package_name}").service(
+                            scope("/{version}")
+                                .route("/path/{tail:.*}", get().to(download_file::<MockDatabase>)),
+                        ),
+                    )
+                    .route("", post().to(add_package::<MockDatabase>)),
+            ),
+        )
+        .await;
+        let stream: PackageStream = test_package.to_stream().await?;
+        let request = test::TestRequest::post().uri("/package").to_request();
+        let (request, _) = request.replace_payload(Payload::from(stream));
+        set_mock_user_token(&request);
+
+        test::call_service(&app, request).await;
+
+        let filename = format!("{filename_prefix}{filename_suffix}");
+        let encoded_filename = urlencoding::encode(&filename);
+
+        let request = test::TestRequest::get()
+            .uri(&format!(
+                "/package/{package_name}/{package_version}/path/src/{encoded_filename}",
+            ))
+            .to_request();
+
+        let response = test::call_service(&app, request).await;
+
+        assert!(response.headers().contains_key("content-type"));
+        assert!(response.headers().contains_key("content-disposition"));
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
+        assert_eq!(
+            response.headers().get("content-disposition").unwrap(),
+            format!("attachment; filename=\"{filename}\"; filename*=UTF-8''{encoded_filename}")
+                .as_str()
+        );
+
+        package_folder.close()?;
+        Ok(())
+    }
 }

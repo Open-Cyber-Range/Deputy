@@ -35,6 +35,7 @@ use semver::{Version, VersionReq};
 use serde::Deserialize;
 use serde_with::{formats::CommaSeparator, StringWithSeparator};
 use std::path::PathBuf;
+use urlencoding::encode;
 
 async fn drain_stream(
     stream: impl Stream<Item = Result<Bytes, PayloadError>> + Unpin + 'static,
@@ -318,12 +319,13 @@ where
         return Err(ServerResponseError(PackageServerError::PackageYanked.into()).into());
     }
 
+    let file_pathbuf = PathBuf::from(&file_path_in_package);
     let stream = try_stream! {
         let mut archive = ArchiveStreamer::prepare_archive(package_path).map_err(|error| {
             error!("Failed to open the package: {error}");
             ServerResponseError(PackageServerError::FileNotFound.into())
         })?;
-        let mut archive_stream = ArchiveStreamer::try_new(&mut archive, file_path_in_package.into())
+        let mut archive_stream = ArchiveStreamer::try_new(&mut archive, file_pathbuf)
             .map_err(|error| {
                 error!("Failed to open the package: {error}");
                 ServerResponseError(PackageServerError::FileNotFound.into())
@@ -339,7 +341,27 @@ where
     };
     let _: &dyn Stream<Item = Result<_, Error>> = &stream;
 
-    Ok(HttpResponse::Ok().streaming(Box::pin(stream)))
+    let filename_pathbuf = PathBuf::from(&file_path_in_package);
+    let filename = filename_pathbuf.file_name().and_then(|name| name.to_str());
+    let filename = match filename {
+        Some(name) => name,
+        None => {
+            error!("Filename is missing in the file path: {file_path_in_package}");
+            return Ok(HttpResponse::InternalServerError().finish());
+        }
+    };
+
+    Ok(HttpResponse::Ok()
+        .insert_header((
+            actix_http::header::CONTENT_DISPOSITION,
+            format!(
+                "attachment; filename=\"{}\"; filename*=UTF-8''{}",
+                filename,
+                encode(filename)
+            ),
+        ))
+        .insert_header((actix_http::header::CONTENT_TYPE, "application/octet-stream"))
+        .streaming(Box::pin(stream)))
 }
 
 pub async fn get_package_version<T>(

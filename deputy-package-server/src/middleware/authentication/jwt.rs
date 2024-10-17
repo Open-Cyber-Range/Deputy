@@ -30,6 +30,7 @@ pub struct Token {
     pub exp: u64,
     pub name: Option<String>,
     pub email: Option<String>,
+    pub typ: Option<String>,
 }
 
 impl Token {
@@ -39,17 +40,26 @@ impl Token {
     {pem}
     -----END PUBLIC KEY-----"
         );
-        let decoding_key = DecodingKey::from_rsa_pem(pem_file.as_bytes()).unwrap();
+        let decoding_key = DecodingKey::from_rsa_pem(pem_file.as_bytes()).map_err(|e| {
+            error!("Failed to create decoding key: {}", e);
+            ErrorUnauthorized("Invalid decoding key")
+        })?;
 
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_audience(&[JWT_AUDIENCE]);
 
-        jsonwebtoken::decode::<Token>(token, &decoding_key, &validation)
-            .map(|data| data.claims)
+        let decoded_token = jsonwebtoken::decode::<Token>(token, &decoding_key, &validation)
             .map_err(|e| {
-                log::error!("Failed to decode JWT: {}", e);
-                ErrorUnauthorized(e.to_string())
-            })
+                error!("Failed to decode JWT: {}", e);
+                ErrorUnauthorized("Invalid token")
+            })?;
+
+        if decoded_token.claims.typ.as_deref() != Some("Bearer") {
+            error!("Invalid token type: {:?}", decoded_token.claims.typ);
+            return Err(ErrorUnauthorized("Invalid token type"));
+        }
+
+        Ok(decoded_token.claims)
     }
 }
 
@@ -143,6 +153,7 @@ where
         let service = self.service.clone();
         let pem_content = self.pem_content.clone();
         let auth_header = req.headers().get("Authorization").cloned();
+        println!("token_string: {:#?}", req);
 
         Box::pin(async move {
             let token_string: HeaderValue = match auth_header {
@@ -157,6 +168,7 @@ where
                 })?
                 .replace("Bearer ", "");
             let token = Token::try_new(token_string.as_str(), &pem_content).await?;
+            println!("decoded incoming token: {:#?}", token);
 
             req.extensions_mut()
                 .insert::<Rc<User>>(Rc::new(User::from(token)));

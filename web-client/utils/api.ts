@@ -64,10 +64,10 @@ export const categoryFetcher: Fetcher<Category[], string> = async (...url) => {
 
 export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {
   const session = (await getSession()) as ModifiedSession;
-  if (session && session.idToken) {
+  if (session && session.accessToken) {
     const response = await fetch(...url, {
       headers: {
-        Authorization: `Bearer ${session.idToken}`,
+        Authorization: `Bearer ${session.accessToken}`,
       },
     });
     return response.json();
@@ -78,12 +78,12 @@ export const apiTokenFetcher: Fetcher<TokenRest[], string> = async (...url) => {
 
 export const createToken = async (postToken: PostToken) => {
   const session = (await getSession()) as ModifiedSession;
-  if (session && session.idToken) {
+  if (session && session.accessToken) {
     const response = await fetch('/api/v1/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.idToken}`,
+        Authorization: `Bearer ${session.accessToken}`,
       },
       body: JSON.stringify(postToken),
     });
@@ -100,11 +100,11 @@ export const createToken = async (postToken: PostToken) => {
 
 export const deleteToken = async (tokenId: String) => {
   const session = (await getSession()) as ModifiedSession;
-  if (session && session.idToken) {
+  if (session && session.accessToken) {
     const response = await fetch(`/api/v1/token/${tokenId}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${session.idToken}`,
+        Authorization: `Bearer ${session.accessToken}`,
       },
     });
 

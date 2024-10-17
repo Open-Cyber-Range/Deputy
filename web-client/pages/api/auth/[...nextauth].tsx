@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import NextAuth, { AuthOptions, Session } from 'next-auth';
+import NextAuth, { AuthOptions } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
 import { OAuthConfig } from 'next-auth/providers';
 import KeycloakProvider, {
@@ -63,7 +63,7 @@ export const authOptions: AuthOptions = {
     async jwt({ token, account }) {
       if (account) {
         // eslint-disable-next-line no-param-reassign
-        token.idToken = account.id_token;
+        token.accessToken = account.access_token;
         // eslint-disable-next-line no-param-reassign
         token.refreshToken = account.refresh_token;
         return token;
@@ -71,24 +71,17 @@ export const authOptions: AuthOptions = {
       return refreshToken(token);
     },
     async session({ session, token }) {
-      const mergedSession: Session & {
-        idToken?: string;
-        refreshToken?: string;
-        error?: string;
-      } = {
-        ...session,
-      };
-
-      if (token.idToken) {
-        mergedSession.idToken = token.idToken as string;
-        mergedSession.refreshToken = token.refreshToken as string;
-      }
+      // eslint-disable-next-line no-param-reassign
+      session.accessToken = token.accessToken as string;
+      // eslint-disable-next-line no-param-reassign
+      session.refreshToken = token.refreshToken as string;
 
       if (token.error) {
-        mergedSession.error = token.error as string;
+        // eslint-disable-next-line no-param-reassign
+        session.error = token.error as string;
       }
 
-      return mergedSession;
+      return session;
     },
   },
   events: {

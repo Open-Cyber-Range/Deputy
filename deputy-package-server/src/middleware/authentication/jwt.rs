@@ -153,7 +153,6 @@ where
         let service = self.service.clone();
         let pem_content = self.pem_content.clone();
         let auth_header = req.headers().get("Authorization").cloned();
-        println!("token_string: {:#?}", req);
 
         Box::pin(async move {
             let token_string: HeaderValue = match auth_header {
@@ -168,7 +167,6 @@ where
                 })?
                 .replace("Bearer ", "");
             let token = Token::try_new(token_string.as_str(), &pem_content).await?;
-            println!("decoded incoming token: {:#?}", token);
 
             req.extensions_mut()
                 .insert::<Rc<User>>(Rc::new(User::from(token)));

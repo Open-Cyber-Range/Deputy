@@ -34,6 +34,9 @@
   "userEmailMissing": "User email is missing",
   "tokenDeleted": "Token deleted",
   "failedToDeleteToken": "Failed to delete token",
+  "invalidTokenName": "Token name must be alphanuemeric and may contain spaces, underscores and hyphens",
+  "tokenNameTooLong": "Token name must be less than {{maxLength}} characters long",
+  "tokenNameTooShort": "Token name must be at least one character long",
   "yanked": "Yanked",
   "404": {
     "title": "404 - Page Not Found ",

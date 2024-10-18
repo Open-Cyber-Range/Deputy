@@ -19,6 +19,11 @@ import { useSession } from 'next-auth/react';
 import useTranslation from 'next-translate/useTranslation';
 import { useState } from 'react';
 import useSWR from 'swr';
+import {
+  MAX_TOKEN_NAME_LENGTH,
+  MIN_TOKEN_NAME_LENGTH,
+  VALID_TOKEN_NAME_REGEX,
+} from 'constants/constants';
 import { apiTokenFetcher, createToken, deleteToken } from '../utils/api';
 import { Token } from '../interfaces/Token';
 
@@ -38,6 +43,24 @@ const Tokens: NextPage = () => {
     error,
     mutate,
   } = useSWR('/api/v1/token', apiTokenFetcher);
+
+  const validateTokenName = (name: string): boolean => {
+    if (!VALID_TOKEN_NAME_REGEX.test(name)) {
+      setCreationError(t('invalidTokenName'));
+      return false;
+    }
+    if (name.length > MAX_TOKEN_NAME_LENGTH) {
+      setCreationError(
+        t('tokenNameTooLong', { maxLength: MAX_TOKEN_NAME_LENGTH })
+      );
+      return false;
+    }
+    if (name.trim().length < MIN_TOKEN_NAME_LENGTH) {
+      setCreationError(t('tokenNameTooShort'));
+      return false;
+    }
+    return true;
+  };
 
   return (
     <div className="w-full">
@@ -85,14 +108,18 @@ const Tokens: NextPage = () => {
               <DialogFooter
                 actions={
                   <Button
-                    disabled={tokenName === ''}
+                    disabled={tokenName.trim() === ''}
                     intent="primary"
                     text={t('create')}
                     onClick={async () => {
+                      const trimmedTokenName = tokenName.trim();
                       if (email) {
+                        if (!validateTokenName(trimmedTokenName)) {
+                          return;
+                        }
                         try {
                           const newToken = await createToken({
-                            name: tokenName,
+                            name: trimmedTokenName,
                             email,
                           });
                           setCreatedTokens([...createdTokens, newToken]);

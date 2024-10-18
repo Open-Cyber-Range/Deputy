@@ -763,7 +763,7 @@ mod tests {
         assert!(response.headers().contains_key("content-disposition"));
         assert_eq!(
             response.headers().get("content-type").unwrap(),
-            "application/octet-stream"
+            "text/plain"
         );
         assert_eq!(
             response.headers().get("content-disposition").unwrap(),

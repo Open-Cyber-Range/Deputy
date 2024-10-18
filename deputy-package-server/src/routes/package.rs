@@ -360,7 +360,10 @@ where
                 encode(filename)
             ),
         ))
-        .insert_header((actix_http::header::CONTENT_TYPE, "application/octet-stream"))
+        .insert_header((
+            actix_http::header::CONTENT_TYPE,
+            mime_guess::from_path(filename).first_or_octet_stream(),
+        ))
         .streaming(Box::pin(stream)))
 }
 

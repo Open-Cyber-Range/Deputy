@@ -7,6 +7,19 @@ module.exports = nextTranslate({
   env: {
     DOCUMENTATION_URL: process.env.DOCUMENTATION_URL,
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

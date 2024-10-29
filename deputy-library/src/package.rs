@@ -469,10 +469,7 @@ impl Package {
         let archive_path = archiver::create_package(package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
-        let mut temp_path_option = None;
-        if cfg!(feature = "test") {
-            temp_path_option = Some(TempPath::from_path(archive_path));
-        }
+        let temp_path_option = Some(TempPath::from_path(archive_path));
 
         Ok(Package {
             metadata,

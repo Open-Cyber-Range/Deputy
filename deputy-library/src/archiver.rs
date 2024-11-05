@@ -1,6 +1,6 @@
 use crate::{
     constants::{COMPRESSION_CHUNK_SIZE, PAYLOAD_CHUNK_SIZE},
-    project::Project,
+    project::{create_project_from_toml_path, Preview, Project},
     validation,
 };
 use actix_web::{
@@ -178,6 +178,32 @@ pub fn unpack_archive(archive_path: &Path, destination: &Path) -> Result<()> {
     Ok(())
 }
 
+fn extract_preview_paths(project: &Project, root_directory: &Path) -> Vec<PathBuf> {
+    project
+        .content
+        .preview
+        .iter()
+        .flat_map(|previews| {
+            previews.iter().flat_map(|preview| match preview {
+                Preview::Picture(vec) | Preview::Video(vec) | Preview::Code(vec) => vec.clone(),
+            })
+        })
+        .map(|path| root_directory.join(path))
+        .collect::<Vec<PathBuf>>()
+}
+
+fn reorder_walkdir_paths(walkdir_paths: &mut Vec<DirEntry>, priority_paths: &[PathBuf]) {
+    priority_paths.iter().rev().for_each(|priority_path| {
+        if let Some(pos) = walkdir_paths
+            .iter()
+            .position(|archive_path| archive_path.path() == priority_path)
+        {
+            let special_entry = walkdir_paths.remove(pos);
+            walkdir_paths.insert(1, special_entry);
+        }
+    });
+}
+
 /// Creates an archive of the given directory if it contains a valid `package.toml` file in its root
 /// and returns a `PathBuf` in the form of: `<input_directory>/target/package/<package_name>.package`
 ///
@@ -205,14 +231,26 @@ pub fn create_package(toml_path: &PathBuf, compression: u32) -> Result<PathBuf> 
     let mut walkdir = WalkBuilder::new(&root_directory);
     walkdir.filter_entry(|entry| !entry.path().ends_with("target"));
 
-    let root_directory = root_directory
-        .to_str()
-        .ok_or_else(|| anyhow!("Path UTF-8 validation error"))?;
+    let mut walkdir_paths: Vec<DirEntry> = walkdir.build().filter_map(|e| e.ok()).collect();
+
+    let project = create_project_from_toml_path(toml_path)?;
+
+    let preview_paths = extract_preview_paths(&project, &root_directory);
+    let readme_path = root_directory.join(&project.package.readme);
+
+    let mut priority_paths = vec![toml_path.clone(), readme_path];
+    priority_paths.extend(preview_paths);
+
+    reorder_walkdir_paths(&mut walkdir_paths, &priority_paths);
+
+    let mut walkdir_iter = walkdir_paths.into_iter();
 
     let destination_file_path = get_destination_file_path(toml_path)?;
     let archive_path = create_archive(
-        &mut walkdir.build().filter_map(|e| e.ok()),
-        root_directory,
+        &mut walkdir_iter,
+        root_directory
+            .to_str()
+            .ok_or_else(|| anyhow!("Path UTF-8 validation error"))?,
         &destination_file_path,
     )?;
     let compressed_file_path = compress_archive(&archive_path, compression)?;

@@ -9,16 +9,23 @@ import PageLimitSelect from './PageLimitSelect';
 import Pagination from './Pagination';
 import PackageList from './PackageList';
 
-const SearchResults = () => {
+export interface SearchProps {
+  currentPage: number;
+  selectedLimit: number;
+  q: string;
+  type: string;
+  categories: string;
+}
+
+const SearchResults = ({
+  q,
+  currentPage,
+  selectedLimit,
+  type,
+  categories,
+}: SearchProps) => {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { q, type, categories } = router.query as {
-    q: string;
-    type: string;
-    categories: string;
-  };
-  const currentPage = Number(router.query.page) || 1;
-  const selectedLimit = Number(router.query.limit) || 20;
 
   const { apiSearchUrl, searchInput } = getSearchUrlAndInput(
     q,

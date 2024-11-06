@@ -43,6 +43,8 @@ pub enum PackageServerError {
     KeycloakValidationFailed,
     #[error("Token missing")]
     TokenMissing,
+    #[error("Failed to create token")]
+    TokenCreate,
     #[error("App state missing")]
     AppStateMissing,
     #[error("Database query failed")]
@@ -87,7 +89,9 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::VersionUpdate => StatusCode::BAD_REQUEST,
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
+                PackageServerError::DatabaseQueryFailed => StatusCode::INTERNAL_SERVER_ERROR,
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
+                PackageServerError::TokenCreate => StatusCode::BAD_REQUEST,
                 PackageServerError::NotAuthorized => StatusCode::UNAUTHORIZED,
                 PackageServerError::MetadataValidation => StatusCode::BAD_REQUEST,
                 PackageServerError::PackageYanked => StatusCode::GONE,

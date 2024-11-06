@@ -53,19 +53,23 @@ where
 {
     let new_api_token = new_api_token
         .into_inner()
-        .create_new_token(user_info.id.clone());
+        .create_new_token(user_info.id.clone())
+        .map_err(|error| {
+            error!("Failed to create new token: {error}");
+            ServerResponseError(PackageServerError::TokenCreate.into())
+        })?;
 
     let full_api_token = app_state
         .database_address
         .send(CreateApiToken(new_api_token))
         .await
         .map_err(|error| {
-            error!("Failed to create token: {error}");
+            error!("Failed to create new token database entry: {error}");
             ServerResponseError(PackageServerError::MailboxError.into())
         })?
         .map_err(|error| {
-            error!("Failed to create token: {error}");
-            ServerResponseError(PackageServerError::DatabaseRecordNotFound.into())
+            error!("Failed to create new token database entry: {error}");
+            ServerResponseError(PackageServerError::DatabaseQueryFailed.into())
         })?;
     Ok(Json(full_api_token.into()))
 }

@@ -165,10 +165,7 @@ impl Client {
     }
 
     pub async fn validate_version(&self, name: String, version: String) -> Result<()> {
-        let get_uri = self
-            .api_base_url
-            .join("api/v1/package/")?
-            .join(format!("{name}/").as_str())?;
+        let get_uri = self.api_base_url.join("api/v1/package/")?.join(&name)?;
 
         let mut response = self
             .client
@@ -189,7 +186,7 @@ impl Client {
                 let packages: Vec<VersionRest> = serde_json::from_slice(&body)?;
                 if let Some(existing) = VersionRest::is_latest_version(&version, packages)? {
                     return Err(anyhow!(
-                        "Package version {version} already exists. Latest version is {existing}",
+                        "Package version \"{version}\" is not newer than the current version. Latest version is \"{existing}\"",
                     ));
                 }
                 Ok(())

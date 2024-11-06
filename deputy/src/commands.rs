@@ -1,6 +1,7 @@
 use crate::constants::{
     fetching::{DEFAULT_PACKAGE_VERSION_REQUIREMENT, DEFAULT_SAVE_PATH},
     inspecting::DEFAULT_PACKAGE_PATH,
+    publishing::VALID_COMPRESSION_RATES,
     DEFAULT_REGISTRY_NAME,
 };
 use clap::{Args, Subcommand, ValueEnum};
@@ -56,8 +57,9 @@ pub struct PublishOptions {
     #[clap(
         short,
         long,
+        value_parser = clap::value_parser!(u32).range(VALID_COMPRESSION_RATES),
         default_value_t = 0,
-        help = "Compression rate before upload"
+        help = format!("Compression rate before upload. Valid values {:?}",VALID_COMPRESSION_RATES)
     )]
     pub(crate) compression: u32,
     #[clap(

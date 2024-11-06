@@ -462,19 +462,24 @@ type = "{chosen_content_type}"
 
     pub async fn package_info(&self, info_options: InfoOptions) -> Result<()> {
         let client = self.try_create_client(info_options.registry_name.clone(), None)?;
-        let mut packages = client.package_info(&info_options).await?;
-        PackageWithVersionsRest::remove_yanked_versions(&mut packages);
+        let mut search_results = client.package_info(&info_options).await?;
+        PackageWithVersionsRest::remove_yanked_versions(&mut search_results);
 
-        if packages.is_empty() {
+        if search_results.is_empty() {
             println!("{error} Package not found", error = "Error:".red());
             return Ok(());
         }
 
-        let exact_match = packages
-            .clone()
-            .into_iter()
-            .find(|package| package.name == info_options.search_term);
-        match exact_match {
+        let single_match = if search_results.len() == 1 {
+            search_results.pop()
+        } else {
+            search_results
+                .iter()
+                .find(|package| package.name == info_options.search_term)
+                .cloned()
+        };
+
+        match single_match {
             Some(mut package) => {
                 package.versions.sort_by(|a, b| b.version.cmp(&a.version));
 
@@ -499,7 +504,7 @@ type = "{chosen_content_type}"
                 }
             }
             None => {
-                let package_names = packages
+                let package_names = search_results
                     .into_iter()
                     .map(|package| package.name)
                     .collect::<Vec<String>>()

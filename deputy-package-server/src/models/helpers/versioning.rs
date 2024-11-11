@@ -11,6 +11,7 @@ use log::error;
 pub async fn get_package_by_name_and_version<T>(
     name: String,
     version: String,
+    include_readme: bool,
     app_state: Data<AppState<T>>,
 ) -> ActixWebResult<Version, ServerResponseError>
 where
@@ -19,7 +20,11 @@ where
 {
     app_state
         .database_address
-        .send(GetPackageByNameAndVersion { name, version })
+        .send(GetPackageByNameAndVersion {
+            name,
+            version,
+            include_readme,
+        })
         .await
         .map_err(|error| {
             error!("Failed to get package: {error}");
@@ -33,6 +38,7 @@ where
 
 pub async fn get_packages_by_name<T>(
     name: String,
+    include_readme: bool,
     app_state: Data<AppState<T>>,
 ) -> ActixWebResult<Vec<Version>, ServerResponseError>
 where
@@ -41,7 +47,10 @@ where
 {
     app_state
         .database_address
-        .send(GetVersionsByPackageName(name))
+        .send(GetVersionsByPackageName {
+            name,
+            include_readme,
+        })
         .await
         .map_err(|error| {
             error!("Failed to get package: {error}");

@@ -10,10 +10,9 @@ use crate::{
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
 use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
-use diesel::helper_types::FindBy;
-use diesel::insert_into;
-use diesel::mysql::Mysql;
-use diesel::prelude::*;
+use diesel::{
+    dsl::sql, helper_types::FindBy, insert_into, mysql::Mysql, prelude::*, sql_types::Text,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -332,15 +331,36 @@ impl Package {
         Self::all().filter(packages::name.eq(name))
     }
 
-    pub fn versions(&self) -> versions::BoxedQuery<'_, Mysql> {
-        Version::belonging_to(self).into_boxed()
+    pub fn versions(&self, include_readme: bool) -> versions::BoxedQuery<'_, Mysql> {
+        let mut query = Version::belonging_to(self).into_boxed();
+
+        if !include_readme {
+            query = query.select((
+                versions::id,
+                versions::package_id,
+                versions::version,
+                versions::description,
+                versions::license,
+                versions::is_yanked,
+                sql::<Text>("''").into_sql::<Text>(),
+                versions::package_size,
+                versions::checksum,
+                versions::created_at,
+                versions::updated_at,
+                versions::deleted_at,
+            ));
+        }
+
+        query
     }
 
     pub fn exact_version(
         &self,
         version: String,
+        include_readme: bool,
     ) -> FindBy<versions::BoxedQuery<'_, Mysql>, versions::version, String> {
-        self.versions().filter(versions::version.eq(version))
+        self.versions(include_readme)
+            .filter(versions::version.eq(version))
     }
 }
 
@@ -420,7 +440,10 @@ impl From<Version> for VersionRest {
             description: version.description,
             license: version.license,
             is_yanked: version.is_yanked,
-            readme_html: version.readme_html,
+            readme_html: match version.readme_html.trim().is_empty() {
+                true => None,
+                false => Some(version.readme_html),
+            },
             package_size: version.package_size,
             checksum: version.checksum,
             created_at: version.created_at,

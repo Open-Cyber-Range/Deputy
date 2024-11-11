@@ -68,6 +68,7 @@ pub struct GetPackages {
     pub categories: Option<Vec<String>>,
     pub page: i64,
     pub per_page: i64,
+    pub include_readme: bool,
 }
 
 impl Handler<GetPackages> for Database {
@@ -136,7 +137,10 @@ impl Handler<GetPackages> for Database {
                         .0
                         .iter()
                         .map(|package| {
-                            let package_versions = package.versions().load(&mut connection)?;
+                            let package_versions = package
+                                .versions(search_packages.include_readme)
+                                .load(&mut connection)?;
+
                             Ok(PackageWithVersions::from((
                                 package.clone(),
                                 package_versions,
@@ -163,6 +167,7 @@ impl Handler<GetPackages> for Database {
 pub struct GetPackageByNameAndVersion {
     pub name: String,
     pub version: String,
+    pub include_readme: bool,
 }
 
 impl Handler<GetPackageByNameAndVersion> for Database {
@@ -182,7 +187,7 @@ impl Handler<GetPackageByNameAndVersion> for Database {
                     let package: Package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)?;
                     let package_version: Version = package
-                        .exact_version(query_params.version)
+                        .exact_version(query_params.version, query_params.include_readme)
                         .first(&mut connection)?;
                     Ok(package_version)
                 })
@@ -196,7 +201,10 @@ impl Handler<GetPackageByNameAndVersion> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Version>>")]
-pub struct GetVersionsByPackageName(pub String);
+pub struct GetVersionsByPackageName {
+    pub name: String,
+    pub include_readme: bool,
+}
 
 impl Handler<GetVersionsByPackageName> for Database {
     type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
@@ -212,12 +220,13 @@ impl Handler<GetVersionsByPackageName> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let package = Package::by_name(query_params.0.to_lowercase())
+                    let package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)
                         .optional()?;
                     if let Some(package) = package {
-                        let package_versions: Vec<Version> =
-                            package.versions().load(&mut connection)?;
+                        let package_versions: Vec<Version> = package
+                            .versions(query_params.include_readme)
+                            .load(&mut connection)?;
                         return Ok(package_versions);
                     }
                     Ok(Vec::new())

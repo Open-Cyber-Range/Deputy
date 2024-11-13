@@ -23,7 +23,7 @@ export type PackageWithVersions = {
   id: string;
   name: string;
   description: string;
-  readmeHtml: string;
+  readmeHtml?: string;
   createdAt: string;
   versions: Version[];
 };

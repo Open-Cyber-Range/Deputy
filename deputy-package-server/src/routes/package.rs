@@ -9,7 +9,7 @@ use crate::services::database::package::{
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::{Category, PackagesWithVersionsAndPages},
+    models::Category,
     AppState,
 };
 use actix::{Actor, Handler};
@@ -22,6 +22,7 @@ use actix_web::{
 use anyhow::Result;
 use async_stream::try_stream;
 use deputy_library::constants::PACKAGE_TOML;
+use deputy_library::rest::PackagesWithVersionsAndPagesRest;
 use deputy_library::validation::{Validate, ValidatePackage};
 use deputy_library::{
     archiver::ArchiveStreamer,
@@ -213,7 +214,7 @@ pub struct SearchQuery {
 pub async fn get_all_packages<T>(
     app_state: Data<AppState<T>>,
     query: Query<SearchQuery>,
-) -> Result<Json<PackagesWithVersionsAndPages>, Error>
+) -> Result<Json<PackagesWithVersionsAndPagesRest>, Error>
 where
     T: Actor + Handler<GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
@@ -241,7 +242,7 @@ where
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
 
-    Ok(Json(packages_with_versions_and_pages))
+    Ok(Json(packages_with_versions_and_pages.into()))
 }
 
 #[derive(Deserialize, Debug, Default)]

@@ -9,7 +9,9 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use deputy_library::package::PackageMetadata;
-use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
+use deputy_library::rest::{
+    PackageWithVersionsRest, PackagesWithVersionsAndPagesRest, VersionRest,
+};
 use diesel::{
     dsl::sql, helper_types::FindBy, insert_into, mysql::Mysql, prelude::*, sql_types::Text,
 };
@@ -516,6 +518,20 @@ impl From<(Vec<PackageWithVersions>, i64, i64)> for PackagesWithVersionsAndPages
             packages,
             total_pages,
             total_packages,
+        }
+    }
+}
+
+impl From<PackagesWithVersionsAndPages> for PackagesWithVersionsAndPagesRest {
+    fn from(packages_with_versions_and_pages: PackagesWithVersionsAndPages) -> Self {
+        Self {
+            packages: packages_with_versions_and_pages
+                .packages
+                .into_iter()
+                .map(PackageWithVersionsRest::from)
+                .collect(),
+            total_pages: packages_with_versions_and_pages.total_pages,
+            total_packages: packages_with_versions_and_pages.total_packages,
         }
     }
 }

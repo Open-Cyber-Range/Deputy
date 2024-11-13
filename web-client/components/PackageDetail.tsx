@@ -24,7 +24,7 @@ const PackageDetailView = () => {
   const { name, version } = query as DetailParams;
 
   const { data: latestVersion, error: latestVersionError } = useSWR(
-    `/api/v1/package/${name}/${version}`,
+    `/api/v1/package/${name}/${version}?include_readme=true`,
     packageVersionFetcher
   );
 

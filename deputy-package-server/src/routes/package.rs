@@ -9,7 +9,7 @@ use crate::services::database::package::{
 use crate::{
     constants::{default_limit, default_page},
     errors::{PackageServerError, ServerResponseError},
-    models::{Category, PackagesWithVersionsAndPages},
+    models::Category,
     AppState,
 };
 use actix::{Actor, Handler};
@@ -22,6 +22,7 @@ use actix_web::{
 use anyhow::Result;
 use async_stream::try_stream;
 use deputy_library::constants::PACKAGE_TOML;
+use deputy_library::rest::PackagesWithVersionsAndPagesRest;
 use deputy_library::validation::{Validate, ValidatePackage};
 use deputy_library::{
     archiver::ArchiveStreamer,
@@ -77,7 +78,7 @@ where
     })?;
 
     let versions: Vec<crate::models::Version> =
-        get_packages_by_name(package_metadata.clone().name, app_state.clone()).await?;
+        get_packages_by_name(package_metadata.clone().name, false, app_state.clone()).await?;
     if let Err(error) = validate_version(package_metadata.version.as_str(), versions) {
         drain_stream(body).await?;
         return Err(error);
@@ -175,6 +176,7 @@ where
     let package = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
+        false,
         app_state,
     )
     .await?;
@@ -205,12 +207,14 @@ pub struct SearchQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
     #[serde(rename = "categories", default)]
     category_param: Option<Vec<String>>,
+    #[serde(default)]
+    include_readme: bool,
 }
 
 pub async fn get_all_packages<T>(
     app_state: Data<AppState<T>>,
     query: Query<SearchQuery>,
-) -> Result<Json<PackagesWithVersionsAndPages>, Error>
+) -> Result<Json<PackagesWithVersionsAndPagesRest>, Error>
 where
     T: Actor + Handler<GetPackages>,
     <T as Actor>::Context: actix::dev::ToEnvelope<T, GetPackages>,
@@ -226,6 +230,7 @@ where
             categories: optional_package_categories.clone(),
             page: query.page as i64,
             per_page: query.limit as i64,
+            include_readme: query.include_readme,
         })
         .await
         .map_err(|error| {
@@ -237,12 +242,14 @@ where
             ServerResponseError(PackageServerError::Pagination.into())
         })?;
 
-    Ok(Json(packages_with_versions_and_pages))
+    Ok(Json(packages_with_versions_and_pages.into()))
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct VersionQuery {
     pub version_requirement: Option<String>,
+    #[serde(default)]
+    pub include_readme: bool,
 }
 
 pub async fn get_all_versions<T>(
@@ -273,22 +280,23 @@ where
         None => None,
     };
 
-    let packages: Vec<VersionRest> = get_packages_by_name(package_name.to_string(), app_state)
-        .await?
-        .into_iter()
-        .filter_map(|package| match &version_requirement {
-            Some(version_requirement) => {
-                if let Ok(version) = Version::parse(&package.version) {
-                    if version_requirement.matches(&version) && !package.is_yanked {
-                        return Some(package);
+    let packages: Vec<VersionRest> =
+        get_packages_by_name(package_name.to_string(), query.include_readme, app_state)
+            .await?
+            .into_iter()
+            .filter_map(|package| match &version_requirement {
+                Some(version_requirement) => {
+                    if let Ok(version) = Version::parse(&package.version) {
+                        if version_requirement.matches(&version) && !package.is_yanked {
+                            return Some(package);
+                        }
                     }
+                    None
                 }
-                None
-            }
-            None => Some(package),
-        })
-        .map(|package| package.into())
-        .collect();
+                None => Some(package),
+            })
+            .map(|package| package.into())
+            .collect();
     Ok(Json(packages))
 }
 
@@ -310,6 +318,7 @@ where
     let package = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
+        false,
         app_state,
     )
     .await?;
@@ -367,9 +376,16 @@ where
         .streaming(Box::pin(stream)))
 }
 
+#[derive(Deserialize, Debug, Default)]
+pub struct ReadmeQuery {
+    #[serde(default)]
+    pub include_readme: bool,
+}
+
 pub async fn get_package_version<T>(
     path_variables: Path<(String, String)>,
     app_state: Data<AppState<T>>,
+    query: Query<ReadmeQuery>,
 ) -> Result<Json<VersionRest>, Error>
 where
     T: Actor + Handler<GetPackageByNameAndVersion>,
@@ -381,6 +397,7 @@ where
     let package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
+        query.include_readme,
         app_state,
     )
     .await?;
@@ -405,6 +422,7 @@ where
     let mut package_version = get_package_by_name_and_version(
         package_name.to_string(),
         package_version.to_string(),
+        true,
         app_state.clone(),
     )
     .await?;

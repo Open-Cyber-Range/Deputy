@@ -236,7 +236,7 @@ impl Handler<GetVersionsByPackageName> for MockDatabase {
     type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
 
     fn handle(&mut self, msg: GetVersionsByPackageName, _ctx: &mut Self::Context) -> Self::Result {
-        let name = msg.0.to_lowercase();
+        let name = msg.name.to_lowercase();
         Box::pin(
             async move { name }
                 .into_actor(self)

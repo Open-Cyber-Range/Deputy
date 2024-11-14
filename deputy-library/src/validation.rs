@@ -10,16 +10,24 @@ use crate::{
     project::*,
 };
 use anyhow::{anyhow, Result};
-use semver::{Version, VersionReq};
+use constants::{MAX_NAME_LENGTH, MIN_NAME_LENGTH};
+use semver::VersionReq;
 use spdx;
 
 pub trait Validate {
     fn validate(&mut self) -> Result<()>;
 }
 
-impl Validate for Package {
-    fn validate(&mut self) -> Result<()> {
+pub trait ValidatePackage {
+    fn validate(&mut self, max_archive_size: u64) -> Result<()>;
+}
+
+impl ValidatePackage for Package {
+    fn validate(&mut self, max_archive_size: u64) -> Result<()> {
         self.metadata.validate()?;
+        self.validate_consistency()?;
+        self.validate_file_type()?;
+        self.validate_archive_size(max_archive_size)?;
         self.validate_checksum()?;
         Ok(())
     }
@@ -27,20 +35,16 @@ impl Validate for Package {
 
 impl Validate for PackageMetadata {
     fn validate(&mut self) -> Result<()> {
-        if self.name.is_empty() {
-            return Err(anyhow!("Package name is empty"));
-        }
-        if self.version.is_empty() {
-            return Err(anyhow!("Package version is empty"));
-        }
-        if self.version.parse::<Version>().is_err() {
-            return Err(anyhow!("Package version is not valid"));
-        }
+        validate_name(self.name.clone())?;
+        validate_version_semantic(self.version.clone())?;
+        validate_license(self.license.clone())?;
+        validate_categories(self.categories.clone())?;
+
         if self.checksum.is_empty() {
             return Err(anyhow!("Package checksum is empty"));
         }
-        if !(self.checksum.len() == constants::SHA256_LENGTH
-            && self.checksum.chars().all(|c| c.is_ascii_hexdigit()))
+        if self.checksum.len() != constants::SHA256_LENGTH
+            || !self.checksum.chars().all(|c| c.is_ascii_hexdigit())
         {
             return Err(anyhow!("Package checksum is not valid"));
         }
@@ -67,6 +71,11 @@ pub fn validate_name(name: String) -> Result<()> {
             name
         ));
     };
+    if name.len() > MAX_NAME_LENGTH || name.len() < MIN_NAME_LENGTH {
+        return Err(anyhow!(
+            "Package name must be between {MIN_NAME_LENGTH} and {MAX_NAME_LENGTH} characters long."
+        ));
+    }
     Ok(())
 }
 

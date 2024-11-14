@@ -1,9 +1,10 @@
 use crate::{
-    constants::NAIVEDATETIME_DEFAULT_VALUE,
+    constants::{self, MAX_TOKEN_EMAIL_LENGTH, MAX_TOKEN_NAME_LENGTH, NAIVEDATETIME_DEFAULT_VALUE},
     models::helpers::uuid::Uuid,
     schema::tokens::{self},
     services::database::{All, Create, FilterExistingNotNull, SoftDeleteById},
 };
+use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
 use chrono::NaiveDateTime;
 use diesel::{helper_types::FindBy, insert_into, prelude::*};
@@ -142,13 +143,29 @@ impl NewApiTokenRest {
         general_purpose::STANDARD.encode(random_bytes)
     }
 
-    pub fn create_new_token(self, user_id: String) -> NewApiToken {
-        NewApiToken {
+    pub fn validate(&self) -> Result<()> {
+        if !constants::TOKEN_NAME_REGEX.is_match(&self.name) {
+            return Err(anyhow!("Name contains invalid characters:".to_string()));
+        }
+
+        if self.name.len() > MAX_TOKEN_NAME_LENGTH {
+            return Err(anyhow!("Token name is too long".to_string()));
+        }
+        if self.email.len() > MAX_TOKEN_EMAIL_LENGTH {
+            return Err(anyhow!("Token email is too long".to_string()));
+        }
+        Ok(())
+    }
+
+    pub fn create_new_token(self, user_id: String) -> Result<NewApiToken> {
+        self.validate()?;
+
+        Ok(NewApiToken {
             id: Uuid::random(),
             name: self.name,
             email: self.email,
             token: Self::generate_token(),
             user_id,
-        }
+        })
     }
 }

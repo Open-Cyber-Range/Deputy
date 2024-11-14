@@ -6,6 +6,7 @@ use actix_http::{HttpMessage, Request};
 use actix_web::web::{Bytes, Data};
 use actix_web::{test, web::post, App};
 use anyhow::Result;
+use deputy_library::constants::default_max_archive_size;
 use deputy_library::{
     package::{Package, PackageStream},
     test::TempArchive,
@@ -25,7 +26,9 @@ impl BodyTest for Bytes {
     }
 }
 
-pub fn setup_package_server() -> Result<(TempDir, Data<AppState<MockDatabase>>)> {
+pub fn setup_package_server(
+    max_archive_size: Option<u64>,
+) -> Result<(TempDir, Data<AppState<MockDatabase>>)> {
     let package_folder = TempDir::new()?;
     let package_folder_string = package_folder.path().to_str().unwrap().to_string();
 
@@ -35,6 +38,7 @@ pub fn setup_package_server() -> Result<(TempDir, Data<AppState<MockDatabase>>)>
         Data::new(AppState {
             package_folder: package_folder_string,
             database_address,
+            max_archive_size: max_archive_size.unwrap_or(default_max_archive_size()),
         }),
     ))
 }

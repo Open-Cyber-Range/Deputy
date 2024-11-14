@@ -1,7 +1,7 @@
 [package]
 name = "deputy-package-server"
 description = "Deputy package server is a digital library server meant for storing deputy packages"
-version = "4.2.0"
+version = "4.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -40,22 +40,23 @@ actix-files = "0.6"
 actix-http = { version = "3", features = ["http2", "ws"] }
 async-stream = "0.3"
 anyhow = "1"
-base64 = "0.21"
+base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 diesel = { version = "2", features = ["mysql", "r2d2", "chrono"] }
 diesel_migrations = "2"
-divrem = "1"
 deputy-library = { path = "../deputy-library", default-features = false }
-env_logger = "0.10"
+env_logger = "0.11"
 flate2 = "1"
 futures = "0.3"
 futures-util = "0.3"
-jsonwebtoken = "8"
+jsonwebtoken = "9"
 get-port = { version = "4", optional = true }
 insta = "1"
 lazy_static = "1"
 log = "0.4"
+mime_guess = "2"
 rand = "0.8"
+regex = "1"
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -64,13 +65,14 @@ serde_yaml = "0.9"
 tar = { git = "https://github.com/npajkovsky/tar-rs", branch = "master" }
 tempfile = "3"
 thiserror = "1"
-toml = "0.7"
+toml = "0.8"
 tokio = { version = "1", features = [
   "sync",
   "macros",
   "time",
   "rt-multi-thread",
 ] }
+urlencoding = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]

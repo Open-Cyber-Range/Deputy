@@ -1,6 +1,10 @@
-import NextAuth, { AuthOptions, Session } from 'next-auth';
+import { NextApiRequest, NextApiResponse } from 'next';
+import NextAuth, { AuthOptions } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
-import KeycloakProvider from 'next-auth/providers/keycloak';
+import { OAuthConfig } from 'next-auth/providers';
+import KeycloakProvider, {
+  KeycloakProfile,
+} from 'next-auth/providers/keycloak';
 
 export const refreshToken = async (token: JWT): Promise<JWT> => {
   try {
@@ -59,7 +63,7 @@ export const authOptions: AuthOptions = {
     async jwt({ token, account }) {
       if (account) {
         // eslint-disable-next-line no-param-reassign
-        token.idToken = account.id_token;
+        token.accessToken = account.access_token;
         // eslint-disable-next-line no-param-reassign
         token.refreshToken = account.refresh_token;
         return token;
@@ -67,26 +71,50 @@ export const authOptions: AuthOptions = {
       return refreshToken(token);
     },
     async session({ session, token }) {
-      const mergedSession: Session & {
-        idToken?: string;
-        refreshToken?: string;
-        error?: string;
-      } = {
-        ...session,
-      };
-
-      if (token.idToken) {
-        mergedSession.idToken = token.idToken as string;
-        mergedSession.refreshToken = token.refreshToken as string;
-      }
+      // eslint-disable-next-line no-param-reassign
+      session.accessToken = token.accessToken as string;
+      // eslint-disable-next-line no-param-reassign
+      session.refreshToken = token.refreshToken as string;
 
       if (token.error) {
-        mergedSession.error = token.error as string;
+        // eslint-disable-next-line no-param-reassign
+        session.error = token.error as string;
       }
 
-      return mergedSession;
+      return session;
+    },
+  },
+  events: {
+    async signOut({ token }: { token: JWT }) {
+      const issuerUrl = (
+        authOptions.providers.find(
+          (p) => p.id === 'keycloak'
+        ) as OAuthConfig<KeycloakProfile>
+      ).options!.issuer!;
+
+      const logOutUrl = new URL(`${issuerUrl}/protocol/openid-connect/logout`);
+      logOutUrl.searchParams.set('id_token_hint', token.idToken! as string);
+
+      const response = await fetch(logOutUrl);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to log out: ${response.statusText} - ${errorText}`
+        );
+      }
     },
   },
 };
 
-export default NextAuth(authOptions);
+export default (req: NextApiRequest, res: NextApiResponse) => {
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate, private'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+
+  return NextAuth(req, res, authOptions);
+};

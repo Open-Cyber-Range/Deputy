@@ -228,4 +228,43 @@ mod tests {
         temp_project.root_dir.close()?;
         Ok(())
     }
+
+    #[actix_web::test]
+    async fn error_on_invalid_compression_level() -> Result<()> {
+        let temp_project = TempArchive::builder().build()?;
+
+        let test_backend = TestPackageServerBuilder::try_new()?;
+        let host = test_backend.get_host().to_string();
+        let test_backend = test_backend.build();
+        test_backend.start().await?;
+
+        let deputy_configuration = DeployerCLIConfigurationBuilder::builder()
+            .host(&host)
+            .build()?;
+        let mut login_command = Command::cargo_bin("deputy")?;
+        login_command
+            .arg("login")
+            .arg("--token")
+            .arg("some-token-value");
+        login_command.env(
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            deputy_configuration.configuration_folder.path(),
+        );
+        login_command.assert().success();
+
+        let mut command = Command::cargo_bin("deputy")?;
+        command.current_dir(temp_project.root_dir.path());
+        command.env(
+            CONFIGURATION_FOLDER_PATH_ENV_KEY,
+            deputy_configuration.configuration_folder.path(),
+        );
+
+        command.arg("publish").arg("--compression").arg(&"100");
+        command.assert().failure().stderr(predicate::str::contains(
+            "invalid value '100' for '--compression <COMPRESSION>': 100 is not in 0..=9",
+        ));
+
+        temp_project.root_dir.close()?;
+        Ok(())
+    }
 }

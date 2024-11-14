@@ -13,7 +13,7 @@ pub struct VersionRest {
     pub description: String,
     pub license: String,
     pub is_yanked: bool,
-    pub readme_html: String,
+    pub readme_html: Option<String>,
     pub package_size: u64,
     pub checksum: String,
     pub created_at: NaiveDateTime,

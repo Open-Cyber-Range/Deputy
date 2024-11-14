@@ -1,5 +1,6 @@
 import { HTMLSelect } from '@blueprintjs/core';
 import { ChangeEvent } from 'react';
+import { LIMIT_OPTIONS } from '../constants/constants';
 
 const PageLimitSelect = ({
   selectedLimit,
@@ -15,10 +16,11 @@ const PageLimitSelect = ({
       value={selectedLimit}
       onChange={onChange}
     >
-      <option value="5">5</option>
-      <option value="10">10</option>
-      <option value="20">20</option>
-      <option value="50">50</option>
+      {LIMIT_OPTIONS.map((limit) => (
+        <option key={limit} value={limit}>
+          {limit}
+        </option>
+      ))}
     </HTMLSelect>
   );
 };

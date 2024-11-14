@@ -1,4 +1,5 @@
-use crate::project::{Content, ContentType};
+use crate::constants::PACKAGE_TOML;
+use crate::project::{Content, ContentType, Project};
 use crate::{
     archiver::{self, ArchiveStreamer},
     project::Body,
@@ -7,18 +8,21 @@ use actix_http::error::PayloadError;
 use actix_web::web::Bytes;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine};
+use flate2::read::MultiGzDecoder;
 use futures::{Stream, StreamExt};
-use pulldown_cmark::{html, Event, Options, Parser, Tag};
-use regex::Regex;
+use infer::archive::is_gz;
+use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File},
-    io::{copy, Write},
+    io::{copy, Read, Seek, SeekFrom, Write},
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     pin::Pin,
 };
+use tar::Archive;
 use tempfile::TempPath;
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -68,6 +72,23 @@ async fn process_image(
     }
 }
 
+async fn try_process_img_tag(html: &str, package_path: &Path) -> Result<Option<String>> {
+    let element = Html::parse_fragment(html);
+    let img_selector =
+        Selector::parse("img").map_err(|error| anyhow!("Failed to parse selector: {error}"))?;
+
+    if let Some(img_tag) = element.select(&img_selector).next() {
+        let src = img_tag.value().attr("src").unwrap_or("").to_string();
+        let alt = img_tag.value().attr("alt").unwrap_or("").to_string();
+        let width = img_tag.value().attr("width").unwrap_or("").to_string();
+
+        let processed_img_tag = process_image(&src, &alt, &width, package_path).await?;
+        return Ok(Some(processed_img_tag));
+    }
+
+    Ok(None)
+}
+
 impl PackageMetadata {
     pub async fn readme_html(&self, package_base_path: PathBuf) -> Result<Option<String>> {
         let readme_path = self.readme_path.clone();
@@ -97,38 +118,37 @@ impl PackageMetadata {
             let mut html_output = String::new();
             let mut buffer = String::new();
 
-            let img_regex = Regex::new(r#"<img\s.*?src\s*=\s*"([^"]*)"\s.*?alt\s*=\s*"([^"]*)"(?:\s.*?width\s*=\s*"([^"]*)")?.*?/>"#).unwrap();
-
-            let mut alt_text = String::new();
-            let mut in_alt_text = false;
+            let mut parsing_md_img = false;
+            let mut md_img_alt_text = String::new();
+            let mut md_img_src_url = String::new();
 
             for event in parser {
                 match event {
-                    Event::Start(Tag::Image(_, url, _)) => {
-                        in_alt_text = true;
-                        let url_str = url.to_string();
-                        let img_tag = process_image(&url_str, &alt_text, "", &package_path).await?;
-                        buffer.push_str(&img_tag);
-
-                        alt_text.clear();
+                    Event::Start(Tag::Image { dest_url, .. }) => {
+                        parsing_md_img = true;
+                        md_img_src_url = dest_url.to_string();
                     }
 
-                    Event::Html(html) if img_regex.is_match(&html) => {
-                        let captures = img_regex.captures(&html).unwrap();
-                        let url_str = captures.get(1).map_or("", |m| m.as_str());
-                        let alt_text = captures.get(2).map_or("", |m| m.as_str());
-                        let width = captures.get(3).map_or("", |m| m.as_str());
-
-                        let img_tag =
-                            process_image(url_str, alt_text, width, &package_path).await?;
-                        buffer.push_str(&img_tag);
+                    Event::Text(text) if parsing_md_img => {
+                        md_img_alt_text.push_str(&text);
                     }
 
-                    Event::Text(text) if in_alt_text => {
-                        alt_text.push_str(&text);
+                    Event::End(TagEnd::Image) => {
+                        parsing_md_img = false;
+
+                        let md_img_tag =
+                            process_image(&md_img_src_url, &md_img_alt_text, "", &package_path)
+                                .await?;
+                        buffer.push_str(&md_img_tag);
+                        md_img_alt_text.clear();
+                        md_img_src_url.clear();
                     }
-                    Event::End(Tag::Image(_, _, _)) => {
-                        in_alt_text = false;
+
+                    Event::Html(html) | Event::InlineHtml(html) => {
+                        let processed_img_tag = try_process_img_tag(&html, &package_path).await?;
+                        if let Some(processed_img_tag) = processed_img_tag {
+                            buffer.push_str(&processed_img_tag);
+                        };
                     }
                     _ => html::push_html(&mut buffer, std::iter::once(event)),
                 }
@@ -296,6 +316,138 @@ impl Package {
         Ok(())
     }
 
+    pub fn validate_file_type(&mut self) -> Result<()> {
+        let mut file_signature = [0; 4096];
+        let file = &mut self.file.0;
+        let bytes_read = file.read(&mut file_signature)?;
+
+        file.seek(SeekFrom::Start(0))?;
+
+        if is_gz(&file_signature[..bytes_read]) {
+            Ok(())
+        } else {
+            Err(anyhow!("Invalid file type"))
+        }
+    }
+
+    pub fn validate_archive_size(&mut self, max_archive_size: u64) -> Result<()> {
+        let file = &mut self.file.0;
+
+        if file.metadata()?.len() > max_archive_size {
+            return Err(anyhow!("Archive exceeds maximum allowed size"));
+        };
+
+        let tarfile = MultiGzDecoder::new(file);
+        let mut archive = Archive::new(tarfile);
+        let mut total_uncompressed_size = 0;
+
+        for entry_result in archive.entries()? {
+            let mut entry = entry_result?;
+            let entry_header_size = entry.header().size()?;
+            total_uncompressed_size += entry_header_size;
+
+            if total_uncompressed_size > max_archive_size {
+                return Err(anyhow!("Uncompressed archive exceeds maximum allowed size"));
+            }
+
+            let mut buffer = [0; 32768];
+            let mut entry_actual_size = 0;
+
+            while let Ok(bytes_read) = entry.read(&mut buffer) {
+                if bytes_read == 0 {
+                    break;
+                }
+
+                entry_actual_size += bytes_read as u64;
+                if entry_actual_size > entry_header_size {
+                    return Err(anyhow!("Actual file size exceeds header size"));
+                }
+            }
+        }
+
+        self.file.0.seek(SeekFrom::Start(0))?;
+
+        Ok(())
+    }
+
+    pub fn validate_consistency(&self) -> Result<()> {
+        let mut package_file = &self.file.0;
+
+        let decoder = MultiGzDecoder::new(package_file);
+        let mut archive = Archive::new(decoder);
+        let mut toml_bytes = Vec::new();
+
+        for file in archive.entries()? {
+            let mut file = file?;
+            if file.path()?.to_str() == Some(PACKAGE_TOML) {
+                file.read_to_end(&mut toml_bytes)?;
+            }
+        }
+        package_file.rewind()?;
+
+        let deserialized_toml: Project = toml::from_str(&String::from_utf8(toml_bytes)?)?;
+
+        if self.metadata.name != deserialized_toml.package.name.to_lowercase() {
+            return Err(anyhow!(
+                "Name mismatch: expected '{}', found '{}'",
+                self.metadata.name,
+                deserialized_toml.package.name.to_lowercase()
+            ));
+        }
+        if self.metadata.package_type != deserialized_toml.content.content_type {
+            return Err(anyhow!(
+                "Package type mismatch: expected '{:?}', found '{:?}'",
+                self.metadata.package_type,
+                deserialized_toml.content.content_type
+            ));
+        }
+        if self.metadata.version != deserialized_toml.package.version {
+            return Err(anyhow!(
+                "Version mismatch: expected '{}', found '{}'",
+                self.metadata.version,
+                deserialized_toml.package.version
+            ));
+        }
+        if self.metadata.description != deserialized_toml.package.description {
+            return Err(anyhow!(
+                "Description mismatch: expected '{}', found '{}'",
+                self.metadata.description,
+                deserialized_toml.package.description
+            ));
+        }
+        if self.metadata.license != deserialized_toml.package.license {
+            return Err(anyhow!(
+                "License mismatch: expected '{}', found '{}'",
+                self.metadata.license,
+                deserialized_toml.package.license
+            ));
+        }
+        if self.metadata.readme_path != deserialized_toml.package.readme {
+            return Err(anyhow!(
+                "Readme path mismatch: expected '{}', found '{}'",
+                self.metadata.readme_path,
+                deserialized_toml.package.readme
+            ));
+        }
+        let actual_package_size = self.file.0.metadata()?.len();
+        if self.metadata.package_size != actual_package_size {
+            return Err(anyhow!(
+                "Package size mismatch: expected '{}', found '{}'",
+                self.metadata.package_size,
+                actual_package_size
+            ));
+        }
+        if self.metadata.categories != deserialized_toml.package.categories {
+            return Err(anyhow!(
+                "Categories mismatch: expected '{:?}', found '{:?}'",
+                self.metadata.categories,
+                deserialized_toml.package.categories
+            ));
+        }
+
+        Ok(())
+    }
+
     fn gather_metadata(toml_path: &Path, archive_path: &Path) -> Result<PackageMetadata> {
         let package_body = Body::create_from_toml(toml_path)?;
         let package_content = Content::create_from_toml(toml_path)?;
@@ -317,10 +469,7 @@ impl Package {
         let archive_path = archiver::create_package(package_toml_path, compression)?;
         let metadata = Self::gather_metadata(package_toml_path, &archive_path)?;
         let file = File::open(&archive_path)?;
-        let mut temp_path_option = None;
-        if cfg!(feature = "test") {
-            temp_path_option = Some(TempPath::from_path(archive_path));
-        }
+        let temp_path_option = Some(TempPath::from_path(archive_path));
 
         Ok(Package {
             metadata,

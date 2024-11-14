@@ -11,7 +11,6 @@ pub mod services;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod utilities;
-pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct AppState<T>
@@ -20,4 +19,5 @@ where
 {
     pub database_address: Addr<T>,
     pub package_folder: String,
+    pub max_archive_size: u64,
 }

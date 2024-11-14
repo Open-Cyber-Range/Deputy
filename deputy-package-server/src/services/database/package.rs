@@ -66,8 +66,10 @@ pub struct GetPackages {
     pub search_term: Option<String>,
     pub package_type: Option<String>,
     pub categories: Option<Vec<String>>,
+    pub paginated: bool,
     pub page: i64,
     pub per_page: i64,
+    pub include_readme: bool,
 }
 
 impl Handler<GetPackages> for Database {
@@ -101,15 +103,27 @@ impl Handler<GetPackages> for Database {
                                     .collect::<Vec<Uuid>>();
 
                             if let Some(search_package_type) = search_packages.package_type {
-                                Package::search_name_with_type_and_categories(
-                                    search_term,
-                                    search_package_type.to_lowercase(),
-                                    package_ids_by_categories,
-                                )
-                                .paginate(search_packages.page)
-                                .per_page(search_packages.per_page)
-                                .load_and_count_pages(&mut connection)?
-                            } else {
+                                if search_packages.paginated {
+                                    Package::search_name_with_type_and_categories(
+                                        search_term,
+                                        search_package_type.to_lowercase(),
+                                        package_ids_by_categories,
+                                    )
+                                    .paginate(search_packages.page)
+                                    .per_page(search_packages.per_page)
+                                    .load_and_count_pages(&mut connection)?
+                                } else {
+                                    let packages_by_type_and_category =
+                                        Package::search_name_with_type_and_categories(
+                                            search_term,
+                                            search_package_type.to_lowercase(),
+                                            package_ids_by_categories,
+                                        )
+                                        .load(&mut connection)?;
+                                    let total_packages = packages_by_type_and_category.len();
+                                    (packages_by_type_and_category, 1, total_packages as i64)
+                                }
+                            } else if search_packages.paginated {
                                 Package::search_name_with_categories(
                                     search_term,
                                     package_ids_by_categories,
@@ -117,26 +131,58 @@ impl Handler<GetPackages> for Database {
                                 .paginate(search_packages.page)
                                 .per_page(search_packages.per_page)
                                 .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_categories = Package::search_name_with_categories(
+                                    search_term,
+                                    package_ids_by_categories,
+                                )
+                                .load(&mut connection)?;
+                                let total_packages = packages_by_categories.len();
+                                (packages_by_categories, 1, total_packages as i64)
                             }
                         }
-                        (Some(search_package_type), None) => Package::search_name_with_type(
-                            search_term,
-                            search_package_type.to_lowercase(),
-                        )
-                        .paginate(search_packages.page)
-                        .per_page(search_packages.per_page)
-                        .load_and_count_pages(&mut connection)?,
-                        _ => Package::search_name(search_term)
-                            .paginate(search_packages.page)
-                            .per_page(search_packages.per_page)
-                            .load_and_count_pages(&mut connection)?,
+                        (Some(search_package_type), None) => {
+                            if search_packages.paginated {
+                                Package::search_name_with_type(
+                                    search_term,
+                                    search_package_type.to_lowercase(),
+                                )
+                                .paginate(search_packages.page)
+                                .per_page(search_packages.per_page)
+                                .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_type = Package::search_name_with_type(
+                                    search_term,
+                                    search_package_type.to_lowercase(),
+                                )
+                                .load(&mut connection)?;
+                                let total_packages = packages_by_type.len();
+                                (packages_by_type, 1, total_packages as i64)
+                            }
+                        }
+                        _ => {
+                            if search_packages.paginated {
+                                Package::search_name(search_term)
+                                    .paginate(search_packages.page)
+                                    .per_page(search_packages.per_page)
+                                    .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_search_term =
+                                    Package::search_name(search_term).load(&mut connection)?;
+                                let total_packages = packages_by_search_term.len();
+                                (packages_by_search_term, 1, total_packages as i64)
+                            }
+                        }
                     };
 
                     let packages_with_versions_query_result = query
                         .0
                         .iter()
                         .map(|package| {
-                            let package_versions = package.versions().load(&mut connection)?;
+                            let package_versions = package
+                                .versions(search_packages.include_readme)
+                                .load(&mut connection)?;
+
                             Ok(PackageWithVersions::from((
                                 package.clone(),
                                 package_versions,
@@ -163,6 +209,7 @@ impl Handler<GetPackages> for Database {
 pub struct GetPackageByNameAndVersion {
     pub name: String,
     pub version: String,
+    pub include_readme: bool,
 }
 
 impl Handler<GetPackageByNameAndVersion> for Database {
@@ -182,7 +229,7 @@ impl Handler<GetPackageByNameAndVersion> for Database {
                     let package: Package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)?;
                     let package_version: Version = package
-                        .exact_version(query_params.version)
+                        .exact_version(query_params.version, query_params.include_readme)
                         .first(&mut connection)?;
                     Ok(package_version)
                 })
@@ -196,7 +243,10 @@ impl Handler<GetPackageByNameAndVersion> for Database {
 
 #[derive(Message)]
 #[rtype(result = "Result<Vec<Version>>")]
-pub struct GetVersionsByPackageName(pub String);
+pub struct GetVersionsByPackageName {
+    pub name: String,
+    pub include_readme: bool,
+}
 
 impl Handler<GetVersionsByPackageName> for Database {
     type Result = ResponseActFuture<Self, Result<Vec<Version>>>;
@@ -212,12 +262,13 @@ impl Handler<GetVersionsByPackageName> for Database {
             async move {
                 let mut connection = connection_result?;
                 let package = block(move || {
-                    let package = Package::by_name(query_params.0.to_lowercase())
+                    let package = Package::by_name(query_params.name.to_lowercase())
                         .first(&mut connection)
                         .optional()?;
                     if let Some(package) = package {
-                        let package_versions: Vec<Version> =
-                            package.versions().load(&mut connection)?;
+                        let package_versions: Vec<Version> = package
+                            .versions(query_params.include_readme)
+                            .load(&mut connection)?;
                         return Ok(package_versions);
                     }
                     Ok(Vec::new())

@@ -1,11 +1,14 @@
-use crate::{commands::UnpackLevel, constants::PACKAGE_TOML};
+use crate::commands::UnpackLevel;
 use anyhow::{anyhow, Error, Ok, Result};
 use awc::error::PayloadError;
 use bytes::Bytes;
 use colored::Colorize;
-use deputy_library::archiver::{decompress_archive, unpack_archive};
-use deputy_library::project::FeatureType;
-use deputy_library::rest::{PackageWithVersionsRest, VersionRest};
+use deputy_library::{
+    archiver::{decompress_archive, unpack_archive},
+    constants::PACKAGE_TOML,
+    project::FeatureType,
+    rest::{PackageWithVersionsRest, VersionRest},
+};
 use dialoguer::Select;
 use futures::{Stream, StreamExt};
 use human_bytes::human_bytes;

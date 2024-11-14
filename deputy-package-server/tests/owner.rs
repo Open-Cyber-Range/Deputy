@@ -18,7 +18,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_add_new_owner() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
 
         let package_name = upload_test_package(&app_state).await.unwrap();
 
@@ -52,7 +52,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_list_owners() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let package_name = upload_test_package(&app_state).await.unwrap();
 
         let app =
@@ -82,7 +82,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_delete_owner() -> Result<()> {
-        let (package_folder, app_state) = setup_package_server()?;
+        let (package_folder, app_state) = setup_package_server(None)?;
         let package_name = upload_test_package(&app_state).await.unwrap();
 
         let app = test::init_service(

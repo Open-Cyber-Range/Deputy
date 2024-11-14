@@ -1,11 +1,12 @@
 use crate::constants::{
     fetching::{DEFAULT_PACKAGE_VERSION_REQUIREMENT, DEFAULT_SAVE_PATH},
     inspecting::DEFAULT_PACKAGE_PATH,
+    publishing::VALID_COMPRESSION_RATES,
     DEFAULT_REGISTRY_NAME,
 };
-use clap::{ArgEnum, Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 
-#[derive(ArgEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug)]
 pub enum UnpackLevel {
     Raw,
     Uncompressed,
@@ -15,7 +16,7 @@ pub enum UnpackLevel {
 #[derive(Debug, Args)]
 pub struct FetchOptions {
     pub package_name: String,
-    #[clap(arg_enum, short, long, default_value_t = UnpackLevel::Regular)]
+    #[clap(value_enum, short, long, default_value_t = UnpackLevel::Regular)]
     pub unpack_level: UnpackLevel,
     #[clap(short, long, default_value = DEFAULT_PACKAGE_VERSION_REQUIREMENT, help = "Version of the package to fetch")]
     pub version_requirement: String,
@@ -56,8 +57,9 @@ pub struct PublishOptions {
     #[clap(
         short,
         long,
+        value_parser = clap::value_parser!(u32).range(VALID_COMPRESSION_RATES),
         default_value_t = 0,
-        help = "Compression rate before upload"
+        help = format!("Compression rate before upload. Valid values {:?}",VALID_COMPRESSION_RATES)
     )]
     pub(crate) compression: u32,
     #[clap(

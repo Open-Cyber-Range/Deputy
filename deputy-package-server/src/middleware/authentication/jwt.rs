@@ -1,4 +1,7 @@
-use crate::errors::{PackageServerError, ServerResponseError};
+use crate::{
+    constants::JWT_AUDIENCE,
+    errors::{PackageServerError, ServerResponseError},
+};
 use actix_http::HttpMessage;
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
@@ -27,6 +30,7 @@ pub struct Token {
     pub exp: u64,
     pub name: Option<String>,
     pub email: Option<String>,
+    pub typ: Option<String>,
 }
 
 impl Token {
@@ -36,13 +40,26 @@ impl Token {
     {pem}
     -----END PUBLIC KEY-----"
         );
-        let decoding_key = DecodingKey::from_rsa_pem(pem_file.as_bytes()).unwrap();
-        jsonwebtoken::decode::<Token>(token, &decoding_key, &Validation::new(Algorithm::RS256))
-            .map(|data| data.claims)
+        let decoding_key = DecodingKey::from_rsa_pem(pem_file.as_bytes()).map_err(|e| {
+            error!("Failed to create decoding key: {}", e);
+            ErrorUnauthorized("Invalid decoding key")
+        })?;
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_audience(&[JWT_AUDIENCE]);
+
+        let decoded_token = jsonwebtoken::decode::<Token>(token, &decoding_key, &validation)
             .map_err(|e| {
-                log::error!("Failed to decode JWT: {}", e);
-                ErrorUnauthorized(e.to_string())
-            })
+                error!("Failed to decode JWT: {}", e);
+                ErrorUnauthorized("Invalid token")
+            })?;
+
+        if decoded_token.claims.typ.as_deref() != Some("Bearer") {
+            error!("Invalid token type: {:?}", decoded_token.claims.typ);
+            return Err(ErrorUnauthorized("Invalid token type"));
+        }
+
+        Ok(decoded_token.claims)
     }
 }
 

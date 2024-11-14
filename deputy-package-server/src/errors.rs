@@ -9,11 +9,15 @@ use thiserror::Error as ThisError;
 pub enum PackageServerError {
     #[error("Failed to parse metadata")]
     MetadataParse,
+    #[error("Failed to validate the package metadata")]
+    MetadataValidation,
     #[error("Failed to save the file")]
     FileSave,
     #[error("Failed to save the package")]
     PackageSave,
-    #[error("Failed to validate the package")]
+    #[error("Failed to parse readme markdown to html")]
+    ReadmeParse,
+    #[error("Package did not pass validation")]
     PackageValidation,
     #[error("Failed to validate the package version")]
     PackageVersionValidation,
@@ -39,6 +43,8 @@ pub enum PackageServerError {
     KeycloakValidationFailed,
     #[error("Token missing")]
     TokenMissing,
+    #[error("Failed to create token")]
+    TokenCreate,
     #[error("App state missing")]
     AppStateMissing,
     #[error("Database query failed")]
@@ -55,6 +61,8 @@ pub enum PackageServerError {
     PathParameters,
     #[error("Not authorized")]
     NotAuthorized,
+    #[error("Package has been yanked")]
+    PackageYanked,
 }
 
 #[derive(Debug)]
@@ -81,8 +89,12 @@ impl ResponseError for ServerResponseError {
                 PackageServerError::VersionUpdate => StatusCode::BAD_REQUEST,
                 PackageServerError::FileNotFound => StatusCode::NOT_FOUND,
                 PackageServerError::DatabaseRecordNotFound => StatusCode::NOT_FOUND,
+                PackageServerError::DatabaseQueryFailed => StatusCode::INTERNAL_SERVER_ERROR,
                 PackageServerError::TokenMissing => StatusCode::UNAUTHORIZED,
+                PackageServerError::TokenCreate => StatusCode::BAD_REQUEST,
                 PackageServerError::NotAuthorized => StatusCode::UNAUTHORIZED,
+                PackageServerError::MetadataValidation => StatusCode::BAD_REQUEST,
+                PackageServerError::PackageYanked => StatusCode::GONE,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             };
         }

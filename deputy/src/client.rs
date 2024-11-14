@@ -326,6 +326,10 @@ impl Client {
     ) -> Result<Vec<PackageWithVersionsRest>> {
         let mut base_get_uri = self.api_base_url.join("api/v1/package")?;
 
+        base_get_uri
+            .query_pairs_mut()
+            .append_pair("paginated", "false");
+
         if let Some(search_term) = &options.search_term {
             base_get_uri
                 .query_pairs_mut()

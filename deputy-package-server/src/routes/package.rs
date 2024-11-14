@@ -7,7 +7,7 @@ use crate::services::database::package::{
     GetVersionsByPackageName, UpdateVersionMsg,
 };
 use crate::{
-    constants::{default_limit, default_page},
+    constants::{default_limit, default_page, default_pagination},
     errors::{PackageServerError, ServerResponseError},
     models::Category,
     AppState,
@@ -196,6 +196,8 @@ where
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Debug, Default)]
 pub struct SearchQuery {
+    #[serde(default = "default_pagination")]
+    paginated: bool,
     #[serde(default = "default_page")]
     page: u32,
     #[serde(default = "default_limit")]
@@ -228,6 +230,7 @@ where
             search_term: search_term.clone(),
             package_type: optional_package_type.clone(),
             categories: optional_package_categories.clone(),
+            paginated: query.paginated,
             page: query.page as i64,
             per_page: query.limit as i64,
             include_readme: query.include_readme,

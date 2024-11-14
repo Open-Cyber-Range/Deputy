@@ -2,6 +2,10 @@ use chrono::NaiveDateTime;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+pub const fn default_pagination() -> bool {
+    true
+}
+
 pub const fn default_page() -> u32 {
     1
 }

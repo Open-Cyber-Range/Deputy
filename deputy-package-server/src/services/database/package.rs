@@ -66,6 +66,7 @@ pub struct GetPackages {
     pub search_term: Option<String>,
     pub package_type: Option<String>,
     pub categories: Option<Vec<String>>,
+    pub paginated: bool,
     pub page: i64,
     pub per_page: i64,
     pub include_readme: bool,
@@ -102,15 +103,27 @@ impl Handler<GetPackages> for Database {
                                     .collect::<Vec<Uuid>>();
 
                             if let Some(search_package_type) = search_packages.package_type {
-                                Package::search_name_with_type_and_categories(
-                                    search_term,
-                                    search_package_type.to_lowercase(),
-                                    package_ids_by_categories,
-                                )
-                                .paginate(search_packages.page)
-                                .per_page(search_packages.per_page)
-                                .load_and_count_pages(&mut connection)?
-                            } else {
+                                if search_packages.paginated {
+                                    Package::search_name_with_type_and_categories(
+                                        search_term,
+                                        search_package_type.to_lowercase(),
+                                        package_ids_by_categories,
+                                    )
+                                    .paginate(search_packages.page)
+                                    .per_page(search_packages.per_page)
+                                    .load_and_count_pages(&mut connection)?
+                                } else {
+                                    let packages_by_type_and_category =
+                                        Package::search_name_with_type_and_categories(
+                                            search_term,
+                                            search_package_type.to_lowercase(),
+                                            package_ids_by_categories,
+                                        )
+                                        .load(&mut connection)?;
+                                    let total_packages = packages_by_type_and_category.len();
+                                    (packages_by_type_and_category, 1, total_packages as i64)
+                                }
+                            } else if search_packages.paginated {
                                 Package::search_name_with_categories(
                                     search_term,
                                     package_ids_by_categories,
@@ -118,19 +131,48 @@ impl Handler<GetPackages> for Database {
                                 .paginate(search_packages.page)
                                 .per_page(search_packages.per_page)
                                 .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_categories = Package::search_name_with_categories(
+                                    search_term,
+                                    package_ids_by_categories,
+                                )
+                                .load(&mut connection)?;
+                                let total_packages = packages_by_categories.len();
+                                (packages_by_categories, 1, total_packages as i64)
                             }
                         }
-                        (Some(search_package_type), None) => Package::search_name_with_type(
-                            search_term,
-                            search_package_type.to_lowercase(),
-                        )
-                        .paginate(search_packages.page)
-                        .per_page(search_packages.per_page)
-                        .load_and_count_pages(&mut connection)?,
-                        _ => Package::search_name(search_term)
-                            .paginate(search_packages.page)
-                            .per_page(search_packages.per_page)
-                            .load_and_count_pages(&mut connection)?,
+                        (Some(search_package_type), None) => {
+                            if search_packages.paginated {
+                                Package::search_name_with_type(
+                                    search_term,
+                                    search_package_type.to_lowercase(),
+                                )
+                                .paginate(search_packages.page)
+                                .per_page(search_packages.per_page)
+                                .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_type = Package::search_name_with_type(
+                                    search_term,
+                                    search_package_type.to_lowercase(),
+                                )
+                                .load(&mut connection)?;
+                                let total_packages = packages_by_type.len();
+                                (packages_by_type, 1, total_packages as i64)
+                            }
+                        }
+                        _ => {
+                            if search_packages.paginated {
+                                Package::search_name(search_term)
+                                    .paginate(search_packages.page)
+                                    .per_page(search_packages.per_page)
+                                    .load_and_count_pages(&mut connection)?
+                            } else {
+                                let packages_by_search_term =
+                                    Package::search_name(search_term).load(&mut connection)?;
+                                let total_packages = packages_by_search_term.len();
+                                (packages_by_search_term, 1, total_packages as i64)
+                            }
+                        }
                     };
 
                     let packages_with_versions_query_result = query

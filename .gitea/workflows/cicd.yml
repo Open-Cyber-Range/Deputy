@@ -16,7 +16,6 @@ env:
   OCR_DEPLOYMENT_PASSWORD: ${{ secrets.OCR_DEPLOYMENT_PASSWORD }}
   OCR_APT_REPOSITORY: ${{ vars.OCR_APT_REPOSITORY }}
   DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
-  MANFRED_GITHUB_TOKEN: ${{ secrets.MANFRED_GITHUB_TOKEN }}
 
 jobs:
   lint-and-test-rust:
@@ -198,7 +197,7 @@ jobs:
       - name: Sync to GitHub
         run: |
           git remote remove github || echo "No remote named 'github'"
-          git remote add github https://mannyfred:$MANFRED_GITHUB_TOKEN@github.com/Open-Cyber-Range/Deputy.git
+          git remote add github https://${{ secrets.GITHUB_TOKEN }}@github.com/Open-Cyber-Range/Deputy.git
           git fetch --unshallow || echo "Already have full history"
           git checkout master
           git pull --rebase origin master

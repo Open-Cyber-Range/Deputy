@@ -169,11 +169,7 @@ jobs:
 
   sync-to-github:
     if: github.ref == 'refs/heads/master'
-    needs:
-      [
-        "publish-deputy-package-server-to-docker-images",
-        "publish-deputy-frontend-to-docker-images",
-      ]
+    needs: ["lint-and-test-rust", "lint-frontend"]
     runs-on: ubuntu-latest
     container:
       image: ${{ vars.DOCKER_REGISTRY_PULL }}/ocr-base-deployment-image:latest
@@ -197,7 +193,7 @@ jobs:
       - name: Sync to GitHub
         run: |
           git remote remove github || echo "No remote named 'github'"
-          git remote add github https://${{ secrets.GITHUB_TOKEN }}@github.com/Open-Cyber-Range/Deputy.git
+          git remote add github https://${{ secrets.OCR_GITHUB_TOKEN }}@github.com/Open-Cyber-Range/Deputy.git
           git fetch --unshallow || echo "Already have full history"
           git checkout master
           git pull --rebase origin master

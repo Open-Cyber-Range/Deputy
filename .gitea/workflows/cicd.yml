@@ -99,16 +99,12 @@ jobs:
     steps:
       - name: Install Git
         run: |
-          if ! command -v git &> /dev/null
-          then
-            apt-get update
-            apt-get install -y git
-          fi
+          apk update
+          apk add git
 
       - name: Install Node.js
         run: |
-          curl -sL https://deb.nodesource.com/setup_18.x | bash -
-          apt-get install -y nodejs
+          apk add nodejs npm
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -138,16 +134,12 @@ jobs:
     steps:
       - name: Install Git
         run: |
-          if ! command -v git &> /dev/null
-          then
-            apt-get update
-            apt-get install -y git
-          fi
+          apk update
+          apk add git
 
       - name: Install Node.js
         run: |
-          curl -sL https://deb.nodesource.com/setup_18.x | bash -
-          apt-get install -y nodejs
+          apk add nodejs npm
 
       - name: Checkout code
         uses: actions/checkout@v4

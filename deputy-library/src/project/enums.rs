@@ -60,7 +60,9 @@ pub enum Architecture {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub enum VirtualMachineType {
     OVA,
+    QCOW2,
+    RAW,
 }

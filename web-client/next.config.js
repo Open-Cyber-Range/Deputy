@@ -6,6 +6,7 @@ module.exports = nextTranslate({
   swcMinify: true,
   env: {
     DOCUMENTATION_URL: process.env.DOCUMENTATION_URL,
+    INSTALLER_URL: process.env.INSTALLER_URL,
   },
   async headers() {
     return [

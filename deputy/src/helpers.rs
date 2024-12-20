@@ -9,9 +9,10 @@ use deputy_library::{
     project::FeatureType,
     rest::{PackageWithVersionsRest, VersionRest},
 };
-use dialoguer::Select;
+use dialoguer::{Input, Select};
 use futures::{Stream, StreamExt};
 use human_bytes::human_bytes;
+use semver::Version;
 use std::fs;
 use std::path::Path;
 use std::{io::Write, path::PathBuf};
@@ -113,15 +114,64 @@ pub async fn create_file_from_stream(
 }
 
 pub fn virtual_machine_fields() -> String {
-    r#"
+    let vm_types = vec!["OVA", "QCOW2", "RAW"];
+    let default_vm_type = 0;
+    let vm_type_selection = Select::new()
+        .with_prompt("Select virtual machine type")
+        .default(default_vm_type)
+        .items(&vm_types)
+        .interact()
+        .unwrap();
+    let chosen_vm_type = vm_types[vm_type_selection];
+
+    let operating_systems = vec!["Linux", "Windows", "MacOS", "Other"];
+    let default_os = 0;
+    let os_selection = Select::new()
+        .with_prompt("Select operating system")
+        .default(default_os)
+        .items(&operating_systems)
+        .interact()
+        .unwrap();
+    let chosen_os = operating_systems[os_selection];
+
+    let architectures = vec!["amd64", "x86", "ARM", "ARM64", "Other"];
+    let default_arch = 0;
+    let arch_selection = Select::new()
+        .with_prompt("Select architecture")
+        .default(default_arch)
+        .items(&architectures)
+        .interact()
+        .unwrap();
+    let chosen_architecture = architectures[arch_selection];
+
+    let username: String = Input::new()
+        .with_prompt("Enter username for the virtual machine (default: root)")
+        .default("root".into())
+        .interact_text()
+        .unwrap();
+
+    let password: String = Input::new()
+        .with_prompt("Enter password for the virtual machine (default: empty)")
+        .allow_empty(true)
+        .default("".into())
+        .interact_text()
+        .unwrap();
+
+    format!(
+        r#"
 [virtual-machine]
-accounts = [{ name = "", password = "" }]
-operating_system = ""
-architecture = ""
-type = "OVA"
+accounts = [{{name = "{username}",password = "{password}"}}]
+operating_system = "{chosen_os}"
+architecture = "{chosen_architecture}"
+type = "{chosen_vm_type}"
 file_path = ""
-"#
-    .to_string()
+"#,
+        username = username,
+        password = password,
+        chosen_os = chosen_os,
+        chosen_architecture = chosen_architecture,
+        chosen_vm_type = chosen_vm_type
+    )
 }
 
 pub fn feature_fields() -> String {
@@ -241,14 +291,22 @@ pub fn print_latest_version_package_list_entry(package: &PackageWithVersionsRest
 }
 
 pub fn print_package_list_entry(package: &PackageWithVersionsRest) -> Result<()> {
-    let mut versions = package.versions.clone();
-    versions.sort_by(|a, b| b.version.cmp(&a.version));
+    let mut versions = package
+        .versions
+        .clone()
+        .into_iter()
+        .map(|version_rest| {
+            let version = version_rest.version.parse::<Version>()?;
+            Ok(version)
+        })
+        .collect::<Result<Vec<Version>, Error>>()?;
+    versions.sort_by(|a, b| b.cmp(a));
     for version in versions {
         println!(
             "{name}/{type}, {version}",
             name = package.name.green(),
             type = package.package_type,
-            version = version.version,
+            version = version,
         );
     }
     Ok(())

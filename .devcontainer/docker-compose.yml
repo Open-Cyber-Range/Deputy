@@ -15,6 +15,7 @@ services:
     image: nexus.ocr.cr14.net:8003/deputy-package-server:latest
     volumes:
       - ./deputy-packages:/var/opt/deputy/deputy-package-server/package
+      - ./configs/config.yml:/etc/opt/deputy/deputy-package-server/config.yml
     environment:
       - RUST_LOG=debug
 

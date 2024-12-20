@@ -6,6 +6,7 @@ use anyhow::{anyhow, Ok, Result};
 use fancy_regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Formatter;
+use std::str::FromStr;
 use std::{fmt, fs::File, io::Read, path::Path};
 
 use self::enums::VirtualMachineType;
@@ -336,6 +337,29 @@ where
         D: Deserializer<'de>,
     {
         Option::deserialize(deserializer).map(Into::into)
+    }
+}
+
+impl FromStr for VirtualMachineType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "ova" => Ok(VirtualMachineType::OVA),
+            "qcow2" => Ok(VirtualMachineType::QCOW2),
+            "raw" => Ok(VirtualMachineType::RAW),
+            _ => Err(anyhow!("Invalid virtual machine type: {}", s)),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for VirtualMachineType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: String = Deserialize::deserialize(deserializer)?;
+        VirtualMachineType::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 

@@ -1,12 +1,12 @@
 [package]
 name = "deputy"
 description = "Deputy CLI tool to interact with deputy packages"
-version = "4.4.0"
+version = "4.4.1"
 edition = "2021"
 
 [package.metadata.deb]
 name = "deputy"
-maintainer = "Kaarel Allemann <developers@cr14.ee>"
+maintainer = "CR14 Developers <developers@cr14.ee>"
 copyright = "2022, CR14 <info@cr14.ee>"
 license-file = ["../LICENSE", "4"]
 extended-description = """\
@@ -42,6 +42,7 @@ indicatif = "0.17"
 lazy_static = "1"
 log = "0.4"
 qstring = "0.7"
+semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"

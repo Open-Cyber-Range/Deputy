@@ -26,10 +26,12 @@ const Deputy = ({
         <link rel="icon" href="/favicon.ico" />
         <title>{t('title')}</title>
         <meta name={t('metaName')} content={t('metaContent')} />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
+
       <MainNavbar />
       <SessionCheck>
-        <div className="flex flex-col items-center p-10">
+        <div className="flex flex-col items-center min-h-screen p-4 md:p-10">
           <Component {...pageProps} />
         </div>
       </SessionCheck>
